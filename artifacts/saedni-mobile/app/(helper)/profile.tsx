@@ -1,6 +1,6 @@
 import React from "react";
-import { View, Text, TouchableOpacity, StyleSheet, Alert, Platform } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { View, Text, TouchableOpacity, StyleSheet, Alert, ScrollView } from "react-native";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
@@ -12,10 +12,10 @@ export default function HelperProfileScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { user, logout } = useAuth();
-  const top = Platform.OS === "web" ? 67 : insets.top;
+  const isVerified = user?.isVerified ?? false;
 
   function handleLogout() {
-    Alert.alert("تسجيل الخروج", "هل أنت متأكد؟", [
+    Alert.alert("تسجيل الخروج", "هل تريد الخروج من حسابك؟", [
       { text: "إلغاء", style: "cancel" },
       {
         text: "خروج", style: "destructive",
@@ -28,101 +28,140 @@ export default function HelperProfileScreen() {
     ]);
   }
 
-  const s = makeStyles(colors, top, insets.bottom);
-  const isVerified = user?.isVerified ?? false;
+  const s = makeStyles(colors, insets.bottom);
 
   return (
     <View style={s.container}>
-      <View style={s.header}>
-        <Text style={s.headerTitle}>حسابي</Text>
-      </View>
-      <View style={s.content}>
-        <View style={[s.avatar, isVerified && s.avatarVerified]}>
-          <Text style={s.avatarTxt}>{user?.name?.[0] ?? "؟"}</Text>
+      <SafeAreaView edges={["top"]} style={s.headerSafe}>
+        <View style={s.headerInner}>
+          <Text style={s.headerTitle}>حسابي</Text>
         </View>
-        <Text style={s.name}>{user?.name}</Text>
-        <Text style={s.phone}>{user?.phone}</Text>
-        <View style={s.typeBadge}>
-          <Ionicons name="hand-right-outline" size={14} color={colors.primary} />
-          <Text style={s.typeTxt}>مساعد</Text>
-          {isVerified && (
-            <View style={s.verifiedBadge}>
-              <Ionicons name="checkmark-circle" size={14} color={colors.primary} />
-              <Text style={s.verifiedTxt}>موثّق</Text>
-            </View>
-          )}
+      </SafeAreaView>
+
+      <ScrollView
+        style={s.scroll}
+        contentContainerStyle={s.content}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Avatar */}
+        <View style={s.avatarSection}>
+          <View style={[s.avatar, isVerified && s.avatarVerified]}>
+            <Text style={s.avatarTxt}>{user?.name?.[0] ?? "؟"}</Text>
+            {isVerified && (
+              <View style={s.verifiedBadge}>
+                <Ionicons name="checkmark-circle" size={22} color={colors.primary} />
+              </View>
+            )}
+          </View>
+          <Text style={s.name}>{user?.name}</Text>
+          <Text style={s.phone}>{user?.phone}</Text>
+          <View style={s.rolePill}>
+            <Ionicons name="hand-right-outline" size={14} color={colors.primary} />
+            <Text style={s.roleTxt}>مساعد</Text>
+          </View>
         </View>
 
+        {/* Verification status */}
         {!isVerified && (
-          <View style={s.unverifiedBanner}>
-            <Ionicons name="time-outline" size={16} color="#92400E" />
-            <Text style={s.unverifiedTxt}>حسابك قيد المراجعة. سيتم توثيقه من الإدارة قريباً</Text>
+          <View style={s.pendingBox}>
+            <Ionicons name="time-outline" size={18} color="#92400E" />
+            <View style={s.pendingText}>
+              <Text style={s.pendingTitle}>حسابك قيد المراجعة</Text>
+              <Text style={s.pendingHint}>سيتم توثيقه من الإدارة قريباً للبدء في قبول الطلبات</Text>
+            </View>
           </View>
         )}
 
+        {/* Info card */}
         <View style={s.infoCard}>
+          <View style={s.infoRow}>
+            <Text style={s.infoVal}>{user?.name}</Text>
+            <Text style={s.infoKey}>الاسم</Text>
+          </View>
+          <View style={s.divider} />
           <View style={s.infoRow}>
             <Text style={s.infoVal}>{user?.phone}</Text>
             <Text style={s.infoKey}>رقم الجوال</Text>
           </View>
-          <View style={[s.infoRow, { borderBottomWidth: 0 }]}>
-            <Text style={s.infoVal}>{isVerified ? "موثّق" : "قيد المراجعة"}</Text>
+          <View style={s.divider} />
+          <View style={s.infoRow}>
+            <View style={s.statusRow}>
+              <View style={[s.statusDot, { backgroundColor: isVerified ? "#16A34A" : "#F59E0B" }]} />
+              <Text style={s.infoVal}>{isVerified ? "موثّق" : "قيد المراجعة"}</Text>
+            </View>
             <Text style={s.infoKey}>حالة التوثيق</Text>
           </View>
         </View>
 
-        <TouchableOpacity style={s.logoutBtn} onPress={handleLogout} activeOpacity={0.8}>
-          <Ionicons name="log-out-outline" size={20} color="#EF4343" />
+        {/* Logout */}
+        <TouchableOpacity style={s.logoutBtn} onPress={handleLogout} activeOpacity={0.85}>
+          <Ionicons name="log-out-outline" size={20} color="#DC2626" />
           <Text style={s.logoutTxt}>تسجيل الخروج</Text>
         </TouchableOpacity>
-      </View>
+      </ScrollView>
     </View>
   );
 }
 
-const makeStyles = (c: ReturnType<typeof useColors>, top: number, bottom: number) =>
+const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
   StyleSheet.create({
     container: { flex: 1, backgroundColor: c.background },
-    header: {
-      backgroundColor: c.card, borderBottomWidth: 1, borderBottomColor: c.border,
-      paddingHorizontal: 20, paddingTop: top + 12, paddingBottom: 12,
-    },
-    headerTitle: { fontSize: 22, fontWeight: "700", color: c.foreground, textAlign: "right" },
-    content: { flex: 1, alignItems: "center", padding: 24, paddingBottom: bottom + 80 },
+    headerSafe: { backgroundColor: c.card, borderBottomWidth: 1, borderBottomColor: c.border },
+    headerInner: { paddingHorizontal: 20, paddingVertical: 14 },
+    headerTitle: { fontSize: 22, fontWeight: "800", color: c.foreground, textAlign: "right" },
+    scroll: { flex: 1 },
+    content: { padding: 20, paddingBottom: bottomInset + 100, alignItems: "center" },
+    avatarSection: { alignItems: "center", paddingVertical: 28 },
     avatar: {
-      width: 88, height: 88, borderRadius: 44, backgroundColor: c.muted,
-      alignItems: "center", justifyContent: "center", marginTop: 24, marginBottom: 12,
-      borderWidth: 3, borderColor: c.border,
+      width: 92, height: 92, borderRadius: 46,
+      backgroundColor: c.muted, borderWidth: 3, borderColor: c.border,
+      alignItems: "center", justifyContent: "center", marginBottom: 14,
     },
-    avatarVerified: { backgroundColor: c.primary, borderColor: c.primary },
-    avatarTxt: { fontSize: 36, fontWeight: "700", color: c.primaryForeground },
-    name: { fontSize: 22, fontWeight: "700", color: c.foreground, marginBottom: 4 },
-    phone: { fontSize: 14, color: c.mutedForeground, marginBottom: 12 },
-    typeBadge: {
-      flexDirection: "row-reverse", alignItems: "center", gap: 6, backgroundColor: c.secondary,
-      borderRadius: 20, paddingHorizontal: 14, paddingVertical: 6, marginBottom: 16,
+    avatarVerified: {
+      backgroundColor: c.primary, borderColor: c.primary,
+      shadowColor: c.primary, shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25, shadowRadius: 10, elevation: 6,
     },
-    typeTxt: { fontSize: 13, color: c.primary, fontWeight: "600" },
-    verifiedBadge: { flexDirection: "row-reverse", alignItems: "center", gap: 4 },
-    verifiedTxt: { fontSize: 12, color: c.primary, fontWeight: "600" },
-    unverifiedBanner: {
-      backgroundColor: "#FEF3C7", borderRadius: 10, padding: 12,
-      flexDirection: "row-reverse", alignItems: "center", gap: 8, width: "100%", marginBottom: 16,
+    avatarTxt: { fontSize: 38, fontWeight: "800", color: c.primaryForeground },
+    verifiedBadge: {
+      position: "absolute", bottom: -2, right: -2,
+      backgroundColor: c.card, borderRadius: 12,
     },
-    unverifiedTxt: { color: "#92400E", fontSize: 13, textAlign: "right", flex: 1, lineHeight: 18 },
+    name: { fontSize: 24, fontWeight: "800", color: c.foreground, marginBottom: 4 },
+    phone: { fontSize: 15, color: c.mutedForeground, marginBottom: 12 },
+    rolePill: {
+      flexDirection: "row-reverse", alignItems: "center", gap: 6,
+      backgroundColor: c.secondary, borderRadius: 20,
+      paddingHorizontal: 16, paddingVertical: 7,
+    },
+    roleTxt: { fontSize: 14, color: c.primary, fontWeight: "700" },
+    pendingBox: {
+      width: "100%", backgroundColor: "#FEF3C7", borderRadius: 14, padding: 14,
+      flexDirection: "row-reverse", alignItems: "flex-start", gap: 12, marginBottom: 16,
+      borderWidth: 1, borderColor: "#FDE68A",
+    },
+    pendingText: { flex: 1 },
+    pendingTitle: { fontSize: 14, fontWeight: "700", color: "#92400E", textAlign: "right", marginBottom: 2 },
+    pendingHint: { fontSize: 13, color: "#92400E", textAlign: "right", lineHeight: 18 },
     infoCard: {
-      width: "100%", backgroundColor: c.card, borderRadius: c.radius,
-      borderWidth: 1, borderColor: c.border, marginBottom: 24,
+      width: "100%", backgroundColor: c.card, borderRadius: 16,
+      borderWidth: 1, borderColor: c.border, marginBottom: 20,
+      shadowColor: "#000", shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.05, shadowRadius: 4, elevation: 2,
     },
     infoRow: {
       flexDirection: "row-reverse", justifyContent: "space-between", alignItems: "center",
-      paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: c.border,
+      paddingHorizontal: 18, paddingVertical: 16,
     },
-    infoKey: { fontSize: 14, color: c.mutedForeground },
-    infoVal: { fontSize: 14, fontWeight: "600", color: c.foreground },
+    infoKey: { fontSize: 14, color: c.mutedForeground, fontWeight: "500" },
+    infoVal: { fontSize: 15, fontWeight: "600", color: c.foreground },
+    divider: { height: StyleSheet.hairlineWidth, backgroundColor: c.border, marginHorizontal: 18 },
+    statusRow: { flexDirection: "row-reverse", alignItems: "center", gap: 6 },
+    statusDot: { width: 8, height: 8, borderRadius: 4 },
     logoutBtn: {
-      flexDirection: "row-reverse", alignItems: "center", gap: 10, width: "100%",
-      backgroundColor: "#FEE2E2", borderRadius: 12, paddingVertical: 14, paddingHorizontal: 20,
+      width: "100%", flexDirection: "row-reverse", alignItems: "center", gap: 12,
+      backgroundColor: "#FEF2F2", borderRadius: 14, paddingVertical: 16, paddingHorizontal: 20,
+      borderWidth: 1, borderColor: "#FECACA",
     },
     logoutTxt: { fontSize: 16, color: "#DC2626", fontWeight: "700" },
   });

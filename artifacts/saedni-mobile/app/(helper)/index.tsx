@@ -1,15 +1,14 @@
 import React, { useState } from "react";
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
-  ActivityIndicator, RefreshControl, Linking, Alert, ScrollView, Platform,
+  ActivityIndicator, RefreshControl, Linking, Alert, ScrollView,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useColors } from "@/hooks/useColors";
-import { useAuth } from "@/contexts/AuthContext";
-import { CATEGORIES, STATUS_INFO } from "@/constants/categories";
+import { CATEGORIES } from "@/constants/categories";
 
 const BASE = process.env.EXPO_PUBLIC_DOMAIN ? `https://${process.env.EXPO_PUBLIC_DOMAIN}` : "";
 
@@ -29,11 +28,7 @@ interface HelpRequest {
 export default function HelperRequestsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { user } = useAuth();
-  const qc = useQueryClient();
   const [catFilter, setCatFilter] = useState("all");
-  const top = Platform.OS === "web" ? 67 : insets.top;
-  const tabH = Platform.OS === "web" ? 84 : 80;
 
   const { data, isLoading, refetch, isRefetching } = useQuery({
     queryKey: ["available-requests", catFilter],
@@ -45,26 +40,10 @@ export default function HelperRequestsScreen() {
     },
   });
 
-  const acceptMutation = useMutation({
-    mutationFn: async (reqId: number) => {
-      const r = await fetch(`${BASE}/api/requests/${reqId}/accept`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ helperId: user?.id }),
-      });
-      if (!r.ok) throw new Error("failed");
-    },
-    onSuccess: () => {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      qc.invalidateQueries({ queryKey: ["available-requests"] });
-    },
-    onError: () => Alert.alert("خطأ", "تعذر قبول الطلب"),
-  });
-
   function openWhatsApp(phone: string) {
-    const msg = encodeURIComponent("مرحباً، رأيت طلبك في تطبيق ساعدني وأنا مستعد للمساعدة");
-    Linking.openURL(`https://wa.me/${phone}?text=${msg}`);
+    Linking.openURL(
+      `https://wa.me/${phone}?text=${encodeURIComponent("مرحباً، رأيت طلبك في تطبيق ساعدني وأنا مستعد للمساعدة")}`
+    );
   }
 
   function openCall(phone: string) {
@@ -72,39 +51,46 @@ export default function HelperRequestsScreen() {
   }
 
   const catLabel = (v: string) => CATEGORIES.find(c => c.value === v)?.label ?? v;
-
-  const s = makeStyles(colors, top, tabH, insets.bottom);
+  const s = makeStyles(colors, insets.bottom);
 
   const renderItem = ({ item }: { item: HelpRequest }) => (
     <View style={s.card}>
       <View style={s.cardTop}>
-        <Text style={s.amount}>{item.offeredAmount} ر.ع.</Text>
+        <Text style={s.amount}>{item.offeredAmount} <Text style={s.amountCur}>ر.ع.</Text></Text>
         <Text style={s.catTxt}>{catLabel(item.category)}</Text>
       </View>
+
       <Text style={s.details}>{item.details}</Text>
-      <View style={s.cardMeta}>
-        <Ionicons name="location-outline" size={14} color={colors.mutedForeground} />
-        <Text style={s.metaTxt}>{item.area}</Text>
-        <Text style={s.metaDot}>·</Text>
-        <Ionicons name="time-outline" size={14} color={colors.mutedForeground} />
-        <Text style={s.metaTxt}>{item.timeType === "now" ? "الآن" : "لاحقاً"}</Text>
+
+      <View style={s.metaRow}>
+        <View style={s.metaChip}>
+          <Ionicons name="location-outline" size={13} color={colors.mutedForeground} />
+          <Text style={s.metaTxt}>{item.area}</Text>
+        </View>
+        <View style={s.metaChip}>
+          <Ionicons name={item.timeType === "now" ? "flash" : "calendar-outline"} size={13} color={colors.mutedForeground} />
+          <Text style={s.metaTxt}>{item.timeType === "now" ? "الآن" : "لاحقاً"}</Text>
+        </View>
       </View>
+
       <View style={s.actions}>
         <TouchableOpacity
           style={s.waBtn}
           onPress={() => item.customerPhone && openWhatsApp(item.customerPhone)}
-          activeOpacity={0.8}
+          activeOpacity={0.85}
+          disabled={!item.customerPhone}
         >
           <Ionicons name="logo-whatsapp" size={18} color="#fff" />
-          <Text style={s.waTxt}>مراسلة</Text>
+          <Text style={s.waBtnTxt}>واتساب</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={s.callBtn}
           onPress={() => item.customerPhone && openCall(item.customerPhone)}
-          activeOpacity={0.8}
+          activeOpacity={0.85}
+          disabled={!item.customerPhone}
         >
           <Ionicons name="call-outline" size={18} color={colors.primary} />
-          <Text style={s.callTxt}>اتصال</Text>
+          <Text style={s.callBtnTxt}>اتصال</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -112,32 +98,32 @@ export default function HelperRequestsScreen() {
 
   return (
     <View style={s.container}>
-      <View style={s.header}>
-        <Text style={s.headerTitle}>الطلبات المتاحة</Text>
-      </View>
+      <SafeAreaView edges={["top"]} style={s.headerSafe}>
+        <View style={s.headerInner}>
+          <Text style={s.headerTitle}>الطلبات المتاحة</Text>
+          {!isLoading && (
+            <View style={s.countBadge}>
+              <Text style={s.countTxt}>{(data ?? []).length}</Text>
+            </View>
+          )}
+        </View>
+      </SafeAreaView>
 
-      {/* Category filter chips */}
+      {/* Filter chips */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={s.filtersContent}
         style={s.filters}
       >
-        <TouchableOpacity
-          style={[s.chip, catFilter === "all" && s.chipActive]}
-          onPress={() => setCatFilter("all")}
-          activeOpacity={0.8}
-        >
-          <Text style={[s.chipTxt, catFilter === "all" && s.chipTxtActive]}>الكل</Text>
-        </TouchableOpacity>
-        {CATEGORIES.map(cat => (
+        {[{ value: "all", label: "الكل" }, ...CATEGORIES.map(c => ({ value: c.value, label: c.label }))].map(f => (
           <TouchableOpacity
-            key={cat.value}
-            style={[s.chip, catFilter === cat.value && s.chipActive]}
-            onPress={() => setCatFilter(cat.value)}
+            key={f.value}
+            style={[s.chip, catFilter === f.value && s.chipActive]}
+            onPress={() => setCatFilter(f.value)}
             activeOpacity={0.8}
           >
-            <Text style={[s.chipTxt, catFilter === cat.value && s.chipTxtActive]}>{cat.label}</Text>
+            <Text style={[s.chipTxt, catFilter === f.value && s.chipTxtActive]}>{f.label}</Text>
           </TouchableOpacity>
         ))}
       </ScrollView>
@@ -153,11 +139,13 @@ export default function HelperRequestsScreen() {
           renderItem={renderItem}
           contentContainerStyle={s.listContent}
           showsVerticalScrollIndicator={false}
-          refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.primary} />}
+          refreshControl={
+            <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.primary} />
+          }
           ListEmptyComponent={
             <View style={s.empty}>
-              <Ionicons name="search-outline" size={48} color={colors.mutedForeground} />
-              <Text style={s.emptyTxt}>لا توجد طلبات متاحة</Text>
+              <Ionicons name="search-outline" size={56} color={colors.border} />
+              <Text style={s.emptyTitle}>لا توجد طلبات متاحة</Text>
               <Text style={s.emptyHint}>ارجع لاحقاً للاطلاع على الطلبات الجديدة</Text>
             </View>
           }
@@ -167,46 +155,64 @@ export default function HelperRequestsScreen() {
   );
 }
 
-const makeStyles = (c: ReturnType<typeof useColors>, top: number, tabH: number, bottom: number) =>
+const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
   StyleSheet.create({
     container: { flex: 1, backgroundColor: c.background },
-    centered: { flex: 1, alignItems: "center", justifyContent: "center" },
-    header: {
-      backgroundColor: c.card, borderBottomWidth: 1, borderBottomColor: c.border,
-      paddingHorizontal: 20, paddingTop: top + 12, paddingBottom: 12,
+    headerSafe: { backgroundColor: c.card, borderBottomWidth: 1, borderBottomColor: c.border },
+    headerInner: {
+      paddingHorizontal: 20, paddingVertical: 14,
+      flexDirection: "row-reverse", alignItems: "center", gap: 10,
     },
-    headerTitle: { fontSize: 22, fontWeight: "700", color: c.foreground, textAlign: "right" },
+    headerTitle: { fontSize: 22, fontWeight: "800", color: c.foreground },
+    countBadge: { backgroundColor: c.secondary, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2 },
+    countTxt: { fontSize: 12, fontWeight: "700", color: c.primary },
     filters: { flexGrow: 0, backgroundColor: c.card, borderBottomWidth: 1, borderBottomColor: c.border },
     filtersContent: { paddingHorizontal: 16, paddingVertical: 10, flexDirection: "row-reverse", gap: 8 },
-    chip: { borderRadius: 20, paddingHorizontal: 14, paddingVertical: 6, borderWidth: 1.5, borderColor: c.border, backgroundColor: c.background },
-    chipActive: { backgroundColor: c.primary, borderColor: c.primary },
-    chipTxt: { fontSize: 13, color: c.mutedForeground, fontWeight: "500" },
-    chipTxtActive: { color: c.primaryForeground, fontWeight: "700" },
-    listContent: { padding: 16, paddingBottom: tabH + bottom + 16 },
-    card: {
-      backgroundColor: c.card, borderRadius: c.radius, borderWidth: 1, borderColor: c.border,
-      padding: 16, marginBottom: 12,
+    chip: {
+      borderRadius: 20, paddingHorizontal: 14, paddingVertical: 7,
+      borderWidth: 1.5, borderColor: c.border, backgroundColor: c.background,
     },
-    cardTop: { flexDirection: "row-reverse", alignItems: "center", justifyContent: "space-between", marginBottom: 8 },
-    catTxt: { fontSize: 15, fontWeight: "700", color: c.foreground },
-    amount: { fontSize: 18, fontWeight: "800", color: c.primary },
-    details: { fontSize: 14, color: c.mutedForeground, textAlign: "right", lineHeight: 20, marginBottom: 10 },
-    cardMeta: { flexDirection: "row-reverse", alignItems: "center", gap: 4, marginBottom: 14 },
-    metaTxt: { fontSize: 12, color: c.mutedForeground },
-    metaDot: { fontSize: 12, color: c.mutedForeground, marginHorizontal: 2 },
+    chipActive: { backgroundColor: c.primary, borderColor: c.primary },
+    chipTxt: { fontSize: 13, color: c.mutedForeground, fontWeight: "600" },
+    chipTxtActive: { color: c.primaryForeground, fontWeight: "700" },
+    centered: { flex: 1, alignItems: "center", justifyContent: "center" },
+    listContent: { padding: 16, paddingBottom: bottomInset + 96 },
+    card: {
+      backgroundColor: c.card, borderRadius: 16, borderWidth: 1, borderColor: c.border,
+      padding: 16, marginBottom: 12,
+      shadowColor: "#000", shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.05, shadowRadius: 4, elevation: 2,
+    },
+    cardTop: {
+      flexDirection: "row-reverse", alignItems: "flex-start",
+      justifyContent: "space-between", marginBottom: 10,
+    },
+    catTxt: { fontSize: 16, fontWeight: "700", color: c.foreground, flexShrink: 1, textAlign: "right" },
+    amount: { fontSize: 22, fontWeight: "800", color: c.primary },
+    amountCur: { fontSize: 14, fontWeight: "600" },
+    details: {
+      fontSize: 14, color: c.mutedForeground, textAlign: "right",
+      lineHeight: 21, marginBottom: 12,
+    },
+    metaRow: { flexDirection: "row-reverse", gap: 8, marginBottom: 14, flexWrap: "wrap" },
+    metaChip: {
+      flexDirection: "row-reverse", alignItems: "center", gap: 4,
+      backgroundColor: c.muted, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5,
+    },
+    metaTxt: { fontSize: 12, color: c.mutedForeground, fontWeight: "500" },
     actions: { flexDirection: "row-reverse", gap: 10 },
     waBtn: {
-      flex: 1, backgroundColor: "#25D366", borderRadius: 8, paddingVertical: 10,
+      flex: 1, backgroundColor: "#25D366", borderRadius: 10, paddingVertical: 11,
       flexDirection: "row-reverse", alignItems: "center", justifyContent: "center", gap: 6,
     },
-    waTxt: { color: "#fff", fontSize: 14, fontWeight: "700" },
+    waBtnTxt: { color: "#fff", fontSize: 14, fontWeight: "700" },
     callBtn: {
-      flex: 1, backgroundColor: c.secondary, borderRadius: 8, paddingVertical: 10,
+      flex: 1, backgroundColor: c.secondary, borderRadius: 10, paddingVertical: 11,
       flexDirection: "row-reverse", alignItems: "center", justifyContent: "center", gap: 6,
-      borderWidth: 1.5, borderColor: c.primary,
+      borderWidth: 1.5, borderColor: c.border,
     },
-    callTxt: { color: c.primary, fontSize: 14, fontWeight: "700" },
-    empty: { flex: 1, alignItems: "center", justifyContent: "center", paddingTop: 80, gap: 8 },
-    emptyTxt: { fontSize: 17, fontWeight: "700", color: c.foreground },
+    callBtnTxt: { color: c.primary, fontSize: 14, fontWeight: "700" },
+    empty: { alignItems: "center", justifyContent: "center", paddingTop: 80, gap: 10 },
+    emptyTitle: { fontSize: 18, fontWeight: "700", color: c.foreground },
     emptyHint: { fontSize: 14, color: c.mutedForeground, textAlign: "center" },
   });

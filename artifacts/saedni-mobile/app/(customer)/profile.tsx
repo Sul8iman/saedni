@@ -1,6 +1,6 @@
 import React from "react";
-import { View, Text, TouchableOpacity, StyleSheet, Alert, Platform } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { View, Text, TouchableOpacity, StyleSheet, Alert, ScrollView } from "react-native";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
@@ -12,10 +12,9 @@ export default function CustomerProfileScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { user, logout } = useAuth();
-  const top = Platform.OS === "web" ? 67 : insets.top;
 
   function handleLogout() {
-    Alert.alert("تسجيل الخروج", "هل أنت متأكد؟", [
+    Alert.alert("تسجيل الخروج", "هل تريد الخروج من حسابك؟", [
       { text: "إلغاء", style: "cancel" },
       {
         text: "خروج", style: "destructive",
@@ -28,78 +27,105 @@ export default function CustomerProfileScreen() {
     ]);
   }
 
-  const s = makeStyles(colors, top, insets.bottom);
+  const s = makeStyles(colors, insets.bottom);
 
   return (
     <View style={s.container}>
-      <View style={s.header}>
-        <Text style={s.headerTitle}>حسابي</Text>
-      </View>
-      <View style={s.content}>
-        <View style={s.avatar}>
-          <Text style={s.avatarTxt}>{user?.name?.[0] ?? "؟"}</Text>
+      <SafeAreaView edges={["top"]} style={s.headerSafe}>
+        <View style={s.headerInner}>
+          <Text style={s.headerTitle}>حسابي</Text>
         </View>
-        <Text style={s.name}>{user?.name}</Text>
-        <Text style={s.phone}>{user?.phone}</Text>
-        <View style={s.typeBadge}>
-          <Ionicons name="person-outline" size={14} color={colors.primary} />
-          <Text style={s.typeTxt}>عميل</Text>
+      </SafeAreaView>
+
+      <ScrollView
+        style={s.scroll}
+        contentContainerStyle={s.content}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Avatar */}
+        <View style={s.avatarSection}>
+          <View style={s.avatar}>
+            <Text style={s.avatarTxt}>{user?.name?.[0] ?? "؟"}</Text>
+          </View>
+          <Text style={s.name}>{user?.name}</Text>
+          <Text style={s.phone}>{user?.phone}</Text>
+          <View style={s.rolePill}>
+            <Ionicons name="person-outline" size={14} color={colors.primary} />
+            <Text style={s.roleTxt}>عميل</Text>
+          </View>
         </View>
 
+        {/* Info card */}
         <View style={s.infoCard}>
+          <View style={s.infoRow}>
+            <Text style={s.infoVal}>{user?.name}</Text>
+            <Text style={s.infoKey}>الاسم</Text>
+          </View>
+          <View style={s.divider} />
           <View style={s.infoRow}>
             <Text style={s.infoVal}>{user?.phone}</Text>
             <Text style={s.infoKey}>رقم الجوال</Text>
           </View>
-          <View style={[s.infoRow, { borderBottomWidth: 0 }]}>
+          <View style={s.divider} />
+          <View style={s.infoRow}>
+            <View style={[s.statusDot, { backgroundColor: user?.isActive !== false ? "#16A34A" : "#DC2626" }]} />
             <Text style={s.infoVal}>{user?.isActive !== false ? "نشط" : "معطّل"}</Text>
             <Text style={s.infoKey}>حالة الحساب</Text>
           </View>
         </View>
 
-        <TouchableOpacity style={s.logoutBtn} onPress={handleLogout} activeOpacity={0.8}>
-          <Ionicons name="log-out-outline" size={20} color="#EF4343" />
+        {/* Logout */}
+        <TouchableOpacity style={s.logoutBtn} onPress={handleLogout} activeOpacity={0.85}>
+          <Ionicons name="log-out-outline" size={20} color="#DC2626" />
           <Text style={s.logoutTxt}>تسجيل الخروج</Text>
         </TouchableOpacity>
-      </View>
+      </ScrollView>
     </View>
   );
 }
 
-const makeStyles = (c: ReturnType<typeof useColors>, top: number, bottom: number) =>
+const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
   StyleSheet.create({
     container: { flex: 1, backgroundColor: c.background },
-    header: {
-      backgroundColor: c.card, borderBottomWidth: 1, borderBottomColor: c.border,
-      paddingHorizontal: 20, paddingTop: top + 12, paddingBottom: 12,
-    },
-    headerTitle: { fontSize: 22, fontWeight: "700", color: c.foreground, textAlign: "right" },
-    content: { flex: 1, alignItems: "center", padding: 24, paddingBottom: bottom + 80 },
+    headerSafe: { backgroundColor: c.card, borderBottomWidth: 1, borderBottomColor: c.border },
+    headerInner: { paddingHorizontal: 20, paddingVertical: 14 },
+    headerTitle: { fontSize: 22, fontWeight: "800", color: c.foreground, textAlign: "right" },
+    scroll: { flex: 1 },
+    content: { padding: 20, paddingBottom: bottomInset + 100, alignItems: "center" },
+    avatarSection: { alignItems: "center", paddingVertical: 28 },
     avatar: {
-      width: 88, height: 88, borderRadius: 44, backgroundColor: c.primary,
-      alignItems: "center", justifyContent: "center", marginTop: 24, marginBottom: 12,
+      width: 92, height: 92, borderRadius: 46, backgroundColor: c.primary,
+      alignItems: "center", justifyContent: "center", marginBottom: 14,
+      shadowColor: c.primary, shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25, shadowRadius: 10, elevation: 6,
     },
-    avatarTxt: { fontSize: 36, fontWeight: "700", color: c.primaryForeground },
-    name: { fontSize: 22, fontWeight: "700", color: c.foreground, marginBottom: 4 },
-    phone: { fontSize: 14, color: c.mutedForeground, marginBottom: 12 },
-    typeBadge: {
-      flexDirection: "row-reverse", alignItems: "center", gap: 6, backgroundColor: c.secondary,
-      borderRadius: 20, paddingHorizontal: 14, paddingVertical: 6, marginBottom: 28,
+    avatarTxt: { fontSize: 38, fontWeight: "800", color: c.primaryForeground },
+    name: { fontSize: 24, fontWeight: "800", color: c.foreground, marginBottom: 4 },
+    phone: { fontSize: 15, color: c.mutedForeground, marginBottom: 12 },
+    rolePill: {
+      flexDirection: "row-reverse", alignItems: "center", gap: 6,
+      backgroundColor: c.secondary, borderRadius: 20,
+      paddingHorizontal: 16, paddingVertical: 7,
     },
-    typeTxt: { fontSize: 13, color: c.primary, fontWeight: "600" },
+    roleTxt: { fontSize: 14, color: c.primary, fontWeight: "700" },
     infoCard: {
-      width: "100%", backgroundColor: c.card, borderRadius: c.radius,
-      borderWidth: 1, borderColor: c.border, marginBottom: 24,
+      width: "100%", backgroundColor: c.card, borderRadius: 16,
+      borderWidth: 1, borderColor: c.border, marginBottom: 20,
+      shadowColor: "#000", shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.05, shadowRadius: 4, elevation: 2,
     },
     infoRow: {
       flexDirection: "row-reverse", justifyContent: "space-between", alignItems: "center",
-      paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: c.border,
+      paddingHorizontal: 18, paddingVertical: 16,
     },
-    infoKey: { fontSize: 14, color: c.mutedForeground },
-    infoVal: { fontSize: 14, fontWeight: "600", color: c.foreground },
+    infoKey: { fontSize: 14, color: c.mutedForeground, fontWeight: "500" },
+    infoVal: { fontSize: 15, fontWeight: "600", color: c.foreground },
+    divider: { height: StyleSheet.hairlineWidth, backgroundColor: c.border, marginHorizontal: 18 },
+    statusDot: { width: 8, height: 8, borderRadius: 4, marginLeft: 6 },
     logoutBtn: {
-      flexDirection: "row-reverse", alignItems: "center", gap: 10, width: "100%",
-      backgroundColor: "#FEE2E2", borderRadius: 12, paddingVertical: 14, paddingHorizontal: 20,
+      width: "100%", flexDirection: "row-reverse", alignItems: "center", gap: 12,
+      backgroundColor: "#FEF2F2", borderRadius: 14, paddingVertical: 16, paddingHorizontal: 20,
+      borderWidth: 1, borderColor: "#FECACA",
     },
     logoutTxt: { fontSize: 16, color: "#DC2626", fontWeight: "700" },
   });

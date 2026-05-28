@@ -1,12 +1,13 @@
 import React, { useState } from "react";
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
-  ScrollView, ActivityIndicator, Alert, Linking, Platform,
+  ActivityIndicator, Alert, Linking,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
 import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -16,7 +17,6 @@ const BASE = process.env.EXPO_PUBLIC_DOMAIN ? `https://${process.env.EXPO_PUBLIC
 
 export default function LoginScreen() {
   const colors = useColors();
-  const insets = useSafeAreaInsets();
   const router = useRouter();
   const { setUser } = useAuth();
 
@@ -26,8 +26,6 @@ export default function LoginScreen() {
   const [pin, setPin] = useState("");
   const [isUnverified, setIsUnverified] = useState(false);
   const [loading, setLoading] = useState(false);
-
-  const top = Platform.OS === "web" ? 67 : insets.top;
 
   async function handlePhoneSubmit() {
     if (!phone.trim()) return;
@@ -41,21 +39,11 @@ export default function LoginScreen() {
         body: JSON.stringify({ phone: phone.trim() }),
       });
       const data = await res.json();
-      if (!res.ok) {
-        Alert.alert("خطأ", data.error || "الرقم غير موجود");
-        return;
-      }
-      if (data.isAdmin) {
-        setStep("pin");
-      } else {
-        setIsUnverified(data.isVerified === false);
-        setStep("otp");
-      }
-    } catch {
-      Alert.alert("خطأ", "تعذر الاتصال بالخادم");
-    } finally {
-      setLoading(false);
-    }
+      if (!res.ok) { Alert.alert("خطأ", data.error || "الرقم غير موجود"); return; }
+      if (data.isAdmin) { setStep("pin"); }
+      else { setIsUnverified(data.isVerified === false); setStep("otp"); }
+    } catch { Alert.alert("خطأ", "تعذر الاتصال بالخادم"); }
+    finally { setLoading(false); }
   }
 
   async function handleOtpSubmit() {
@@ -70,18 +58,12 @@ export default function LoginScreen() {
         body: JSON.stringify({ phone: phone.trim(), otp }),
       });
       const data = await res.json();
-      if (!res.ok) {
-        Alert.alert("خطأ", data.error || "رمز التحقق غير صحيح");
-        return;
-      }
+      if (!res.ok) { Alert.alert("خطأ", data.error || "رمز التحقق غير صحيح"); return; }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       await setUser(data.user);
       router.replace("/");
-    } catch {
-      Alert.alert("خطأ", "تعذر الاتصال بالخادم");
-    } finally {
-      setLoading(false);
-    }
+    } catch { Alert.alert("خطأ", "تعذر الاتصال بالخادم"); }
+    finally { setLoading(false); }
   }
 
   async function handlePinSubmit() {
@@ -96,181 +78,224 @@ export default function LoginScreen() {
         body: JSON.stringify({ phone: phone.trim(), pin }),
       });
       const data = await res.json();
-      if (!res.ok) {
-        Alert.alert("خطأ", data.error || "رمز PIN غير صحيح");
-        return;
-      }
+      if (!res.ok) { Alert.alert("خطأ", data.error || "رمز PIN غير صحيح"); return; }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       await setUser(data.user);
       router.replace("/");
-    } catch {
-      Alert.alert("خطأ", "تعذر الاتصال بالخادم");
-    } finally {
-      setLoading(false);
-    }
+    } catch { Alert.alert("خطأ", "تعذر الاتصال بالخادم"); }
+    finally { setLoading(false); }
   }
 
   function openWhatsApp() {
-    const msg = encodeURIComponent("مرحباً، أحتاج رمز التحقق للدخول إلى تطبيق ساعدني");
-    Linking.openURL(`https://wa.me/96892771450?text=${msg}`);
+    Linking.openURL(
+      `https://wa.me/96892771450?text=${encodeURIComponent("مرحباً، أحتاج رمز التحقق للدخول إلى تطبيق ساعدني")}`
+    );
   }
 
-  const s = styles(colors, top, insets.bottom);
+  const s = makeStyles(colors);
 
   return (
-    <ScrollView style={s.container} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
-      <View style={s.header}>
-        <View style={s.logo}>
-          <Ionicons name="hand-left" size={36} color={colors.primaryForeground} />
+    <SafeAreaView style={s.safe} edges={["top", "bottom"]}>
+      <KeyboardAwareScrollViewCompat
+        style={s.scroll}
+        contentContainerStyle={s.content}
+        bottomOffset={24}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Logo */}
+        <View style={s.logoSection}>
+          <View style={s.logoCircle}>
+            <Ionicons name="hand-left" size={38} color={colors.primaryForeground} />
+          </View>
+          <Text style={s.appName}>ساعدني</Text>
+          <Text style={s.tagline}>منصة المساعدة اليومية في عُمان</Text>
         </View>
-        <Text style={s.title}>ساعدني</Text>
-        <Text style={s.subtitle}>منصة المساعدة اليومية في عُمان</Text>
-      </View>
 
-      <View style={s.card}>
-        {step === "phone" && (
-          <>
-            <Text style={s.label}>رقم الجوال</Text>
-            <TextInput
-              style={s.input}
-              value={phone}
-              onChangeText={setPhone}
-              placeholder="96891000001"
-              keyboardType="phone-pad"
-              textAlign="right"
-              placeholderTextColor={colors.mutedForeground}
-              autoFocus
-            />
-            <TouchableOpacity
-              style={[s.btn, !phone.trim() && s.btnOff]}
-              onPress={handlePhoneSubmit}
-              disabled={loading || !phone.trim()}
-              activeOpacity={0.8}
-            >
-              {loading ? <ActivityIndicator color="#fff" /> : <Text style={s.btnTxt}>التالي</Text>}
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => router.push("/(auth)/register")} style={s.link}>
-              <Text style={s.linkTxt}>ليس لديك حساب؟ <Text style={s.linkHighlight}>سجّل الآن</Text></Text>
-            </TouchableOpacity>
-          </>
-        )}
+        {/* Card */}
+        <View style={s.card}>
+          {step === "phone" && (
+            <>
+              <Text style={s.cardTitle}>تسجيل الدخول</Text>
+              <Text style={s.fieldLabel}>رقم الجوال</Text>
+              <TextInput
+                style={s.input}
+                value={phone}
+                onChangeText={setPhone}
+                placeholder="96891000001"
+                keyboardType="phone-pad"
+                textAlign="right"
+                placeholderTextColor={colors.mutedForeground}
+                autoFocus
+                returnKeyType="done"
+                onSubmitEditing={handlePhoneSubmit}
+              />
+              <TouchableOpacity
+                style={[s.primaryBtn, !phone.trim() && s.btnDisabled]}
+                onPress={handlePhoneSubmit}
+                disabled={loading || !phone.trim()}
+                activeOpacity={0.85}
+              >
+                {loading
+                  ? <ActivityIndicator color={colors.primaryForeground} />
+                  : <Text style={s.primaryBtnTxt}>التالي</Text>}
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => router.push("/(auth)/register")} style={s.ghostBtn}>
+                <Text style={s.ghostTxt}>
+                  ليس لديك حساب؟{" "}
+                  <Text style={s.ghostLink}>سجّل الآن</Text>
+                </Text>
+              </TouchableOpacity>
+            </>
+          )}
 
-        {step === "otp" && (
-          <>
-            {isUnverified && (
-              <View style={s.warnBanner}>
-                <Ionicons name="warning" size={16} color="#92400E" />
-                <Text style={s.warnTxt}>حسابك غير مفعّل. أدخل رمز التحقق من الإدارة للتفعيل</Text>
+          {step === "otp" && (
+            <>
+              <Text style={s.cardTitle}>رمز التحقق</Text>
+              {isUnverified && (
+                <View style={s.warnBox}>
+                  <Ionicons name="warning-outline" size={16} color="#92400E" />
+                  <Text style={s.warnTxt}>حسابك غير مفعّل — أدخل رمز التحقق من الإدارة</Text>
+                </View>
+              )}
+              <Text style={s.subLabel}>
+                الرقم: <Text style={s.subLabelBold}>{phone}</Text>
+              </Text>
+              <TouchableOpacity style={s.waBtn} onPress={openWhatsApp} activeOpacity={0.85}>
+                <Ionicons name="logo-whatsapp" size={20} color="#fff" />
+                <Text style={s.waBtnTxt}>التواصل مع الإدارة عبر واتساب</Text>
+              </TouchableOpacity>
+              <TextInput
+                style={[s.input, s.otpInput]}
+                value={otp}
+                onChangeText={t => setOtp(t.replace(/\D/g, "").slice(0, 4))}
+                placeholder="- - - -"
+                keyboardType="number-pad"
+                maxLength={4}
+                textAlign="center"
+                placeholderTextColor={colors.mutedForeground}
+              />
+              <TouchableOpacity
+                style={[s.primaryBtn, otp.length < 4 && s.btnDisabled]}
+                onPress={handleOtpSubmit}
+                disabled={loading || otp.length < 4}
+                activeOpacity={0.85}
+              >
+                {loading
+                  ? <ActivityIndicator color={colors.primaryForeground} />
+                  : <Text style={s.primaryBtnTxt}>تأكيد الدخول</Text>}
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => { setStep("phone"); setOtp(""); }} style={s.ghostBtn}>
+                <Text style={[s.ghostTxt, { color: colors.mutedForeground }]}>تعديل رقم الجوال</Text>
+              </TouchableOpacity>
+            </>
+          )}
+
+          {step === "pin" && (
+            <>
+              <View style={s.adminBadge}>
+                <Ionicons name="shield-checkmark" size={16} color={colors.primary} />
+                <Text style={s.adminBadgeTxt}>دخول المدير</Text>
               </View>
-            )}
-            <Text style={s.label}>رمز التحقق</Text>
-            <Text style={s.hint}>
-              الرقم: <Text style={s.hintBold}>{phone}</Text>
-            </Text>
-            <TouchableOpacity style={s.waBtn} onPress={openWhatsApp} activeOpacity={0.8}>
-              <Ionicons name="logo-whatsapp" size={20} color="#fff" />
-              <Text style={s.waBtnTxt}>التواصل مع الإدارة عبر الواتساب</Text>
-            </TouchableOpacity>
-            <TextInput
-              style={[s.input, s.otpInput]}
-              value={otp}
-              onChangeText={t => setOtp(t.replace(/\D/g, "").slice(0, 4))}
-              placeholder="- - - -"
-              keyboardType="number-pad"
-              maxLength={4}
-              textAlign="center"
-              placeholderTextColor={colors.mutedForeground}
-            />
-            <TouchableOpacity
-              style={[s.btn, otp.length < 4 && s.btnOff]}
-              onPress={handleOtpSubmit}
-              disabled={loading || otp.length < 4}
-              activeOpacity={0.8}
-            >
-              {loading ? <ActivityIndicator color="#fff" /> : <Text style={s.btnTxt}>تأكيد الدخول</Text>}
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => { setStep("phone"); setOtp(""); }} style={s.link}>
-              <Text style={s.linkTxt}>تعديل رقم الجوال</Text>
-            </TouchableOpacity>
-          </>
-        )}
-
-        {step === "pin" && (
-          <>
-            <View style={s.adminRow}>
-              <Ionicons name="shield-checkmark" size={18} color={colors.primary} />
-              <Text style={s.adminTxt}>دخول المدير</Text>
-            </View>
-            <Text style={s.label}>رمز PIN</Text>
-            <TextInput
-              style={[s.input, s.otpInput]}
-              value={pin}
-              onChangeText={t => setPin(t.replace(/\D/g, "").slice(0, 6))}
-              placeholder="• • • •"
-              keyboardType="number-pad"
-              secureTextEntry
-              textAlign="center"
-              placeholderTextColor={colors.mutedForeground}
-            />
-            <TouchableOpacity
-              style={[s.btn, !pin && s.btnOff]}
-              onPress={handlePinSubmit}
-              disabled={loading || !pin}
-              activeOpacity={0.8}
-            >
-              {loading ? <ActivityIndicator color="#fff" /> : <Text style={s.btnTxt}>دخول</Text>}
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => { setStep("phone"); setPin(""); }} style={s.link}>
-              <Text style={s.linkTxt}>تعديل رقم الجوال</Text>
-            </TouchableOpacity>
-          </>
-        )}
-      </View>
-    </ScrollView>
+              <Text style={s.fieldLabel}>رمز PIN</Text>
+              <TextInput
+                style={[s.input, s.otpInput]}
+                value={pin}
+                onChangeText={t => setPin(t.replace(/\D/g, "").slice(0, 6))}
+                placeholder="• • • •"
+                keyboardType="number-pad"
+                secureTextEntry
+                textAlign="center"
+                placeholderTextColor={colors.mutedForeground}
+                returnKeyType="done"
+                onSubmitEditing={handlePinSubmit}
+              />
+              <TouchableOpacity
+                style={[s.primaryBtn, !pin && s.btnDisabled]}
+                onPress={handlePinSubmit}
+                disabled={loading || !pin}
+                activeOpacity={0.85}
+              >
+                {loading
+                  ? <ActivityIndicator color={colors.primaryForeground} />
+                  : <Text style={s.primaryBtnTxt}>دخول</Text>}
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => { setStep("phone"); setPin(""); }} style={s.ghostBtn}>
+                <Text style={[s.ghostTxt, { color: colors.mutedForeground }]}>تعديل رقم الجوال</Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </View>
+      </KeyboardAwareScrollViewCompat>
+    </SafeAreaView>
   );
 }
 
-const styles = (c: ReturnType<typeof useColors>, top: number, bottom: number) =>
+const makeStyles = (c: ReturnType<typeof useColors>) =>
   StyleSheet.create({
-    container: { flex: 1, backgroundColor: c.background },
-    content: { flexGrow: 1, paddingTop: top + 20, paddingBottom: bottom + 32, paddingHorizontal: 20 },
-    header: { alignItems: "center", marginBottom: 32 },
-    logo: {
-      width: 72, height: 72, borderRadius: 36,
-      backgroundColor: c.primary, alignItems: "center", justifyContent: "center", marginBottom: 12,
+    safe: { flex: 1, backgroundColor: c.background },
+    scroll: { flex: 1 },
+    content: { flexGrow: 1, paddingHorizontal: 20, paddingTop: 32, paddingBottom: 24 },
+    logoSection: { alignItems: "center", marginBottom: 36 },
+    logoCircle: {
+      width: 80, height: 80, borderRadius: 40,
+      backgroundColor: c.primary, alignItems: "center", justifyContent: "center",
+      marginBottom: 16,
+      shadowColor: c.primary, shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: 0.3, shadowRadius: 12, elevation: 8,
     },
-    title: { fontSize: 28, fontWeight: "700", color: c.foreground, textAlign: "center" },
-    subtitle: { fontSize: 14, color: c.mutedForeground, textAlign: "center", marginTop: 4 },
-    card: { backgroundColor: c.card, borderRadius: c.radius, borderWidth: 1, borderColor: c.border, padding: 20 },
-    label: { fontSize: 14, fontWeight: "600", color: c.foreground, textAlign: "right", marginBottom: 8 },
-    hint: { fontSize: 13, color: c.mutedForeground, textAlign: "right", marginBottom: 12 },
-    hintBold: { fontWeight: "700", color: c.foreground },
+    appName: { fontSize: 32, fontWeight: "800", color: c.foreground, letterSpacing: -0.5 },
+    tagline: { fontSize: 14, color: c.mutedForeground, marginTop: 6, textAlign: "center" },
+    card: {
+      backgroundColor: c.card, borderRadius: 20, borderWidth: 1, borderColor: c.border,
+      padding: 24,
+      shadowColor: "#000", shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.06, shadowRadius: 8, elevation: 3,
+    },
+    cardTitle: {
+      fontSize: 20, fontWeight: "700", color: c.foreground,
+      textAlign: "right", marginBottom: 20,
+    },
+    fieldLabel: {
+      fontSize: 14, fontWeight: "600", color: c.foreground,
+      textAlign: "right", marginBottom: 8,
+    },
+    subLabel: { fontSize: 13, color: c.mutedForeground, textAlign: "right", marginBottom: 16 },
+    subLabelBold: { fontWeight: "700", color: c.foreground },
     input: {
-      borderWidth: 1.5, borderColor: c.input, borderRadius: 10,
-      paddingHorizontal: 14, paddingVertical: 12,
+      borderWidth: 1.5, borderColor: c.border, borderRadius: 12,
+      paddingHorizontal: 16, paddingVertical: 14,
       fontSize: 16, color: c.foreground, backgroundColor: c.background,
       textAlign: "right", marginBottom: 16,
     },
-    otpInput: { textAlign: "center", fontSize: 24, letterSpacing: 8, fontWeight: "700" },
-    btn: { backgroundColor: c.primary, borderRadius: 10, paddingVertical: 14, alignItems: "center", marginBottom: 12 },
-    btnOff: { opacity: 0.4 },
-    btnTxt: { color: c.primaryForeground, fontSize: 16, fontWeight: "700" },
-    link: { alignItems: "center", paddingVertical: 8 },
-    linkTxt: { fontSize: 14, color: c.mutedForeground, textAlign: "center" },
-    linkHighlight: { color: c.primary, fontWeight: "600" },
+    otpInput: {
+      textAlign: "center", fontSize: 28, letterSpacing: 10, fontWeight: "800",
+      paddingVertical: 18,
+    },
+    primaryBtn: {
+      backgroundColor: c.primary, borderRadius: 12, paddingVertical: 16,
+      alignItems: "center", marginBottom: 12,
+    },
+    btnDisabled: { opacity: 0.4 },
+    primaryBtnTxt: { color: c.primaryForeground, fontSize: 16, fontWeight: "700" },
+    ghostBtn: { alignItems: "center", paddingVertical: 10 },
+    ghostTxt: { fontSize: 14, color: c.mutedForeground, textAlign: "center" },
+    ghostLink: { color: c.primary, fontWeight: "700" },
     waBtn: {
-      backgroundColor: "#25D366", borderRadius: 10, paddingVertical: 12,
-      flexDirection: "row-reverse", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 16,
+      backgroundColor: "#25D366", borderRadius: 12, paddingVertical: 13,
+      flexDirection: "row-reverse", alignItems: "center", justifyContent: "center",
+      gap: 10, marginBottom: 16,
     },
     waBtnTxt: { color: "#fff", fontSize: 14, fontWeight: "700" },
-    warnBanner: {
-      backgroundColor: "#FEF3C7", borderRadius: 8, padding: 12,
-      flexDirection: "row-reverse", alignItems: "center", gap: 8, marginBottom: 16,
+    warnBox: {
+      backgroundColor: "#FEF3C7", borderRadius: 10, padding: 12,
+      flexDirection: "row-reverse", alignItems: "flex-start", gap: 8, marginBottom: 16,
     },
-    warnTxt: { color: "#92400E", fontSize: 13, textAlign: "right", flex: 1 },
-    adminRow: {
-      flexDirection: "row-reverse", alignItems: "center", gap: 6, marginBottom: 16,
-      backgroundColor: c.secondary, borderRadius: 8, padding: 10, alignSelf: "flex-end",
+    warnTxt: { color: "#92400E", fontSize: 13, textAlign: "right", flex: 1, lineHeight: 18 },
+    adminBadge: {
+      flexDirection: "row-reverse", alignItems: "center", gap: 6,
+      backgroundColor: c.secondary, borderRadius: 10, padding: 10,
+      alignSelf: "flex-end", marginBottom: 16,
     },
-    adminTxt: { color: c.primary, fontWeight: "600", fontSize: 14 },
+    adminBadgeTxt: { color: c.primary, fontWeight: "700", fontSize: 13 },
   });

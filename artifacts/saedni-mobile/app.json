@@ -18,7 +18,11 @@
       "bundleIdentifier": "com.saedni.app"
     },
     "android": {
-      "package": "com.saedni.app"
+      "package": "com.saedni.app",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/icon.png",
+        "backgroundColor": "#1AA87D"
+      }
     },
     "web": {
       "favicon": "./assets/images/icon.png"

@@ -1,0 +1,123 @@
+Update the Expo / React Native version of the “ساعدني” app.
+
+Focus on improving the customer “طالب المساعدة” mobile UI in Expo Go.
+
+1. Category Layout:
+   In the “طلب جديد” screen:
+
+* Display the 6 categories in exactly:
+
+  * 2 rows
+  * 3 categories per row
+* Use a clean balanced mobile grid layout
+* Equal spacing between cards
+* Rounded modern cards
+* Icons centered above text
+* Arabic labels centered
+
+Categories:
+
+* نقل وتحميل
+* مشاوير وتوصيل
+* معاملات ومراجعات
+* شراء أغراض
+* خدمات منزلية
+* أخرى
+
+2. Redesign All Icons:
+   Replace all emoji-style icons with modern professional vector icons.
+
+Apply this to:
+
+* Category icons
+* Bottom navigation icons
+* WhatsApp button
+* Call button
+* Admin dashboard
+* Users list
+* Requests list
+* OTP page
+* Profile/account pages
+
+Requirements:
+
+* Use one consistent icon family:
+
+  * Lucide Icons
+    OR
+  * Expo Vector Icons
+* Modern startup-style icons
+* Clean and premium appearance
+* Proper icon sizing
+* Better spacing/alignment
+* Rounded UI feel
+
+3. Bottom Navigation Order:
+   For customer accounts, set RTL bottom navigation order as:
+
+Right:
+“طلب جديد”
+
+Center:
+“طلباتي”
+
+Left:
+“الملف الشخصي”
+
+Ensure the order displays correctly in Expo Go on real mobile devices.
+
+4. Phone Label:
+   Replace all text:
+   “رقم الجوال”
+
+With:
+“رقم الهاتف”
+
+Apply everywhere:
+
+* Login
+* Registration
+* OTP
+* Profile
+* Admin pages
+* Request details
+
+5. App Icon:
+   Create and apply a cleaner professional app icon for:
+   “ساعدني”
+
+Requirements:
+
+* Modern App Store style
+* Green/teal branding
+* Arabic-inspired minimal design
+* Professional startup look
+
+Update:
+
+* iOS icon
+* Android adaptive icon
+* Expo app.json/app.config
+* Splash screen if needed
+
+6. Mobile UI Quality:
+   Make the app visually closer to:
+
+* Careem
+* Jahez
+* modern Gulf apps
+
+Focus on:
+
+* modern spacing
+* soft shadows
+* rounded cards
+* clean typography
+* polished RTL alignment
+
+7. Important:
+
+* Apply all changes to the Expo / React Native mobile version, not just web preview.
+* Test visually in Expo Go.
+* Keep all existing business logic unchanged.
+* Do not change OTP/admin/request workflows.

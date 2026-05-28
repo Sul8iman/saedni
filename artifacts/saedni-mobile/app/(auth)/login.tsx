@@ -117,7 +117,7 @@ export default function LoginScreen() {
           {step === "phone" && (
             <>
               <Text style={s.cardTitle}>تسجيل الدخول</Text>
-              <Text style={s.fieldLabel}>رقم الجوال</Text>
+              <Text style={s.fieldLabel}>رقم الهاتف</Text>
               <TextInput
                 style={s.input}
                 value={phone}

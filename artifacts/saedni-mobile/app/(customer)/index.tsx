@@ -103,26 +103,32 @@ export default function CustomerHomeScreen() {
           </View>
         )}
 
-        {/* Category */}
+        {/* Category — 2 rows × 3 columns */}
         <Text style={s.sectionLabel}>ساعدني في:</Text>
         <View style={s.catGrid}>
-          {CATEGORIES.map((cat) => (
-            <TouchableOpacity
-              key={cat.value}
-              style={[s.catCard, category === cat.value && s.catCardActive]}
-              onPress={() => !isBlocked && setCategory(cat.value as CategoryValue)}
-              activeOpacity={0.8}
-              disabled={!!isBlocked}
-            >
-              <Ionicons
-                name={cat.icon as any}
-                size={24}
-                color={category === cat.value ? colors.primary : colors.mutedForeground}
-              />
-              <Text style={[s.catLabel, category === cat.value && s.catLabelActive]}>
-                {cat.label}
-              </Text>
-            </TouchableOpacity>
+          {([CATEGORIES.slice(0, 3), CATEGORIES.slice(3, 6)] as const).map((row, rowIdx) => (
+            <View key={rowIdx} style={s.catRow}>
+              {[...row].reverse().map((cat) => (
+                <TouchableOpacity
+                  key={cat.value}
+                  style={[s.catCard, category === cat.value && s.catCardActive]}
+                  onPress={() => !isBlocked && setCategory(cat.value as CategoryValue)}
+                  activeOpacity={0.8}
+                  disabled={!!isBlocked}
+                >
+                  <View style={[s.catIconWrap, category === cat.value && s.catIconWrapActive]}>
+                    <Ionicons
+                      name={cat.icon as any}
+                      size={26}
+                      color={category === cat.value ? colors.primary : colors.mutedForeground}
+                    />
+                  </View>
+                  <Text style={[s.catLabel, category === cat.value && s.catLabelActive]} numberOfLines={2}>
+                    {cat.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
           ))}
         </View>
 
@@ -268,13 +274,20 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
       fontSize: 14, fontWeight: "700", color: c.foreground,
       textAlign: "right", marginBottom: 10, marginTop: 4,
     },
-    catGrid: { flexDirection: "row-reverse", flexWrap: "wrap", gap: 10, marginBottom: 20 },
+    catGrid: { gap: 10, marginBottom: 20 },
+    catRow: { flexDirection: "row-reverse", gap: 10 },
     catCard: {
-      width: "47%", borderWidth: 2, borderColor: c.border, borderRadius: 14,
-      padding: 14, alignItems: "center", gap: 8, backgroundColor: c.card,
+      flex: 1, borderWidth: 2, borderColor: c.border, borderRadius: 16,
+      paddingVertical: 14, paddingHorizontal: 6,
+      alignItems: "center", gap: 8, backgroundColor: c.card,
     },
     catCardActive: { borderColor: c.primary, backgroundColor: c.secondary },
-    catLabel: { fontSize: 12, color: c.mutedForeground, textAlign: "center", fontWeight: "600" },
+    catIconWrap: {
+      width: 48, height: 48, borderRadius: 14,
+      backgroundColor: c.muted, alignItems: "center", justifyContent: "center",
+    },
+    catIconWrapActive: { backgroundColor: c.secondary },
+    catLabel: { fontSize: 11, color: c.mutedForeground, textAlign: "center", fontWeight: "600", lineHeight: 14 },
     catLabelActive: { color: c.primary, fontWeight: "700" },
     textarea: {
       borderWidth: 1.5, borderColor: c.border, borderRadius: 14, padding: 14,

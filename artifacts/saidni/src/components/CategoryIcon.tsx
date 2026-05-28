@@ -1,4 +1,4 @@
-import { Truck, Car, FileText, ShoppingBag, Wrench, HardHat, HelpCircle } from "lucide-react";
+import { Truck, Car, FileText, ShoppingBag, Wrench, HardHat, MapPin, HelpCircle } from "lucide-react";
 
 const iconMap: Record<string, React.ElementType> = {
   Truck,
@@ -7,6 +7,7 @@ const iconMap: Record<string, React.ElementType> = {
   ShoppingBag,
   Wrench,
   HardHat,
+  MapPin,
 };
 
 interface CategoryIconProps {

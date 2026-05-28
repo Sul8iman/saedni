@@ -6,7 +6,7 @@ export const CATEGORIES = [
   { value: "government", label: "معاملات ومراجعات", icon: "FileText" },
   { value: "shopping", label: "شراء أغراض", icon: "ShoppingBag" },
   { value: "home_services", label: "خدمات منزلية", icon: "Wrench" },
-  { value: "labor", label: "عمالة ومساعدة", icon: "HardHat" },
+  { value: "labor", label: "أخرى", icon: "MapPin" },
 ] as const;
 
 export type CategoryValue = (typeof CATEGORIES)[number]["value"];

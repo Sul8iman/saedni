@@ -17,13 +17,24 @@ const AuthContext = createContext<AuthContextType>({
 
 const STORAGE_KEY = "saidni_user";
 
+function safeLocalStorage() {
+  try {
+    localStorage.setItem("__test__", "1");
+    localStorage.removeItem("__test__");
+    return localStorage;
+  } catch {
+    return null;
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUserState] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     try {
-      const stored = localStorage.getItem(STORAGE_KEY);
+      const storage = safeLocalStorage();
+      const stored = storage?.getItem(STORAGE_KEY);
       if (stored) {
         setUserState(JSON.parse(stored));
       }
@@ -35,10 +46,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const setUser = (u: User | null) => {
     setUserState(u);
-    if (u) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(u));
-    } else {
-      localStorage.removeItem(STORAGE_KEY);
+    try {
+      const storage = safeLocalStorage();
+      if (u) {
+        storage?.setItem(STORAGE_KEY, JSON.stringify(u));
+      } else {
+        storage?.removeItem(STORAGE_KEY);
+      }
+    } catch {
+      // ignore
     }
   };
 

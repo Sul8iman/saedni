@@ -87,6 +87,19 @@ export default function AdminDashboard() {
     onError: () => Alert.alert("خطأ", "تعذر حذف الطلب"),
   });
 
+  const endReqMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const r = await fetch(`${BASE}/api/requests/${id}/complete`, { method: "PATCH", credentials: "include" });
+      if (!r.ok) throw new Error();
+    },
+    onSuccess: () => {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      qc.invalidateQueries({ queryKey: ["admin-requests"] });
+      qc.invalidateQueries({ queryKey: ["admin-stats"] });
+    },
+    onError: () => Alert.alert("خطأ", "تعذر إنهاء الطلب"),
+  });
+
   function handleLogout() {
     Alert.alert("تسجيل الخروج", "هل تريد الخروج؟", [
       { text: "إلغاء", style: "cancel" },
@@ -112,21 +125,40 @@ export default function AdminDashboard() {
           <Text style={s.reqCat}>{catLabel(item.category)}</Text>
         </View>
         <Text style={s.reqDetails} numberOfLines={1}>{item.details}</Text>
-        <View style={s.reqFooter}>
+        {/* Admin action buttons */}
+        <View style={s.reqActions}>
+          {item.status !== "completed" && (
+            <TouchableOpacity
+              style={s.endBtn}
+              onPress={() =>
+                Alert.alert("إنهاء الطلب", "سيتم إنهاء هذا الطلب وإخفاؤه عن المساعدين.", [
+                  { text: "رجوع", style: "cancel" },
+                  { text: "إنهاء", onPress: () => endReqMutation.mutate(item.id) },
+                ])
+              }
+              disabled={endReqMutation.isPending}
+              hitSlop={8}
+            >
+              <Ionicons name="checkmark-circle-outline" size={15} color={colors.primary} />
+              <Text style={s.endTxt}>إنهاء الطلب</Text>
+            </TouchableOpacity>
+          )}
           <TouchableOpacity
             onPress={() =>
-              Alert.alert("حذف الطلب", "هل أنت متأكد؟", [
+              Alert.alert("حذف الطلب", "سيتم حذف الطلب نهائياً ولا يمكن التراجع.", [
                 { text: "إلغاء", style: "cancel" },
                 { text: "حذف", style: "destructive", onPress: () => deleteReqMutation.mutate(item.id) },
               ])
             }
             style={s.deleteBtn}
+            disabled={deleteReqMutation.isPending}
             hitSlop={8}
           >
-            <Ionicons name="trash-outline" size={16} color="#DC2626" />
+            <Ionicons name="trash-outline" size={15} color="#DC2626" />
             <Text style={s.deleteTxt}>حذف</Text>
           </TouchableOpacity>
-          <View style={s.reqMeta}>
+        </View>
+        <View style={s.reqMeta}>
             <Ionicons name="location-outline" size={12} color={colors.mutedForeground} />
             <Text style={s.metaTxt}>{item.area}</Text>
             <View style={s.dot} />
@@ -149,7 +181,6 @@ export default function AdminDashboard() {
               </>
             )}
           </View>
-        </View>
       </View>
     );
   };
@@ -251,6 +282,13 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
     statusTxt: { fontSize: 11, fontWeight: "700" },
     reqDetails: { fontSize: 13, color: c.mutedForeground, textAlign: "right", marginBottom: 8 },
     reqFooter: { flexDirection: "row-reverse", alignItems: "center", justifyContent: "space-between" },
+    reqActions: { flexDirection: "row-reverse", gap: 8, marginBottom: 10 },
+    endBtn: {
+      flex: 1, flexDirection: "row-reverse", alignItems: "center", justifyContent: "center",
+      gap: 5, backgroundColor: c.secondary, borderRadius: 8,
+      paddingHorizontal: 10, paddingVertical: 7, borderWidth: 1, borderColor: c.border,
+    },
+    endTxt: { fontSize: 12, color: c.primary, fontWeight: "700" },
     deleteBtn: { flexDirection: "row-reverse", alignItems: "center", gap: 4, backgroundColor: "#FEF2F2", borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 },
     deleteTxt: { fontSize: 12, color: "#DC2626", fontWeight: "600" },
     reqMeta: { flexDirection: "row-reverse", alignItems: "center", gap: 5 },

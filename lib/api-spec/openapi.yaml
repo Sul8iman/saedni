@@ -453,7 +453,7 @@ components:
 
     User:
       type: object
-      required: [id, name, phone, userType, createdAt]
+      required: [id, name, phone, userType, createdAt, isActive]
       properties:
         id:
           type: integer
@@ -468,6 +468,8 @@ components:
           type: ["string", "null"]
         rating:
           type: ["number", "null"]
+        isActive:
+          type: boolean
         isVerified:
           type: boolean
         isBlocked:
@@ -525,7 +527,7 @@ components:
           type: string
         area:
           type: string
-        isBlocked:
+        isActive:
           type: boolean
 
     HelpRequest:

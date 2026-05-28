@@ -12,7 +12,13 @@ const router: IRouter = Router();
 
 function safeUser(user: typeof usersTable.$inferSelect) {
   const { passwordHash: _, ...safe } = user;
-  return { ...safe, createdAt: safe.createdAt.toISOString() };
+  return {
+    ...safe,
+    isActive: !safe.isBlocked,
+    createdAt: safe.createdAt.toISOString(),
+    lastLogin: safe.lastLogin?.toISOString() ?? null,
+    otpCreatedAt: safe.otpCreatedAt?.toISOString() ?? null,
+  };
 }
 
 // GET /users
@@ -62,9 +68,14 @@ router.patch("/users/:id", async (req, res): Promise<void> => {
     return;
   }
 
+  // Translate isActive → isBlocked for storage
+  const { isActive, ...rest } = parsed.data as { isActive?: boolean; name?: string; area?: string };
+  const updates: Record<string, unknown> = { ...rest };
+  if (isActive !== undefined) updates.isBlocked = !isActive;
+
   const [user] = await db
     .update(usersTable)
-    .set(parsed.data)
+    .set(updates)
     .where(eq(usersTable.id, params.data.id))
     .returning();
 

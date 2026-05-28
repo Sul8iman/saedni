@@ -9,6 +9,7 @@ function safeUser(user: typeof usersTable.$inferSelect) {
   const { passwordHash: _, ...safe } = user;
   return {
     ...safe,
+    isActive: !safe.isBlocked,
     createdAt: safe.createdAt.toISOString(),
     lastLogin: safe.lastLogin?.toISOString() ?? null,
     otpCreatedAt: safe.otpCreatedAt?.toISOString() ?? null,

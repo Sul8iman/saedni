@@ -43,6 +43,7 @@ export const LoginResponse = zod.object({
   "userType": zod.enum(['customer', 'helper', 'admin']),
   "area": zod.string().nullish(),
   "rating": zod.number().nullish(),
+  "isActive": zod.boolean(),
   "isVerified": zod.boolean().optional(),
   "isBlocked": zod.boolean().optional(),
   "lastLogin": zod.string().nullish(),
@@ -63,6 +64,7 @@ export const GetMeResponse = zod.object({
   "userType": zod.enum(['customer', 'helper', 'admin']),
   "area": zod.string().nullish(),
   "rating": zod.number().nullish(),
+  "isActive": zod.boolean(),
   "isVerified": zod.boolean().optional(),
   "isBlocked": zod.boolean().optional(),
   "lastLogin": zod.string().nullish(),
@@ -307,6 +309,7 @@ export const ListUsersResponseItem = zod.object({
   "userType": zod.enum(['customer', 'helper', 'admin']),
   "area": zod.string().nullish(),
   "rating": zod.number().nullish(),
+  "isActive": zod.boolean(),
   "isVerified": zod.boolean().optional(),
   "isBlocked": zod.boolean().optional(),
   "lastLogin": zod.string().nullish(),
@@ -331,6 +334,7 @@ export const GetUserResponse = zod.object({
   "userType": zod.enum(['customer', 'helper', 'admin']),
   "area": zod.string().nullish(),
   "rating": zod.number().nullish(),
+  "isActive": zod.boolean(),
   "isVerified": zod.boolean().optional(),
   "isBlocked": zod.boolean().optional(),
   "lastLogin": zod.string().nullish(),
@@ -350,7 +354,7 @@ export const UpdateUserParams = zod.object({
 export const UpdateUserBody = zod.object({
   "name": zod.string().optional(),
   "area": zod.string().optional(),
-  "isBlocked": zod.boolean().optional()
+  "isActive": zod.boolean().optional()
 })
 
 export const UpdateUserResponse = zod.object({
@@ -360,6 +364,7 @@ export const UpdateUserResponse = zod.object({
   "userType": zod.enum(['customer', 'helper', 'admin']),
   "area": zod.string().nullish(),
   "rating": zod.number().nullish(),
+  "isActive": zod.boolean(),
   "isVerified": zod.boolean().optional(),
   "isBlocked": zod.boolean().optional(),
   "lastLogin": zod.string().nullish(),
@@ -401,6 +406,7 @@ export const VerifyHelperResponse = zod.object({
   "userType": zod.enum(['customer', 'helper', 'admin']),
   "area": zod.string().nullish(),
   "rating": zod.number().nullish(),
+  "isActive": zod.boolean(),
   "isVerified": zod.boolean().optional(),
   "isBlocked": zod.boolean().optional(),
   "lastLogin": zod.string().nullish(),

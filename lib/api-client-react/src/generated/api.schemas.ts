@@ -31,6 +31,7 @@ export interface User {
   area?: string | null;
   /** @nullable */
   rating?: number | null;
+  isActive: boolean;
   isVerified?: boolean;
   isBlocked?: boolean;
   /** @nullable */
@@ -73,7 +74,7 @@ export interface AuthResponse {
 export interface UserUpdate {
   name?: string;
   area?: string;
-  isBlocked?: boolean;
+  isActive?: boolean;
 }
 
 export type HelpRequestCategory = typeof HelpRequestCategory[keyof typeof HelpRequestCategory];

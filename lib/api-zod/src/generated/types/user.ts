@@ -16,6 +16,7 @@ export interface User {
   area?: string | null;
   /** @nullable */
   rating?: number | null;
+  isActive: boolean;
   isVerified?: boolean;
   isBlocked?: boolean;
   /** @nullable */

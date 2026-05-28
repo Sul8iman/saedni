@@ -26,6 +26,7 @@ function safeUser(user: typeof usersTable.$inferSelect) {
   const { passwordHash: _, ...safe } = user;
   return {
     ...safe,
+    isActive: !safe.isBlocked,
     createdAt: safe.createdAt.toISOString(),
     lastLogin: safe.lastLogin?.toISOString() ?? null,
     otpCreatedAt: safe.otpCreatedAt?.toISOString() ?? null,
@@ -88,7 +89,7 @@ router.post("/auth/login", async (req, res): Promise<void> => {
   }
 
   if (user.isBlocked) {
-    res.status(403).json({ error: "تم حظر هذا الحساب" });
+    res.status(403).json({ error: "تم تعطيل حسابك، يرجى التواصل مع الإدارة" });
     return;
   }
 

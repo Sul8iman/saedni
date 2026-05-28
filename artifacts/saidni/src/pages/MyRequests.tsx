@@ -8,20 +8,11 @@ import {
 } from "@workspace/api-client-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { CATEGORY_MAP } from "@/lib/categories";
+import { CATEGORY_MAP, STATUS_MAP } from "@/lib/categories";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { BottomNav } from "@/components/BottomNav";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-
-// Customer-visible status labels (simplified MVP)
-const CUSTOMER_STATUS: Record<string, { label: string; color: string }> = {
-  available:   { label: "منشور",  color: "bg-green-100 text-green-700" },
-  cancelled:   { label: "ملغي",   color: "bg-red-100 text-red-700" },
-  accepted:    { label: "منشور",  color: "bg-green-100 text-green-700" },
-  in_progress: { label: "منشور",  color: "bg-green-100 text-green-700" },
-  completed:   { label: "مكتمل", color: "bg-gray-100 text-gray-700" },
-};
 
 export default function MyRequests() {
   const { user } = useAuth();
@@ -74,7 +65,7 @@ export default function MyRequests() {
 
         {requests?.map((req) => {
           const cat    = CATEGORY_MAP[req.category] ?? { label: req.category, icon: "HelpCircle" };
-          const status = CUSTOMER_STATUS[req.status] ?? { label: req.status, color: "bg-gray-100 text-gray-700" };
+          const status = STATUS_MAP[req.status] ?? { label: req.status, color: "bg-gray-100 text-gray-700" };
           const canCancel = req.status === "available";
 
           return (

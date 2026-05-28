@@ -31,9 +31,9 @@ export const AREAS = [
 ];
 
 export const STATUS_MAP: Record<string, { label: string; color: string }> = {
-  available:   { label: "منشور",       color: "bg-green-100 text-green-700" },
-  accepted:    { label: "منشور",       color: "bg-green-100 text-green-700" },
-  in_progress: { label: "قيد التنفيذ", color: "bg-yellow-100 text-yellow-700" },
-  completed:   { label: "مكتمل",      color: "bg-gray-100 text-gray-700" },
-  cancelled:   { label: "ملغي",        color: "bg-red-100 text-red-700" },
+  available:   { label: "نشط",   color: "bg-green-100 text-green-700" },
+  accepted:    { label: "نشط",   color: "bg-green-100 text-green-700" },
+  in_progress: { label: "نشط",   color: "bg-green-100 text-green-700" },
+  completed:   { label: "منتهي", color: "bg-gray-100 text-gray-600" },
+  cancelled:   { label: "ملغي",  color: "bg-red-100 text-red-700" },
 };

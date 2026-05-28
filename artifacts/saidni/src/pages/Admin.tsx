@@ -1,19 +1,40 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { Users, ClipboardList, CheckCircle, XCircle, Activity } from "lucide-react";
+import { Users, ClipboardList, CheckCircle, Activity, Phone, MapPin, Clock, Banknote, User, Calendar, CheckCheck } from "lucide-react";
 import {
   useGetAdminStats,
   getGetAdminStatsQueryKey,
   useListRequests,
   getListRequestsQueryKey,
-  useDeleteRequest,
   useUpdateRequest,
 } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
-import { CATEGORY_MAP, STATUS_MAP } from "@/lib/categories";
+import { CATEGORY_MAP } from "@/lib/categories";
 import { BottomNav } from "@/components/BottomNav";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { CategoryIcon } from "@/components/CategoryIcon";
+
+// Admin-only status labels
+const ADMIN_STATUS: Record<string, { label: string; color: string }> = {
+  available:   { label: "نشط",    color: "bg-green-100 text-green-700" },
+  accepted:    { label: "نشط",    color: "bg-green-100 text-green-700" },
+  in_progress: { label: "نشط",    color: "bg-green-100 text-green-700" },
+  completed:   { label: "منتهي",  color: "bg-gray-100 text-gray-600" },
+  cancelled:   { label: "ملغي",   color: "bg-red-100 text-red-700" },
+};
+
+// Format ISO date to Arabic-friendly short date
+function formatDate(iso: string) {
+  try {
+    return new Date(iso).toLocaleDateString("ar-OM", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  } catch {
+    return iso;
+  }
+}
 
 export default function Admin() {
   const { toast } = useToast();
@@ -23,57 +44,54 @@ export default function Admin() {
     query: { queryKey: getGetAdminStatsQueryKey() },
   });
 
+  // Fetch all requests (no filter) so admin sees everything
   const { data: requests, isLoading: requestsLoading } = useListRequests(undefined, {
     query: { queryKey: getListRequestsQueryKey() },
   });
 
-  const deleteMutation = useDeleteRequest();
   const updateMutation = useUpdateRequest();
 
-  const handleDelete = (id: number) => {
-    deleteMutation.mutate(
-      { id },
-      {
-        onSuccess: () => {
-          queryClient.invalidateQueries({ queryKey: getListRequestsQueryKey() });
-          queryClient.invalidateQueries({ queryKey: getGetAdminStatsQueryKey() });
-          toast({ title: "تم حذف الطلب" });
-        },
-      }
-    );
-  };
-
-  const handleStatusChange = (id: number, status: string) => {
+  // End a request — admin sets status to completed ("منتهي")
+  const handleEnd = (id: number) => {
     updateMutation.mutate(
-      { id, data: { status } },
+      { id, data: { status: "completed" } },
       {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getListRequestsQueryKey() });
           queryClient.invalidateQueries({ queryKey: getGetAdminStatsQueryKey() });
-          toast({ title: "تم تحديث الحالة" });
+          toast({ title: "تم إنهاء الطلب" });
+        },
+        onError: () => {
+          toast({ title: "خطأ", description: "فشل تحديث الطلب", variant: "destructive" });
         },
       }
     );
   };
 
   const statCards = [
-    { label: "إجمالي المستخدمين", value: stats?.totalUsers, icon: Users, color: "text-blue-600 bg-blue-50" },
-    { label: "المساعدون", value: stats?.totalHelpers, icon: Users, color: "text-teal-600 bg-teal-50" },
-    { label: "طالبو المساعدة", value: stats?.totalCustomers, icon: Users, color: "text-purple-600 bg-purple-50" },
-    { label: "إجمالي الطلبات", value: stats?.totalRequests, icon: ClipboardList, color: "text-primary bg-primary/10" },
-    { label: "الطلبات النشطة", value: stats?.activeRequests, icon: Activity, color: "text-orange-600 bg-orange-50" },
-    { label: "المكتملة", value: stats?.completedRequests, icon: CheckCircle, color: "text-green-600 bg-green-50" },
+    { label: "إجمالي المستخدمين", value: stats?.totalUsers,      color: "text-blue-600 bg-blue-50",    icon: Users },
+    { label: "المساعدون",          value: stats?.totalHelpers,     color: "text-teal-600 bg-teal-50",    icon: Users },
+    { label: "طالبو المساعدة",     value: stats?.totalCustomers,   color: "text-purple-600 bg-purple-50", icon: Users },
+    { label: "إجمالي الطلبات",     value: stats?.totalRequests,    color: "text-primary bg-primary/10",  icon: ClipboardList },
+    { label: "الطلبات النشطة",     value: stats?.activeRequests,   color: "text-orange-600 bg-orange-50", icon: Activity },
+    { label: "المنتهية",           value: stats?.completedRequests, color: "text-green-600 bg-green-50",  icon: CheckCircle },
   ];
+
+  // Active requests first, then completed/cancelled
+  const active    = requests?.filter((r) => r.status !== "completed" && r.status !== "cancelled") ?? [];
+  const closed    = requests?.filter((r) => r.status === "completed" || r.status === "cancelled") ?? [];
+  const sorted    = [...active, ...closed];
 
   return (
     <div className="app-container bg-background" dir="rtl">
+      {/* Header */}
       <div className="bg-white border-b border-border px-4 pt-12 pb-4 sticky top-0 z-10">
         <h1 className="text-xl font-bold">لوحة التحكم</h1>
         <p className="text-muted-foreground text-sm">إدارة المنصة</p>
       </div>
 
-      <div className="px-4 py-5 pb-nav space-y-5">
-        {/* Stat cards */}
+      <div className="px-4 py-5 pb-nav space-y-6">
+        {/* ── Stats grid ── */}
         <div className="grid grid-cols-3 gap-2">
           {statCards.map((s, i) => (
             <div key={i} className="bg-white rounded-2xl border border-border p-3 shadow-xs text-center" data-testid={`stat-card-${i}`}>
@@ -87,50 +105,99 @@ export default function Admin() {
           ))}
         </div>
 
-        {/* Requests management */}
+        {/* ── Requests section ── */}
         <div>
           <h2 className="text-base font-bold mb-3">إدارة الطلبات</h2>
-          {requestsLoading && <Skeleton className="h-32 w-full rounded-2xl" />}
-          <div className="space-y-2">
-            {requests?.map((req) => {
-              const cat = CATEGORY_MAP[req.category] ?? { label: req.category, icon: "HelpCircle" };
-              const status = STATUS_MAP[req.status] ?? { label: req.status, color: "bg-gray-100 text-gray-700" };
+
+          {requestsLoading && Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} className="h-36 w-full rounded-2xl mb-2" />
+          ))}
+
+          {!requestsLoading && sorted.length === 0 && (
+            <p className="text-center text-muted-foreground py-8">لا يوجد طلبات</p>
+          )}
+
+          <div className="space-y-3">
+            {sorted.map((req) => {
+              const cat      = CATEGORY_MAP[req.category] ?? { label: req.category, icon: "HelpCircle" };
+              const status   = ADMIN_STATUS[req.status]   ?? { label: req.status, color: "bg-gray-100 text-gray-700" };
+              const isActive = req.status !== "completed" && req.status !== "cancelled";
+
               return (
-                <div key={req.id} className="bg-white rounded-2xl border border-border p-3 shadow-xs" data-testid={`admin-request-${req.id}`}>
-                  <div className="flex items-start justify-between gap-2 mb-2">
-                    <div>
-                      <p className="text-xs font-semibold text-primary">{cat.label}</p>
-                      <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{req.details}</p>
-                      <p className="text-xs text-muted-foreground">{req.area} · {req.offeredAmount} ر.ع.</p>
+                <div
+                  key={req.id}
+                  className={`bg-white rounded-2xl border shadow-xs overflow-hidden ${isActive ? "border-border" : "border-border/50 opacity-70"}`}
+                  data-testid={`admin-request-${req.id}`}
+                >
+                  {/* Card header: category + status */}
+                  <div className="px-4 pt-4 pb-3">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+                          <CategoryIcon iconName={cat.icon} className="w-3.5 h-3.5 text-primary" />
+                        </div>
+                        <span className="text-sm font-semibold text-primary">{cat.label}</span>
+                      </div>
+                      <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${status.color}`}>
+                        {status.label}
+                      </span>
                     </div>
-                    <span className={`text-xs px-2 py-0.5 rounded-full flex-shrink-0 ${status.color}`}>
-                      {status.label}
-                    </span>
+
+                    {/* Request details */}
+                    <p className="text-sm text-foreground leading-relaxed mb-3">{req.details}</p>
+
+                    {/* Meta grid */}
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs text-muted-foreground mb-3">
+                      <span className="flex items-center gap-1">
+                        <MapPin className="w-3 h-3 flex-shrink-0" />
+                        {req.area}
+                      </span>
+                      <span className="flex items-center gap-1 font-bold text-green-700">
+                        <Banknote className="w-3 h-3 flex-shrink-0" />
+                        {req.offeredAmount} ر.ع.
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Clock className="w-3 h-3 flex-shrink-0" />
+                        {req.timeType === "now" ? "الآن" : req.scheduledDateTime ?? "مجدول"}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Calendar className="w-3 h-3 flex-shrink-0" />
+                        {formatDate(req.createdAt)}
+                      </span>
+                    </div>
+
+                    {/* Customer info */}
+                    <div className="bg-muted/40 rounded-xl px-3 py-2 text-xs space-y-1">
+                      <p className="text-muted-foreground text-[10px] font-medium uppercase tracking-wide mb-1">مقدم الطلب</p>
+                      {req.customerName && (
+                        <div className="flex items-center gap-1.5 text-foreground font-medium">
+                          <User className="w-3.5 h-3.5 text-muted-foreground" />
+                          {req.customerName}
+                        </div>
+                      )}
+                      {req.customerPhone && (
+                        <div className="flex items-center gap-1.5 text-muted-foreground font-mono" dir="ltr">
+                          <Phone className="w-3.5 h-3.5" />
+                          {req.customerPhone}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 mt-2">
-                    <Select value={req.status} onValueChange={(v) => handleStatusChange(req.id, v)}>
-                      <SelectTrigger className="flex-1 h-8 text-xs rounded-lg" data-testid={`status-select-${req.id}`}>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="available">متاح</SelectItem>
-                        <SelectItem value="accepted">تم القبول</SelectItem>
-                        <SelectItem value="in_progress">قيد التنفيذ</SelectItem>
-                        <SelectItem value="completed">مكتمل</SelectItem>
-                        <SelectItem value="cancelled">ملغي</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-8 text-xs text-destructive border-destructive/30 hover:bg-destructive/5 rounded-lg px-2"
-                      onClick={() => handleDelete(req.id)}
-                      disabled={deleteMutation.isPending}
-                      data-testid={`btn-delete-request-${req.id}`}
-                    >
-                      <XCircle className="w-3.5 h-3.5" />
-                    </Button>
-                  </div>
+
+                  {/* Action button — only for active requests */}
+                  {isActive && (
+                    <div className="border-t border-border px-4 py-3">
+                      <Button
+                        className="w-full rounded-xl h-9 text-sm bg-gray-700 hover:bg-gray-800 text-white"
+                        onClick={() => handleEnd(req.id)}
+                        disabled={updateMutation.isPending}
+                        data-testid={`btn-end-${req.id}`}
+                      >
+                        <CheckCheck className="w-4 h-4 ml-1.5" />
+                        إنهاء الطلب
+                      </Button>
+                    </div>
+                  )}
                 </div>
               );
             })}

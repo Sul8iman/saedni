@@ -4,19 +4,32 @@ import { db, usersTable } from "@workspace/db";
 import {
   RegisterBody,
   LoginBody,
+  ForgotPasswordBody,
 } from "@workspace/api-zod";
 import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
 
-// Simple password hashing (in production use bcrypt - keeping simple for MVP)
 function hashPassword(password: string): string {
-  // Simple hash for demo - in production use bcrypt
   return Buffer.from(password + "saidni_salt_2024").toString("base64");
 }
 
 function verifyPassword(password: string, hash: string): boolean {
   return hashPassword(password) === hash;
+}
+
+function generateOtp(): string {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
+
+function safeUser(user: typeof usersTable.$inferSelect) {
+  const { passwordHash: _, ...safe } = user;
+  return {
+    ...safe,
+    createdAt: safe.createdAt.toISOString(),
+    lastLogin: safe.lastLogin?.toISOString() ?? null,
+    otpCreatedAt: safe.otpCreatedAt?.toISOString() ?? null,
+  };
 }
 
 // POST /auth/register
@@ -27,9 +40,8 @@ router.post("/auth/register", async (req, res): Promise<void> => {
     return;
   }
 
-  const { name, phone, password, userType, area } = parsed.data;
+  const { name, phone, password, userType } = parsed.data;
 
-  // Check if phone already exists
   const existing = await db
     .select()
     .from(usersTable)
@@ -44,17 +56,15 @@ router.post("/auth/register", async (req, res): Promise<void> => {
 
   const [user] = await db
     .insert(usersTable)
-    .values({ name, phone, passwordHash, userType, area })
+    .values({ name, phone, passwordHash, userType })
     .returning();
 
-  // Store session
   (req as any).session = (req as any).session || {};
   (req as any).session.userId = user.id;
 
   req.log.info({ userId: user.id, userType }, "User registered");
 
-  const { passwordHash: _, ...safeUser } = user;
-  res.status(201).json({ user: { ...safeUser, isVerified: user.isVerified, isBlocked: user.isBlocked } });
+  res.status(201).json({ user: safeUser(user) });
 });
 
 // POST /auth/login
@@ -82,10 +92,16 @@ router.post("/auth/login", async (req, res): Promise<void> => {
     return;
   }
 
+  // Update lastLogin
+  const [updated] = await db
+    .update(usersTable)
+    .set({ lastLogin: new Date() })
+    .where(eq(usersTable.id, user.id))
+    .returning();
+
   req.log.info({ userId: user.id }, "User logged in");
 
-  const { passwordHash: _, ...safeUser } = user;
-  res.json({ user: safeUser });
+  res.json({ user: safeUser(updated) });
 });
 
 // GET /auth/me
@@ -107,8 +123,7 @@ router.get("/auth/me", async (req, res): Promise<void> => {
     return;
   }
 
-  const { passwordHash: _, ...safeUser } = user;
-  res.json(safeUser);
+  res.json(safeUser(user));
 });
 
 // POST /auth/logout
@@ -116,6 +131,39 @@ router.post("/auth/logout", async (req, res): Promise<void> => {
   if ((req as any).session) {
     (req as any).session.userId = null;
   }
+  res.json({ success: true });
+});
+
+// POST /auth/forgot-password
+router.post("/auth/forgot-password", async (req, res): Promise<void> => {
+  const parsed = ForgotPasswordBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  const { phone } = parsed.data;
+
+  const [user] = await db
+    .select()
+    .from(usersTable)
+    .where(eq(usersTable.phone, phone));
+
+  if (!user) {
+    res.status(404).json({ error: "رقم الهاتف غير مسجل" });
+    return;
+  }
+
+  const otp = generateOtp();
+
+  await db
+    .update(usersTable)
+    .set({ otpCode: otp, otpCreatedAt: new Date() })
+    .where(eq(usersTable.id, user.id));
+
+  req.log.info({ userId: user.id }, "OTP generated for password reset");
+
+  // In MVP: OTP is stored in DB and shown to admin. No real SMS.
   res.json({ success: true });
 });
 

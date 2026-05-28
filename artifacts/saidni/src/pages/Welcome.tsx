@@ -2,7 +2,6 @@ import { Link } from "wouter";
 import { HandHeart, Truck, ShoppingBag, Wrench } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-// Static example request cards for the splash page
 const exampleRequests = [
   { icon: Truck, category: "نقل وتحميل", details: "نقل أغراض من بوشر إلى الغبرة", area: "بوشر", amount: 8 },
   { icon: ShoppingBag, category: "شراء أغراض", details: "شراء أغراض من السوق وتوصيلها", area: "الخوير", amount: 3 },
@@ -12,16 +11,14 @@ const exampleRequests = [
 export default function Welcome() {
   return (
     <div className="app-container min-h-screen flex flex-col" dir="rtl">
-      {/* Hero section */}
+      {/* Hero */}
       <div className="bg-gradient-to-b from-primary/10 to-background px-6 pt-16 pb-8 text-center">
         <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-primary/15 mb-4">
           <HandHeart className="w-10 h-10 text-primary" />
         </div>
         <h1 className="text-4xl font-bold text-primary mb-2">ساعدني</h1>
-        <p className="text-muted-foreground text-base leading-relaxed">
-          منصة المساعدة اليومية في عُمان
-          <br />
-          <span className="text-foreground font-medium">احتاج مساعدة؟ سوّي طلب وتفاعل مع المساعدين القريبين</span>
+        <p className="text-foreground font-medium text-base">
+          احتاج مساعدة؟ سوّي طلب وتفاعل مع المساعدين القريبين
         </p>
       </div>
 
@@ -47,7 +44,7 @@ export default function Welcome() {
         </div>
       </div>
 
-      {/* CTA buttons */}
+      {/* CTA */}
       <div className="px-6 py-6 mt-auto space-y-3">
         <Link href="/register">
           <Button className="w-full h-12 text-base font-semibold rounded-2xl" data-testid="btn-register">
@@ -59,9 +56,6 @@ export default function Welcome() {
             تسجيل الدخول
           </Button>
         </Link>
-        <p className="text-center text-xs text-muted-foreground">
-          خدمة موثوقة لأهل عُمان
-        </p>
       </div>
     </div>
   );

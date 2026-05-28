@@ -1,9 +1,19 @@
 import { Router, type IRouter } from "express";
 import { eq, count } from "drizzle-orm";
 import { db, usersTable, requestsTable } from "@workspace/db";
-import { VerifyHelperParams, VerifyHelperBody } from "@workspace/api-zod";
+import { VerifyHelperParams, VerifyHelperBody, DeleteUserParams } from "@workspace/api-zod";
 
 const router: IRouter = Router();
+
+function safeUser(user: typeof usersTable.$inferSelect) {
+  const { passwordHash: _, ...safe } = user;
+  return {
+    ...safe,
+    createdAt: safe.createdAt.toISOString(),
+    lastLogin: safe.lastLogin?.toISOString() ?? null,
+    otpCreatedAt: safe.otpCreatedAt?.toISOString() ?? null,
+  };
+}
 
 // GET /admin/stats
 router.get("/admin/stats", async (_req, res): Promise<void> => {
@@ -71,8 +81,28 @@ router.patch("/admin/helpers/:id/verify", async (req, res): Promise<void> => {
     return;
   }
 
-  const { passwordHash: _, ...safeUser } = user;
-  res.json({ ...safeUser, createdAt: safeUser.createdAt.toISOString() });
+  res.json(safeUser(user));
+});
+
+// DELETE /admin/users/:id/delete
+router.delete("/admin/users/:id/delete", async (req, res): Promise<void> => {
+  const params = DeleteUserParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+
+  const [user] = await db
+    .delete(usersTable)
+    .where(eq(usersTable.id, params.data.id))
+    .returning();
+
+  if (!user) {
+    res.status(404).json({ error: "المستخدم غير موجود" });
+    return;
+  }
+
+  res.sendStatus(204);
 });
 
 export default router;

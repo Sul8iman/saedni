@@ -18,5 +18,11 @@ export interface User {
   rating?: number | null;
   isVerified?: boolean;
   isBlocked?: boolean;
+  /** @nullable */
+  lastLogin?: string | null;
+  /** @nullable */
+  otpCode?: string | null;
+  /** @nullable */
+  otpCreatedAt?: string | null;
   createdAt: string;
 }

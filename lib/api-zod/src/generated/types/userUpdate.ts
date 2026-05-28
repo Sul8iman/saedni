@@ -9,4 +9,5 @@
 export interface UserUpdate {
   name?: string;
   area?: string;
+  isBlocked?: boolean;
 }

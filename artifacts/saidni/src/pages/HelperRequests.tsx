@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
-import { CheckCircle2, MapPin, Clock, Banknote } from "lucide-react";
+import { CheckCircle2, MapPin, Clock, Banknote, Phone, MessageCircle } from "lucide-react";
 import {
   useListRequests,
   getListRequestsQueryKey,
@@ -43,13 +43,21 @@ export default function HelperRequests() {
         onSuccess: () => {
           setAcceptedId(id);
           queryClient.invalidateQueries({ queryKey: getListRequestsQueryKey() });
-          toast({ title: "تم قبول الطلب", description: "سيتم عرض بيانات التواصل بعد التأكيد" });
         },
         onError: () => {
-          toast({ title: "خطأ", description: "فشل قبول الطلب، ربما تم قبوله من قبل شخص آخر", variant: "destructive" });
+          toast({ title: "خطأ", description: "فشل قبول الطلب، ربما تم قبوله مسبقاً", variant: "destructive" });
         },
       }
     );
+  };
+
+  const handleWhatsApp = (phone: string) => {
+    const msg = encodeURIComponent("مرحباً، بخصوص طلبك في ساعدني");
+    window.open(`https://wa.me/${phone}?text=${msg}`, "_blank");
+  };
+
+  const handleCall = (phone: string) => {
+    window.open(`tel:${phone}`, "_self");
   };
 
   return (
@@ -87,7 +95,7 @@ export default function HelperRequests() {
 
       <div className="px-4 py-4 pb-nav space-y-3">
         {isLoading && Array.from({ length: 4 }).map((_, i) => (
-          <Skeleton key={i} className="h-36 w-full rounded-2xl" />
+          <Skeleton key={i} className="h-44 w-full rounded-2xl" />
         ))}
 
         {!isLoading && (!requests || requests.length === 0) && (
@@ -98,49 +106,76 @@ export default function HelperRequests() {
 
         {requests?.map((req) => {
           const cat = CATEGORY_MAP[req.category] ?? { label: req.category, icon: "HelpCircle" };
-          const isJustAccepted = acceptedId === req.id;
+          const isAccepted = acceptedId === req.id;
+
           return (
-            <div key={req.id} className="bg-white rounded-2xl border border-border p-4 shadow-xs" data-testid={`request-card-${req.id}`}>
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
-                  <CategoryIcon iconName={cat.icon} className="w-4 h-4 text-primary" />
+            <div key={req.id} className="bg-white rounded-2xl border border-border shadow-xs overflow-hidden" data-testid={`request-card-${req.id}`}>
+              {/* Card header */}
+              <div className="px-4 pt-4 pb-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+                    <CategoryIcon iconName={cat.icon} className="w-4 h-4 text-primary" />
+                  </div>
+                  <span className="text-sm font-semibold text-primary">{cat.label}</span>
                 </div>
-                <span className="text-sm font-semibold text-primary">{cat.label}</span>
+
+                <Link href={`/request/${req.id}`}>
+                  <p className="text-sm text-foreground mb-3 leading-relaxed cursor-pointer hover:text-primary transition-colors">{req.details}</p>
+                </Link>
+
+                <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
+                  <span className="flex items-center gap-1">
+                    <MapPin className="w-3 h-3" />
+                    {req.area}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Clock className="w-3 h-3" />
+                    {req.timeType === "now" ? "الآن" : req.scheduledDateTime ?? "مجدول"}
+                  </span>
+                  <span className="flex items-center gap-1 font-bold text-green-600 text-sm">
+                    <Banknote className="w-3.5 h-3.5" />
+                    {req.offeredAmount} ر.ع.
+                  </span>
+                </div>
               </div>
 
-              <Link href={`/request/${req.id}`}>
-                <p className="text-sm text-foreground mb-3 cursor-pointer hover:text-primary transition-colors">{req.details}</p>
-              </Link>
-
-              <div className="flex flex-wrap gap-3 text-xs text-muted-foreground mb-3">
-                <span className="flex items-center gap-1">
-                  <MapPin className="w-3 h-3" />
-                  {req.area}
-                </span>
-                <span className="flex items-center gap-1">
-                  <Clock className="w-3 h-3" />
-                  {req.timeType === "now" ? "الآن" : req.scheduledDateTime ?? "مجدول"}
-                </span>
-                <span className="flex items-center gap-1 font-bold text-green-600">
-                  <Banknote className="w-3 h-3" />
-                  {req.offeredAmount} ر.ع.
-                </span>
-              </div>
-
-              {isJustAccepted ? (
-                <div className="bg-green-50 rounded-xl p-3 flex items-center gap-2" data-testid={`accepted-msg-${req.id}`}>
-                  <CheckCircle2 className="w-4 h-4 text-green-600" />
-                  <p className="text-xs text-green-700">تم القبول — سيتم عرض بيانات التواصل بعد التأكيد</p>
+              {/* Action buttons */}
+              {isAccepted ? (
+                <div className="bg-green-50 px-4 py-3 flex items-center gap-2" data-testid={`accepted-msg-${req.id}`}>
+                  <CheckCircle2 className="w-4 h-4 text-green-600 flex-shrink-0" />
+                  <p className="text-xs text-green-700">تم قبول الطلب — بإمكانك التواصل مع طالب المساعدة</p>
                 </div>
               ) : (
-                <Button
-                  className="w-full rounded-xl h-10"
-                  onClick={() => handleAccept(req.id)}
-                  disabled={acceptMutation.isPending}
-                  data-testid={`btn-accept-${req.id}`}
-                >
-                  قبول الطلب
-                </Button>
+                <div className="border-t border-border px-4 py-3 flex gap-2">
+                  {req.customerPhone && (
+                    <>
+                      <button
+                        onClick={() => handleWhatsApp(req.customerPhone!)}
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-green-50 text-green-700 text-xs font-medium hover:bg-green-100 transition-colors flex-1 justify-center"
+                        data-testid={`btn-whatsapp-${req.id}`}
+                      >
+                        <MessageCircle className="w-4 h-4" />
+                        مراسلة
+                      </button>
+                      <button
+                        onClick={() => handleCall(req.customerPhone!)}
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-blue-50 text-blue-700 text-xs font-medium hover:bg-blue-100 transition-colors flex-1 justify-center"
+                        data-testid={`btn-call-${req.id}`}
+                      >
+                        <Phone className="w-4 h-4" />
+                        اتصال
+                      </button>
+                    </>
+                  )}
+                  <Button
+                    className="rounded-xl h-9 text-xs flex-1"
+                    onClick={() => handleAccept(req.id)}
+                    disabled={acceptMutation.isPending}
+                    data-testid={`btn-accept-${req.id}`}
+                  >
+                    قبول الطلب
+                  </Button>
+                </div>
               )}
             </div>
           );

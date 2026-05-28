@@ -1,0 +1,109 @@
+Update the “ساعدني” app with the following changes and improvements.
+
+1. Available Requests Screen:
+   For every request card, add 3 action buttons:
+
+* مراسلة → opens WhatsApp chat
+* اتصال → phone call action
+* قبول الطلب → accept request
+
+Use modern rounded buttons with clear icons.
+
+WhatsApp button should prepare a message like:
+“مرحباً، بخصوص طلبك في ساعدني”
+
+Call button should use the customer phone number.
+
+2. Registration Screen:
+   Simplify account creation.
+
+Remove:
+
+* المنطقة
+
+Keep only:
+
+* الاسم الكامل
+* رقم الهاتف
+* نوع الحساب
+
+Account types:
+
+* طالب مساعدة
+* مساعد
+
+Use a clean and simple UI.
+
+3. Login Screen:
+   Add:
+
+* نسيت كلمة المرور؟
+
+When clicked:
+
+* User enters phone number.
+* Generate OTP code.
+* Save OTP inside admin dashboard under the user details.
+* Show temporary message:
+  “تم إرسال رمز التحقق للإدارة”
+
+Do not implement real SMS yet.
+Store OTP in database only for MVP.
+
+4. Admin Dashboard Improvements:
+   Inside:
+   المستخدمون
+
+When admin clicks on a user:
+Open detailed user profile page including:
+
+* الاسم الكامل
+* رقم الهاتف
+* نوع الحساب
+* تاريخ التسجيل
+* الطلبات الحالية
+* الطلبات السابقة
+* عدد الطلبات
+* حالة الحساب
+* آخر تسجيل دخول
+* OTP codes for password reset
+* إمكانية حظر المستخدم
+* إمكانية حذف المستخدم
+
+Show requests in separate sections:
+
+* Current Requests
+* Previous Requests
+
+5. Homepage:
+   Remove this text completely:
+   “منصة المساعدة اليومية في عُمان”
+
+Keep homepage cleaner and more minimal.
+
+6. General UI Improvements:
+
+* Improve Arabic RTL spacing.
+* Use more modern Gulf-style cards.
+* Add cleaner typography.
+* Improve button consistency.
+* Improve request cards design.
+* Use mobile-first responsive layout.
+
+7. Database Updates:
+   Add fields:
+   Users:
+
+* lastLogin
+* isBlocked
+* otpCode
+* otpCreatedAt
+
+Requests:
+
+* customerPhone
+
+8. Important:
+   Do not break existing functionality.
+   Keep the app simple and MVP-focused.
+   Do not add payment gateway or chat system yet.

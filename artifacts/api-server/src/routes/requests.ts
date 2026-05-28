@@ -15,24 +15,24 @@ import {
 
 const router: IRouter = Router();
 
-// Helper: enrich request with customer/helper names
 async function enrichRequest(req: typeof requestsTable.$inferSelect) {
   const ids = [req.customerId, req.helperId].filter(Boolean) as number[];
   const users =
     ids.length > 0
       ? await db
-          .select({ id: usersTable.id, name: usersTable.name })
+          .select({ id: usersTable.id, name: usersTable.name, phone: usersTable.phone })
           .from(usersTable)
           .where(inArray(usersTable.id, ids))
       : [];
 
-  const userMap = Object.fromEntries(users.map((u) => [u.id, u.name]));
+  const userMap = Object.fromEntries(users.map((u) => [u.id, u]));
 
   return {
     ...req,
     createdAt: req.createdAt.toISOString(),
-    customerName: userMap[req.customerId] ?? null,
-    helperName: req.helperId ? (userMap[req.helperId] ?? null) : null,
+    customerName: userMap[req.customerId]?.name ?? null,
+    customerPhone: userMap[req.customerId]?.phone ?? null,
+    helperName: req.helperId ? (userMap[req.helperId]?.name ?? null) : null,
   };
 }
 

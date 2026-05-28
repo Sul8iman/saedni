@@ -33,6 +33,12 @@ export interface User {
   rating?: number | null;
   isVerified?: boolean;
   isBlocked?: boolean;
+  /** @nullable */
+  lastLogin?: string | null;
+  /** @nullable */
+  otpCode?: string | null;
+  /** @nullable */
+  otpCreatedAt?: string | null;
   createdAt: string;
 }
 
@@ -49,12 +55,15 @@ export interface RegisterInput {
   phone: string;
   password: string;
   userType: RegisterInputUserType;
-  area?: string;
 }
 
 export interface LoginInput {
   phone: string;
   password: string;
+}
+
+export interface ForgotPasswordInput {
+  phone: string;
 }
 
 export interface AuthResponse {
@@ -64,6 +73,7 @@ export interface AuthResponse {
 export interface UserUpdate {
   name?: string;
   area?: string;
+  isBlocked?: boolean;
 }
 
 export type HelpRequestCategory = typeof HelpRequestCategory[keyof typeof HelpRequestCategory];
@@ -113,6 +123,8 @@ export interface HelpRequest {
   createdAt: string;
   /** @nullable */
   customerName?: string | null;
+  /** @nullable */
+  customerPhone?: string | null;
   /** @nullable */
   helperName?: string | null;
 }

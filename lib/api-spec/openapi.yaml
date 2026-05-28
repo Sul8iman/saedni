@@ -24,7 +24,6 @@ paths:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -102,6 +101,27 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/SuccessResponse"
+
+  /auth/forgot-password:
+    post:
+      operationId: forgotPassword
+      tags: [auth]
+      summary: Request OTP for password reset
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ForgotPasswordInput"
+      responses:
+        "200":
+          description: OTP generated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "404":
+          description: Phone not found
 
   /requests:
     get:
@@ -365,6 +385,21 @@ paths:
               schema:
                 $ref: "#/components/schemas/User"
 
+  /admin/users/{id}/delete:
+    delete:
+      operationId: deleteUser
+      tags: [admin]
+      summary: Delete a user (admin)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
 components:
   schemas:
     HealthStatus:
@@ -404,6 +439,12 @@ components:
           type: boolean
         isBlocked:
           type: boolean
+        lastLogin:
+          type: ["string", "null"]
+        otpCode:
+          type: ["string", "null"]
+        otpCreatedAt:
+          type: ["string", "null"]
         createdAt:
           type: string
 
@@ -420,8 +461,6 @@ components:
         userType:
           type: string
           enum: [customer, helper]
-        area:
-          type: string
 
     LoginInput:
       type: object
@@ -430,6 +469,13 @@ components:
         phone:
           type: string
         password:
+          type: string
+
+    ForgotPasswordInput:
+      type: object
+      required: [phone]
+      properties:
+        phone:
           type: string
 
     AuthResponse:
@@ -446,6 +492,8 @@ components:
           type: string
         area:
           type: string
+        isBlocked:
+          type: boolean
 
     HelpRequest:
       type: object
@@ -477,6 +525,8 @@ components:
         createdAt:
           type: string
         customerName:
+          type: ["string", "null"]
+        customerPhone:
           type: ["string", "null"]
         helperName:
           type: ["string", "null"]

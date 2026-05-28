@@ -9,7 +9,6 @@ import * as zod from 'zod';
 
 
 /**
- * Returns server health status
  * @summary Health check
  */
 export const HealthCheckResponse = zod.object({
@@ -24,8 +23,7 @@ export const RegisterBody = zod.object({
   "name": zod.string(),
   "phone": zod.string(),
   "password": zod.string(),
-  "userType": zod.enum(['customer', 'helper']),
-  "area": zod.string().optional()
+  "userType": zod.enum(['customer', 'helper'])
 })
 
 
@@ -47,6 +45,9 @@ export const LoginResponse = zod.object({
   "rating": zod.number().nullish(),
   "isVerified": zod.boolean().optional(),
   "isBlocked": zod.boolean().optional(),
+  "lastLogin": zod.string().nullish(),
+  "otpCode": zod.string().nullish(),
+  "otpCreatedAt": zod.string().nullish(),
   "createdAt": zod.string()
 })
 })
@@ -64,6 +65,9 @@ export const GetMeResponse = zod.object({
   "rating": zod.number().nullish(),
   "isVerified": zod.boolean().optional(),
   "isBlocked": zod.boolean().optional(),
+  "lastLogin": zod.string().nullish(),
+  "otpCode": zod.string().nullish(),
+  "otpCreatedAt": zod.string().nullish(),
   "createdAt": zod.string()
 })
 
@@ -72,6 +76,18 @@ export const GetMeResponse = zod.object({
  * @summary Logout
  */
 export const LogoutResponse = zod.object({
+  "success": zod.boolean()
+})
+
+
+/**
+ * @summary Request OTP for password reset
+ */
+export const ForgotPasswordBody = zod.object({
+  "phone": zod.string()
+})
+
+export const ForgotPasswordResponse = zod.object({
   "success": zod.boolean()
 })
 
@@ -99,6 +115,7 @@ export const ListRequestsResponseItem = zod.object({
   "status": zod.enum(['available', 'accepted', 'in_progress', 'completed', 'cancelled']),
   "createdAt": zod.string(),
   "customerName": zod.string().nullish(),
+  "customerPhone": zod.string().nullish(),
   "helperName": zod.string().nullish()
 })
 export const ListRequestsResponse = zod.array(ListRequestsResponseItem)
@@ -138,6 +155,7 @@ export const GetRequestResponse = zod.object({
   "status": zod.enum(['available', 'accepted', 'in_progress', 'completed', 'cancelled']),
   "createdAt": zod.string(),
   "customerName": zod.string().nullish(),
+  "customerPhone": zod.string().nullish(),
   "helperName": zod.string().nullish()
 })
 
@@ -172,6 +190,7 @@ export const UpdateRequestResponse = zod.object({
   "status": zod.enum(['available', 'accepted', 'in_progress', 'completed', 'cancelled']),
   "createdAt": zod.string(),
   "customerName": zod.string().nullish(),
+  "customerPhone": zod.string().nullish(),
   "helperName": zod.string().nullish()
 })
 
@@ -208,6 +227,7 @@ export const AcceptRequestResponse = zod.object({
   "status": zod.enum(['available', 'accepted', 'in_progress', 'completed', 'cancelled']),
   "createdAt": zod.string(),
   "customerName": zod.string().nullish(),
+  "customerPhone": zod.string().nullish(),
   "helperName": zod.string().nullish()
 })
 
@@ -232,6 +252,7 @@ export const CancelRequestResponse = zod.object({
   "status": zod.enum(['available', 'accepted', 'in_progress', 'completed', 'cancelled']),
   "createdAt": zod.string(),
   "customerName": zod.string().nullish(),
+  "customerPhone": zod.string().nullish(),
   "helperName": zod.string().nullish()
 })
 
@@ -252,6 +273,9 @@ export const ListUsersResponseItem = zod.object({
   "rating": zod.number().nullish(),
   "isVerified": zod.boolean().optional(),
   "isBlocked": zod.boolean().optional(),
+  "lastLogin": zod.string().nullish(),
+  "otpCode": zod.string().nullish(),
+  "otpCreatedAt": zod.string().nullish(),
   "createdAt": zod.string()
 })
 export const ListUsersResponse = zod.array(ListUsersResponseItem)
@@ -273,6 +297,9 @@ export const GetUserResponse = zod.object({
   "rating": zod.number().nullish(),
   "isVerified": zod.boolean().optional(),
   "isBlocked": zod.boolean().optional(),
+  "lastLogin": zod.string().nullish(),
+  "otpCode": zod.string().nullish(),
+  "otpCreatedAt": zod.string().nullish(),
   "createdAt": zod.string()
 })
 
@@ -286,7 +313,8 @@ export const UpdateUserParams = zod.object({
 
 export const UpdateUserBody = zod.object({
   "name": zod.string().optional(),
-  "area": zod.string().optional()
+  "area": zod.string().optional(),
+  "isBlocked": zod.boolean().optional()
 })
 
 export const UpdateUserResponse = zod.object({
@@ -298,6 +326,9 @@ export const UpdateUserResponse = zod.object({
   "rating": zod.number().nullish(),
   "isVerified": zod.boolean().optional(),
   "isBlocked": zod.boolean().optional(),
+  "lastLogin": zod.string().nullish(),
+  "otpCode": zod.string().nullish(),
+  "otpCreatedAt": zod.string().nullish(),
   "createdAt": zod.string()
 })
 
@@ -336,7 +367,18 @@ export const VerifyHelperResponse = zod.object({
   "rating": zod.number().nullish(),
   "isVerified": zod.boolean().optional(),
   "isBlocked": zod.boolean().optional(),
+  "lastLogin": zod.string().nullish(),
+  "otpCode": zod.string().nullish(),
+  "otpCreatedAt": zod.string().nullish(),
   "createdAt": zod.string()
+})
+
+
+/**
+ * @summary Delete a user (admin)
+ */
+export const DeleteUserParams = zod.object({
+  "id": zod.coerce.number()
 })
 
 

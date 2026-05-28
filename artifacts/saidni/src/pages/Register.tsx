@@ -6,7 +6,6 @@ import { HandHeart } from "lucide-react";
 import { useRegister } from "@workspace/api-client-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { AREAS } from "@/lib/categories";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -17,7 +16,6 @@ const schema = z.object({
   phone: z.string().min(8, "أدخل رقم هاتف صحيح"),
   password: z.string().min(6, "كلمة المرور يجب أن تكون 6 أحرف على الأقل"),
   userType: z.enum(["customer", "helper"]),
-  area: z.string().optional(),
 });
 
 type FormData = z.infer<typeof schema>;
@@ -30,18 +28,16 @@ export default function Register() {
 
   const form = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: { name: "", phone: "", password: "", userType: "customer", area: "" },
+    defaultValues: { name: "", phone: "", password: "", userType: "customer" },
   });
 
   const onSubmit = (data: FormData) => {
     registerMutation.mutate(
-      { data: { ...data, area: data.area || undefined } },
+      { data },
       {
         onSuccess: (response) => {
           setUser(response.user);
-          const userType = response.user.userType;
-          if (userType === "helper") setLocation("/helper-requests");
-          else setLocation("/customer");
+          setLocation(response.user.userType === "helper" ? "/helper-requests" : "/customer");
         },
         onError: (err: any) => {
           const msg = err?.data?.error ?? "حدث خطأ أثناء إنشاء الحساب";
@@ -62,7 +58,6 @@ export default function Register() {
       </div>
 
       <div className="bg-white rounded-3xl shadow-sm border border-border p-6">
-        <h2 className="text-lg font-bold mb-6">بيانات الحساب</h2>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
@@ -125,43 +120,24 @@ export default function Register() {
                 </FormItem>
               )}
             />
-            <FormField
-              control={form.control}
-              name="area"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>المنطقة (اختياري)</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger className="rounded-xl h-12" data-testid="select-area">
-                        <SelectValue placeholder="اختر منطقتك" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {AREAS.map((a) => (
-                        <SelectItem key={a} value={a}>{a}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <Button type="submit" className="w-full h-12 text-base font-semibold rounded-xl mt-2" disabled={registerMutation.isPending} data-testid="btn-submit-register">
+            <Button
+              type="submit"
+              className="w-full h-12 text-base font-semibold rounded-xl mt-2"
+              disabled={registerMutation.isPending}
+              data-testid="btn-submit-register"
+            >
               {registerMutation.isPending ? "جارٍ إنشاء الحساب..." : "إنشاء الحساب"}
             </Button>
           </form>
         </Form>
       </div>
 
-      <div className="mt-4 text-center">
-        <p className="text-sm text-muted-foreground">
-          لديك حساب بالفعل؟{" "}
-          <a href="/login" className="text-primary font-semibold" data-testid="link-login">
-            تسجيل الدخول
-          </a>
-        </p>
-      </div>
+      <p className="mt-5 text-center text-sm text-muted-foreground">
+        لديك حساب بالفعل؟{" "}
+        <a href="/login" className="text-primary font-semibold" data-testid="link-login">
+          تسجيل الدخول
+        </a>
+      </p>
     </div>
   );
 }

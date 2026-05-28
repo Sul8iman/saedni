@@ -9,6 +9,7 @@
 export * from './acceptRequestInput';
 export * from './adminStats';
 export * from './authResponse';
+export * from './forgotPasswordInput';
 export * from './healthStatus';
 export * from './helpRequest';
 export * from './helpRequestCategory';

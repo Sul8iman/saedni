@@ -9,4 +9,5 @@
 export interface OtpRequestResponse {
   message: string;
   otp: string;
+  isVerified?: boolean;
 }

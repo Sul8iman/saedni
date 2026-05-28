@@ -69,6 +69,7 @@ export interface VerifyOtpInput {
 export interface OtpRequestResponse {
   message: string;
   otp: string;
+  isVerified?: boolean;
 }
 
 export interface AuthResponse {

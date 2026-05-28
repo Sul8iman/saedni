@@ -17,7 +17,7 @@ export const HealthCheckResponse = zod.object({
 
 
 /**
- * @summary Register a new user
+ * @summary Register a new user (returns OTP, does NOT log in)
  */
 export const RegisterBody = zod.object({
   "name": zod.string(),
@@ -35,7 +35,8 @@ export const LoginBody = zod.object({
 
 export const LoginResponse = zod.object({
   "message": zod.string(),
-  "otp": zod.string()
+  "otp": zod.string(),
+  "isVerified": zod.boolean().optional()
 })
 
 

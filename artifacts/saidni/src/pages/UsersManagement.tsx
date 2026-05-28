@@ -121,12 +121,15 @@ function UserDetail({ userId, onBack }: { userId: number; onBack: () => void }) 
             <User className={`w-8 h-8 ${isActive ? "text-primary" : "text-muted-foreground"}`} />
           </div>
           <h2 className="text-lg font-bold">{user.name}</h2>
-          <div className="flex items-center justify-center gap-2 mt-1.5">
+          <div className="flex items-center justify-center gap-2 mt-1.5 flex-wrap">
             <span className="text-xs px-3 py-1 rounded-full bg-primary/10 text-primary font-medium">
               {USER_TYPE_LABELS[user.userType] ?? user.userType}
             </span>
             <span className={`text-xs px-3 py-1 rounded-full font-medium ${isActive ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
               {isActive ? "مفعّل" : "معطّل"}
+            </span>
+            <span className={`text-xs px-3 py-1 rounded-full font-medium ${user.isVerified ? "bg-blue-100 text-blue-700" : "bg-orange-100 text-orange-600"}`}>
+              {user.isVerified ? "✓ تم التحقق" : "بانتظار التحقق"}
             </span>
           </div>
         </div>

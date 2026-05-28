@@ -23,7 +23,7 @@ function safeUser(user: typeof usersTable.$inferSelect) {
   };
 }
 
-// POST /auth/register — no password required
+// POST /auth/register — creates account (inactive+unverified), generates OTP, does NOT log in
 router.post("/auth/register", async (req, res): Promise<void> => {
   const parsed = RegisterBody.safeParse(req.body);
   if (!parsed.success) {
@@ -39,17 +39,29 @@ router.post("/auth/register", async (req, res): Promise<void> => {
     return;
   }
 
+  const otp = generate4DigitOtp();
+
   const [user] = await db
     .insert(usersTable)
-    .values({ name, phone, passwordHash: "", userType })
+    .values({
+      name,
+      phone,
+      passwordHash: "",
+      userType,
+      isVerified: false,
+      isBlocked: false,
+      otpCode: otp,
+      otpCreatedAt: new Date(),
+    })
     .returning();
 
-  (req as any).session = (req as any).session || {};
-  (req as any).session.userId = user.id;
+  req.log.info({ userId: user.id, userType }, "User registered (unverified)");
 
-  req.log.info({ userId: user.id, userType }, "User registered");
-
-  res.status(201).json({ user: safeUser(user) });
+  res.status(201).json({
+    message: "تم إنشاء الحساب. يرجى التواصل مع الإدارة للحصول على رمز التحقق",
+    otp,
+    isVerified: false,
+  });
 });
 
 // POST /auth/login — generates 4-digit OTP for the given phone number
@@ -68,6 +80,12 @@ router.post("/auth/login", async (req, res): Promise<void> => {
     return;
   }
 
+  // Blocked users cannot even request OTP (unless unverified — they need to verify first)
+  if (user.isBlocked && user.isVerified) {
+    res.status(403).json({ error: "تم تعطيل حسابك، يرجى التواصل مع الإدارة" });
+    return;
+  }
+
   const otp = generate4DigitOtp();
 
   await db
@@ -75,15 +93,18 @@ router.post("/auth/login", async (req, res): Promise<void> => {
     .set({ otpCode: otp, otpCreatedAt: new Date() })
     .where(eq(usersTable.id, user.id));
 
-  req.log.info({ userId: user.id }, "OTP generated for login");
+  req.log.info({ userId: user.id, isVerified: user.isVerified }, "OTP generated");
 
   res.json({
-    message: "تم إنشاء رمز تحقق، يرجى التواصل مع الإدارة للحصول عليه",
+    message: user.isVerified
+      ? "تم إنشاء رمز تحقق، يرجى التواصل مع الإدارة للحصول عليه"
+      : "حسابك غير مفعل. يرجى إدخال رمز التحقق من الإدارة",
     otp,
+    isVerified: user.isVerified,
   });
 });
 
-// POST /auth/verify-otp — validate OTP and complete login
+// POST /auth/verify-otp — validate OTP; activates account if first-time verification
 router.post("/auth/verify-otp", async (req, res): Promise<void> => {
   const parsed = VerifyOtpBody.safeParse(req.body);
   if (!parsed.success) {
@@ -99,7 +120,8 @@ router.post("/auth/verify-otp", async (req, res): Promise<void> => {
     return;
   }
 
-  if (user.isBlocked) {
+  // Blocked verified users cannot log in
+  if (user.isBlocked && user.isVerified) {
     res.status(403).json({ error: "تم تعطيل حسابك، يرجى التواصل مع الإدارة" });
     return;
   }
@@ -110,21 +132,31 @@ router.post("/auth/verify-otp", async (req, res): Promise<void> => {
   }
 
   if (!user.otpCreatedAt || Date.now() - user.otpCreatedAt.getTime() > OTP_EXPIRY_MS) {
-    res.status(400).json({ error: "انتهت صلاحية رمز التحقق، يرجى طلب رمز جديد" });
+    res.status(400).json({ error: "انتهت صلاحية رمز التحقق، يرجى طلب رمز جديد من الإدارة" });
     return;
   }
 
-  // Clear OTP + update lastLogin
+  // First-time verification: activate the account
+  const updates: Partial<typeof usersTable.$inferInsert> = {
+    otpCode: null,
+    otpCreatedAt: null,
+    lastLogin: new Date(),
+  };
+  if (!user.isVerified) {
+    updates.isVerified = true;
+    updates.isBlocked = false; // ensure active
+  }
+
   const [updated] = await db
     .update(usersTable)
-    .set({ otpCode: null, otpCreatedAt: null, lastLogin: new Date() })
+    .set(updates)
     .where(eq(usersTable.id, user.id))
     .returning();
 
   (req as any).session = (req as any).session || {};
   (req as any).session.userId = user.id;
 
-  req.log.info({ userId: user.id }, "User logged in via OTP");
+  req.log.info({ userId: user.id, wasVerified: user.isVerified }, "User logged in via OTP");
 
   res.json({ user: safeUser(updated) });
 });

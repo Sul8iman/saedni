@@ -36,7 +36,7 @@ paths:
     post:
       operationId: register
       tags: [auth]
-      summary: Register a new user
+      summary: Register a new user (returns OTP, does NOT log in)
       requestBody:
         required: true
         content:
@@ -45,11 +45,11 @@ paths:
               $ref: "#/components/schemas/RegisterInput"
       responses:
         "201":
-          description: User registered
+          description: User registered, OTP generated for verification
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AuthResponse"
+                $ref: "#/components/schemas/OtpRequestResponse"
         "400":
           description: Bad request
 
@@ -522,6 +522,8 @@ components:
           type: string
         otp:
           type: string
+        isVerified:
+          type: boolean
 
     AuthResponse:
       type: object

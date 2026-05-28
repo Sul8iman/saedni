@@ -138,11 +138,11 @@ export const getRegisterUrl = () => {
 }
 
 /**
- * @summary Register a new user
+ * @summary Register a new user (returns OTP, does NOT log in)
  */
-export const register = async (registerInput: RegisterInput, options?: RequestInit): Promise<AuthResponse> => {
+export const register = async (registerInput: RegisterInput, options?: RequestInit): Promise<OtpRequestResponse> => {
 
-  return customFetch<AuthResponse>(getRegisterUrl(),
+  return customFetch<OtpRequestResponse>(getRegisterUrl(),
   {
     ...options,
     method: 'POST',
@@ -187,7 +187,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type RegisterMutationError = ErrorType<void>
 
     /**
- * @summary Register a new user
+ * @summary Register a new user (returns OTP, does NOT log in)
  */
 export const useRegister = <TError = ErrorType<void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof register>>, TError,{data: BodyType<RegisterInput>}, TContext>, request?: SecondParameter<typeof customFetch>}

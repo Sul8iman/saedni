@@ -5,10 +5,8 @@
  * ساعدني - API specification for the Oman help marketplace
  * OpenAPI spec version: 0.1.0
  */
-import type { RegisterInputUserType } from './registerInputUserType';
 
-export interface RegisterInput {
-  name: string;
+export interface VerifyOtpInput {
   phone: string;
-  userType: RegisterInputUserType;
+  otp: string;
 }

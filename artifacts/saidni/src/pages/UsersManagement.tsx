@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
-  ArrowRight, User, Phone, Calendar, Clock, ClipboardList, CheckCheck, PowerOff, Power, KeyRound,
+  ArrowRight, User, Phone, Calendar, Clock, ClipboardList, CheckCheck,
+  PowerOff, Power, KeyRound, RefreshCw,
 } from "lucide-react";
 import {
   useListUsers,
@@ -11,6 +12,7 @@ import {
   getGetUserQueryKey,
   useListRequests,
   getListRequestsQueryKey,
+  useLogin,
 } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
 import { CATEGORY_MAP } from "@/lib/categories";
@@ -51,6 +53,7 @@ function UserDetail({ userId, onBack }: { userId: number; onBack: () => void }) 
   );
 
   const updateMutation = useUpdateUser();
+  const loginMutation  = useLogin();
 
   const activeRequests = allRequests?.filter((r) => r.status !== "completed" && r.status !== "cancelled") ?? [];
   const pastRequests   = allRequests?.filter((r) => r.status === "completed" || r.status === "cancelled") ?? [];
@@ -73,6 +76,22 @@ function UserDetail({ userId, onBack }: { userId: number; onBack: () => void }) 
     );
   };
 
+  const handleGenerateOtp = () => {
+    if (!user) return;
+    loginMutation.mutate(
+      { data: { phone: user.phone } },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getGetUserQueryKey(userId) });
+          toast({ title: "تم إنشاء رمز جديد" });
+        },
+        onError: () => {
+          toast({ title: "خطأ", description: "فشل إنشاء الرمز", variant: "destructive" });
+        },
+      }
+    );
+  };
+
   if (isLoading) {
     return (
       <div className="space-y-3 p-4 pt-16">
@@ -88,7 +107,6 @@ function UserDetail({ userId, onBack }: { userId: number; onBack: () => void }) 
 
   return (
     <div className="app-container bg-background" dir="rtl">
-      {/* Header */}
       <div className="bg-white border-b border-border px-4 pt-12 pb-4 sticky top-0 z-10 flex items-center gap-3">
         <button onClick={onBack} className="text-muted-foreground" data-testid="btn-back-users">
           <ArrowRight className="w-5 h-5" />
@@ -97,7 +115,7 @@ function UserDetail({ userId, onBack }: { userId: number; onBack: () => void }) 
       </div>
 
       <div className="px-4 py-5 pb-nav space-y-4">
-        {/* Avatar & identity */}
+        {/* Identity card */}
         <div className="bg-white rounded-2xl border border-border p-5 shadow-xs text-center">
           <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3 ${isActive ? "bg-primary/10" : "bg-muted"}`}>
             <User className={`w-8 h-8 ${isActive ? "text-primary" : "text-muted-foreground"}`} />
@@ -116,32 +134,57 @@ function UserDetail({ userId, onBack }: { userId: number; onBack: () => void }) 
         {/* Info rows */}
         <div className="bg-white rounded-2xl border border-border shadow-xs divide-y divide-border">
           {[
-            { icon: Phone,    label: "رقم الهاتف",        value: user.phone,                    dir: "ltr" as const },
-            { icon: User,     label: "نوع الحساب",        value: USER_TYPE_LABELS[user.userType] ?? user.userType },
-            { icon: Calendar, label: "تاريخ التسجيل",     value: formatDate(user.createdAt) },
-            { icon: Clock,    label: "آخر تسجيل دخول",   value: formatDateTime(user.lastLogin) },
+            { icon: Phone,    label: "رقم الهاتف",       value: user.phone,                                   ltr: true },
+            { icon: User,     label: "نوع الحساب",       value: USER_TYPE_LABELS[user.userType] ?? user.userType },
+            { icon: Calendar, label: "تاريخ التسجيل",    value: formatDate(user.createdAt) },
+            { icon: Clock,    label: "آخر تسجيل دخول",  value: formatDateTime(user.lastLogin) },
           ].map((row) => (
             <div key={row.label} className="flex items-center gap-3 px-4 py-3.5">
               <row.icon className="w-4 h-4 text-muted-foreground flex-shrink-0" />
               <div>
                 <p className="text-xs text-muted-foreground">{row.label}</p>
-                <p className={`font-medium text-sm ${row.dir === "ltr" ? "font-mono" : ""}`} dir={row.dir}>{row.value}</p>
+                <p className={`font-medium text-sm ${row.ltr ? "font-mono" : ""}`} dir={row.ltr ? "ltr" : undefined}>{row.value}</p>
               </div>
             </div>
           ))}
         </div>
 
-        {/* OTP (admin visible) */}
-        {user.otpCode && (
-          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4" data-testid="otp-section">
-            <div className="flex items-center gap-2 mb-2">
+        {/* OTP section */}
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4" data-testid="otp-section">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
               <KeyRound className="w-4 h-4 text-amber-600" />
-              <p className="font-semibold text-amber-800 text-sm">رمز التحقق (إعادة كلمة المرور)</p>
+              <p className="font-semibold text-amber-800 text-sm">رمز تسجيل الدخول</p>
             </div>
-            <p className="text-2xl font-bold text-amber-700 tracking-widest" data-testid="otp-code">{user.otpCode}</p>
-            <p className="text-xs text-amber-600 mt-1">صدر في: {formatDateTime(user.otpCreatedAt)}</p>
+            <button
+              onClick={handleGenerateOtp}
+              disabled={loginMutation.isPending}
+              className="flex items-center gap-1 text-xs text-amber-700 hover:text-amber-900 font-medium disabled:opacity-50"
+              data-testid="btn-generate-otp"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${loginMutation.isPending ? "animate-spin" : ""}`} />
+              إنشاء رمز جديد
+            </button>
           </div>
-        )}
+
+          {user.otpCode ? (
+            <div>
+              <p className="text-3xl font-bold text-amber-700 tracking-[0.35em] text-center py-2" data-testid="otp-code">
+                {user.otpCode}
+              </p>
+              <p className="text-xs text-amber-600 text-center mt-1">
+                صدر في: {formatDateTime(user.otpCreatedAt)}
+              </p>
+              <p className="text-xs text-amber-500 text-center mt-0.5">
+                (صالح لمدة 10 دقائق)
+              </p>
+            </div>
+          ) : (
+            <p className="text-sm text-amber-600 text-center py-2">
+              لا يوجد رمز حالي — اضغط "إنشاء رمز جديد" لتوليد رمز للمستخدم
+            </p>
+          )}
+        </div>
 
         {/* Request counts */}
         <div className="grid grid-cols-3 gap-2">
@@ -203,7 +246,7 @@ function UserDetail({ userId, onBack }: { userId: number; onBack: () => void }) 
           </div>
         )}
 
-        {/* Single toggle action */}
+        {/* Single toggle: activate / deactivate */}
         <div className="pt-1">
           {isActive ? (
             <Button

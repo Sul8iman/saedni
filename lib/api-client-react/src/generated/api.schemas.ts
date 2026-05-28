@@ -54,17 +54,21 @@ export const RegisterInputUserType = {
 export interface RegisterInput {
   name: string;
   phone: string;
-  password: string;
   userType: RegisterInputUserType;
 }
 
 export interface LoginInput {
   phone: string;
-  password: string;
 }
 
-export interface ForgotPasswordInput {
+export interface VerifyOtpInput {
   phone: string;
+  otp: string;
+}
+
+export interface OtpRequestResponse {
+  message: string;
+  otp: string;
 }
 
 export interface AuthResponse {

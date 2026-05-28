@@ -14,7 +14,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 const schema = z.object({
   name: z.string().min(2, "أدخل اسمك الكامل"),
   phone: z.string().min(8, "أدخل رقم هاتف صحيح"),
-  password: z.string().min(6, "كلمة المرور يجب أن تكون 6 أحرف على الأقل"),
   userType: z.enum(["customer", "helper"]),
 });
 
@@ -28,7 +27,7 @@ export default function Register() {
 
   const form = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: { name: "", phone: "", password: "", userType: "customer" },
+    defaultValues: { name: "", phone: "", userType: "customer" },
   });
 
   const onSubmit = (data: FormData) => {
@@ -81,19 +80,6 @@ export default function Register() {
                   <FormLabel>رقم الهاتف</FormLabel>
                   <FormControl>
                     <Input placeholder="968XXXXXXXX" type="tel" className="rounded-xl h-12 text-right" data-testid="input-phone" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>كلمة المرور</FormLabel>
-                  <FormControl>
-                    <Input placeholder="••••••••" type="password" className="rounded-xl h-12" data-testid="input-password" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

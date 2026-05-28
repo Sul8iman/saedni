@@ -1,25 +1,15 @@
 import { Router, type IRouter } from "express";
 import { eq } from "drizzle-orm";
 import { db, usersTable } from "@workspace/db";
-import {
-  RegisterBody,
-  LoginBody,
-  ForgotPasswordBody,
-} from "@workspace/api-zod";
+import { RegisterBody, LoginBody, VerifyOtpBody } from "@workspace/api-zod";
 import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
 
-function hashPassword(password: string): string {
-  return Buffer.from(password + "saidni_salt_2024").toString("base64");
-}
+const OTP_EXPIRY_MS = 10 * 60 * 1000; // 10 minutes
 
-function verifyPassword(password: string, hash: string): boolean {
-  return hashPassword(password) === hash;
-}
-
-function generateOtp(): string {
-  return Math.floor(100000 + Math.random() * 900000).toString();
+function generate4DigitOtp(): string {
+  return Math.floor(1000 + Math.random() * 9000).toString();
 }
 
 function safeUser(user: typeof usersTable.$inferSelect) {
@@ -33,7 +23,7 @@ function safeUser(user: typeof usersTable.$inferSelect) {
   };
 }
 
-// POST /auth/register
+// POST /auth/register — no password required
 router.post("/auth/register", async (req, res): Promise<void> => {
   const parsed = RegisterBody.safeParse(req.body);
   if (!parsed.success) {
@@ -41,23 +31,17 @@ router.post("/auth/register", async (req, res): Promise<void> => {
     return;
   }
 
-  const { name, phone, password, userType } = parsed.data;
+  const { name, phone, userType } = parsed.data;
 
-  const existing = await db
-    .select()
-    .from(usersTable)
-    .where(eq(usersTable.phone, phone));
-
+  const existing = await db.select().from(usersTable).where(eq(usersTable.phone, phone));
   if (existing.length > 0) {
     res.status(400).json({ error: "رقم الهاتف مسجل مسبقاً" });
     return;
   }
 
-  const passwordHash = hashPassword(password);
-
   const [user] = await db
     .insert(usersTable)
-    .values({ name, phone, passwordHash, userType })
+    .values({ name, phone, passwordHash: "", userType })
     .returning();
 
   (req as any).session = (req as any).session || {};
@@ -68,7 +52,7 @@ router.post("/auth/register", async (req, res): Promise<void> => {
   res.status(201).json({ user: safeUser(user) });
 });
 
-// POST /auth/login
+// POST /auth/login — generates 4-digit OTP for the given phone number
 router.post("/auth/login", async (req, res): Promise<void> => {
   const parsed = LoginBody.safeParse(req.body);
   if (!parsed.success) {
@@ -76,15 +60,42 @@ router.post("/auth/login", async (req, res): Promise<void> => {
     return;
   }
 
-  const { phone, password } = parsed.data;
+  const { phone } = parsed.data;
 
-  const [user] = await db
-    .select()
-    .from(usersTable)
-    .where(eq(usersTable.phone, phone));
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.phone, phone));
+  if (!user) {
+    res.status(404).json({ error: "رقم الهاتف غير مسجل" });
+    return;
+  }
 
-  if (!user || !verifyPassword(password, user.passwordHash)) {
-    res.status(401).json({ error: "رقم الهاتف أو كلمة المرور غير صحيحة" });
+  const otp = generate4DigitOtp();
+
+  await db
+    .update(usersTable)
+    .set({ otpCode: otp, otpCreatedAt: new Date() })
+    .where(eq(usersTable.id, user.id));
+
+  req.log.info({ userId: user.id }, "OTP generated for login");
+
+  res.json({
+    message: "تم إنشاء رمز تحقق، يرجى التواصل مع الإدارة للحصول عليه",
+    otp,
+  });
+});
+
+// POST /auth/verify-otp — validate OTP and complete login
+router.post("/auth/verify-otp", async (req, res): Promise<void> => {
+  const parsed = VerifyOtpBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  const { phone, otp } = parsed.data;
+
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.phone, phone));
+  if (!user) {
+    res.status(404).json({ error: "رقم الهاتف غير مسجل" });
     return;
   }
 
@@ -93,14 +104,27 @@ router.post("/auth/login", async (req, res): Promise<void> => {
     return;
   }
 
-  // Update lastLogin
+  if (!user.otpCode || user.otpCode !== otp) {
+    res.status(400).json({ error: "رمز التحقق غير صحيح" });
+    return;
+  }
+
+  if (!user.otpCreatedAt || Date.now() - user.otpCreatedAt.getTime() > OTP_EXPIRY_MS) {
+    res.status(400).json({ error: "انتهت صلاحية رمز التحقق، يرجى طلب رمز جديد" });
+    return;
+  }
+
+  // Clear OTP + update lastLogin
   const [updated] = await db
     .update(usersTable)
-    .set({ lastLogin: new Date() })
+    .set({ otpCode: null, otpCreatedAt: null, lastLogin: new Date() })
     .where(eq(usersTable.id, user.id))
     .returning();
 
-  req.log.info({ userId: user.id }, "User logged in");
+  (req as any).session = (req as any).session || {};
+  (req as any).session.userId = user.id;
+
+  req.log.info({ userId: user.id }, "User logged in via OTP");
 
   res.json({ user: safeUser(updated) });
 });
@@ -108,17 +132,12 @@ router.post("/auth/login", async (req, res): Promise<void> => {
 // GET /auth/me
 router.get("/auth/me", async (req, res): Promise<void> => {
   const userId = (req as any).session?.userId;
-
   if (!userId) {
     res.status(401).json({ error: "غير مصرح" });
     return;
   }
 
-  const [user] = await db
-    .select()
-    .from(usersTable)
-    .where(eq(usersTable.id, userId));
-
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId));
   if (!user) {
     res.status(404).json({ error: "المستخدم غير موجود" });
     return;
@@ -132,39 +151,6 @@ router.post("/auth/logout", async (req, res): Promise<void> => {
   if ((req as any).session) {
     (req as any).session.userId = null;
   }
-  res.json({ success: true });
-});
-
-// POST /auth/forgot-password
-router.post("/auth/forgot-password", async (req, res): Promise<void> => {
-  const parsed = ForgotPasswordBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
-    return;
-  }
-
-  const { phone } = parsed.data;
-
-  const [user] = await db
-    .select()
-    .from(usersTable)
-    .where(eq(usersTable.phone, phone));
-
-  if (!user) {
-    res.status(404).json({ error: "رقم الهاتف غير مسجل" });
-    return;
-  }
-
-  const otp = generateOtp();
-
-  await db
-    .update(usersTable)
-    .set({ otpCode: otp, otpCreatedAt: new Date() })
-    .where(eq(usersTable.id, user.id));
-
-  req.log.info({ userId: user.id }, "OTP generated for password reset");
-
-  // In MVP: OTP is stored in DB and shown to admin. No real SMS.
   res.json({ success: true });
 });
 

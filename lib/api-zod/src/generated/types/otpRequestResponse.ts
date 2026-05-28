@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface ForgotPasswordInput {
-  phone: string;
+export interface OtpRequestResponse {
+  message: string;
+  otp: string;
 }

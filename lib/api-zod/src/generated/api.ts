@@ -22,20 +22,32 @@ export const HealthCheckResponse = zod.object({
 export const RegisterBody = zod.object({
   "name": zod.string(),
   "phone": zod.string(),
-  "password": zod.string(),
   "userType": zod.enum(['customer', 'helper'])
 })
 
 
 /**
- * @summary Login
+ * @summary Request OTP login (phone only)
  */
 export const LoginBody = zod.object({
-  "phone": zod.string(),
-  "password": zod.string()
+  "phone": zod.string()
 })
 
 export const LoginResponse = zod.object({
+  "message": zod.string(),
+  "otp": zod.string()
+})
+
+
+/**
+ * @summary Verify OTP and complete login
+ */
+export const VerifyOtpBody = zod.object({
+  "phone": zod.string(),
+  "otp": zod.string()
+})
+
+export const VerifyOtpResponse = zod.object({
   "user": zod.object({
   "id": zod.number(),
   "name": zod.string(),
@@ -78,18 +90,6 @@ export const GetMeResponse = zod.object({
  * @summary Logout
  */
 export const LogoutResponse = zod.object({
-  "success": zod.boolean()
-})
-
-
-/**
- * @summary Request OTP for password reset
- */
-export const ForgotPasswordBody = zod.object({
-  "phone": zod.string()
-})
-
-export const ForgotPasswordResponse = zod.object({
   "success": zod.boolean()
 })
 

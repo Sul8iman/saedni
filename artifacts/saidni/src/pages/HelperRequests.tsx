@@ -21,13 +21,13 @@ export default function HelperRequests() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const [filterCategory, setFilterCategory] = useState<string>("");
-  const [filterArea, setFilterArea] = useState<string>("");
+  const [filterCategory, setFilterCategory] = useState<string>("all");
+  const [filterArea, setFilterArea] = useState<string>("all");
   const [acceptedId, setAcceptedId] = useState<number | null>(null);
 
   const params: Record<string, string | number> = { status: "available" };
-  if (filterCategory) params.category = filterCategory;
-  if (filterArea) params.area = filterArea;
+  if (filterCategory && filterCategory !== "all") params.category = filterCategory;
+  if (filterArea && filterArea !== "all") params.area = filterArea;
 
   const { data: requests, isLoading } = useListRequests(params, {
     query: { queryKey: getListRequestsQueryKey(params) },
@@ -66,7 +66,7 @@ export default function HelperRequests() {
             <SelectValue placeholder="كل التصنيفات" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">كل التصنيفات</SelectItem>
+            <SelectItem value="all">كل التصنيفات</SelectItem>
             {CATEGORIES.map((c) => (
               <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
             ))}
@@ -77,7 +77,7 @@ export default function HelperRequests() {
             <SelectValue placeholder="كل المناطق" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">كل المناطق</SelectItem>
+            <SelectItem value="all">كل المناطق</SelectItem>
             {AREAS.map((a) => (
               <SelectItem key={a} value={a}>{a}</SelectItem>
             ))}

@@ -69,6 +69,22 @@ router.post("/requests", async (req, res): Promise<void> => {
     return;
   }
 
+  // Verify the customer account is not blocked before allowing request creation
+  const [customer] = await db
+    .select({ isBlocked: usersTable.isBlocked })
+    .from(usersTable)
+    .where(eq(usersTable.id, parsed.data.customerId));
+
+  if (!customer) {
+    res.status(404).json({ error: "المستخدم غير موجود" });
+    return;
+  }
+
+  if (customer.isBlocked) {
+    res.status(403).json({ error: "تم تعطيل حسابك، يرجى التواصل مع الإدارة" });
+    return;
+  }
+
   const [row] = await db
     .insert(requestsTable)
     .values({ ...parsed.data, status: "available" })

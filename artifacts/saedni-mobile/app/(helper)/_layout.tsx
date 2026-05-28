@@ -8,7 +8,8 @@ import React from "react";
 import { Platform, StyleSheet, View, useColorScheme } from "react-native";
 import { useColors } from "@/hooks/useColors";
 
-// RTL tab order: profile (left) | my-requests/مهامي (center) | index/الطلبات (right/primary)
+// RTL 2-tab layout: profile (left) | index/الطلبات (right/primary)
+// my-requests is hidden from the tab bar (href: null)
 
 function NativeTabLayout() {
   return (
@@ -16,10 +17,6 @@ function NativeTabLayout() {
       <NativeTabs.Trigger name="profile">
         <Icon sf={{ default: "person", selected: "person.fill" }} />
         <Label>حسابي</Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="my-requests">
-        <Icon sf={{ default: "briefcase", selected: "briefcase.fill" }} />
-        <Label>مهامي</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="index">
         <Icon sf={{ default: "magnifyingglass", selected: "magnifyingglass.circle.fill" }} />
@@ -72,18 +69,10 @@ function ClassicTabLayout() {
             ),
         }}
       />
-      {/* Center: my jobs */}
+      {/* Hidden: my-requests no longer shown in tab bar */}
       <Tabs.Screen
         name="my-requests"
-        options={{
-          title: "مهامي",
-          tabBarIcon: ({ color, size }) =>
-            isIOS ? (
-              <SymbolView name="briefcase" tintColor={color} size={size} />
-            ) : (
-              <Ionicons name="briefcase-outline" size={size} color={color} />
-            ),
-        }}
+        options={{ href: null }}
       />
       {/* Right/primary: available requests */}
       <Tabs.Screen
@@ -92,7 +81,11 @@ function ClassicTabLayout() {
           title: "الطلبات",
           tabBarIcon: ({ color, size, focused }) =>
             isIOS ? (
-              <SymbolView name={focused ? "magnifyingglass.circle.fill" : "magnifyingglass"} tintColor={color} size={size} />
+              <SymbolView
+                name={focused ? "magnifyingglass.circle.fill" : "magnifyingglass"}
+                tintColor={color}
+                size={size}
+              />
             ) : (
               <Ionicons
                 name={focused ? "search-circle" : "search-outline"}

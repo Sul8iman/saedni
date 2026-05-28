@@ -18,7 +18,7 @@ export default function Welcome() {
         </div>
         <h1 className="text-4xl font-bold text-primary mb-2">ساعدني</h1>
         <p className="text-foreground font-medium text-base">
-          احتاج مساعدة؟ سوّي طلب وتفاعل مع المساعدين القريبين
+          محتاج مساعدة؟ سوّي طلب وتفاعل مع المساعدين القريبين
         </p>
       </div>
 

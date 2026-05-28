@@ -186,7 +186,7 @@ export default function LoginScreen() {
                   : <Text style={s.primaryBtnTxt}>تأكيد الدخول</Text>}
               </TouchableOpacity>
               <TouchableOpacity onPress={() => { setStep("phone"); setOtp(""); }} style={s.ghostBtn}>
-                <Text style={[s.ghostTxt, { color: colors.mutedForeground }]}>تعديل رقم الجوال</Text>
+                <Text style={[s.ghostTxt, { color: colors.mutedForeground }]}>تعديل رقم الهاتف</Text>
               </TouchableOpacity>
             </>
           )}
@@ -221,7 +221,7 @@ export default function LoginScreen() {
                   : <Text style={s.primaryBtnTxt}>دخول</Text>}
               </TouchableOpacity>
               <TouchableOpacity onPress={() => { setStep("phone"); setPin(""); }} style={s.ghostBtn}>
-                <Text style={[s.ghostTxt, { color: colors.mutedForeground }]}>تعديل رقم الجوال</Text>
+                <Text style={[s.ghostTxt, { color: colors.mutedForeground }]}>تعديل رقم الهاتف</Text>
               </TouchableOpacity>
             </>
           )}

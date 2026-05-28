@@ -64,7 +64,7 @@ export default function CustomerProfileScreen() {
           <View style={s.divider} />
           <View style={s.infoRow}>
             <Text style={s.infoVal}>{user?.phone}</Text>
-            <Text style={s.infoKey}>رقم الجوال</Text>
+            <Text style={s.infoKey}>رقم الهاتف</Text>
           </View>
           <View style={s.divider} />
           <View style={s.infoRow}>

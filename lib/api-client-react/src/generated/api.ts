@@ -33,6 +33,7 @@ import type {
   LoginInput,
   RegisterInput,
   SuccessResponse,
+  UpdateRequestStatusInput,
   User,
   UserUpdate,
   VerifyHelperInput
@@ -859,6 +860,78 @@ export const useDeleteRequest = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getDeleteRequestMutationOptions(options));
+    }
+
+export const getUpdateRequestStatusUrl = (id: number,) => {
+
+
+
+
+  return `/api/requests/${id}/status`
+}
+
+/**
+ * @summary Helper updates request status (in_progress / completed)
+ */
+export const updateRequestStatus = async (id: number,
+    updateRequestStatusInput: UpdateRequestStatusInput, options?: RequestInit): Promise<HelpRequest> => {
+
+  return customFetch<HelpRequest>(getUpdateRequestStatusUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      updateRequestStatusInput,)
+  }
+);}
+
+
+
+
+export const getUpdateRequestStatusMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateRequestStatus>>, TError,{id: number;data: BodyType<UpdateRequestStatusInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateRequestStatus>>, TError,{id: number;data: BodyType<UpdateRequestStatusInput>}, TContext> => {
+
+const mutationKey = ['updateRequestStatus'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateRequestStatus>>, {id: number;data: BodyType<UpdateRequestStatusInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateRequestStatus(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateRequestStatusMutationResult = NonNullable<Awaited<ReturnType<typeof updateRequestStatus>>>
+    export type UpdateRequestStatusMutationBody = BodyType<UpdateRequestStatusInput>
+    export type UpdateRequestStatusMutationError = ErrorType<void>
+
+    /**
+ * @summary Helper updates request status (in_progress / completed)
+ */
+export const useUpdateRequestStatus = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateRequestStatus>>, TError,{id: number;data: BodyType<UpdateRequestStatusInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateRequestStatus>>,
+        TError,
+        {id: number;data: BodyType<UpdateRequestStatusInput>},
+        TContext
+      > => {
+      return useMutation(getUpdateRequestStatusMutationOptions(options));
     }
 
 export const getAcceptRequestUrl = (id: number,) => {

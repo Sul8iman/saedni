@@ -127,6 +127,8 @@ export interface HelpRequest {
   customerPhone?: string | null;
   /** @nullable */
   helperName?: string | null;
+  /** @nullable */
+  helperPhone?: string | null;
 }
 
 export type HelpRequestInputCategory = typeof HelpRequestInputCategory[keyof typeof HelpRequestInputCategory];
@@ -173,6 +175,19 @@ export interface AcceptRequestInput {
   helperId: number;
 }
 
+export type UpdateRequestStatusInputStatus = typeof UpdateRequestStatusInputStatus[keyof typeof UpdateRequestStatusInputStatus];
+
+
+export const UpdateRequestStatusInputStatus = {
+  in_progress: 'in_progress',
+  completed: 'completed',
+  cancelled: 'cancelled',
+} as const;
+
+export interface UpdateRequestStatusInput {
+  status: UpdateRequestStatusInputStatus;
+}
+
 export interface AdminStats {
   totalUsers: number;
   totalHelpers: number;
@@ -200,6 +215,7 @@ category?: string;
 area?: string;
 status?: string;
 customerId?: number;
+helperId?: number;
 };
 
 export type ListUsersParams = {

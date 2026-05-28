@@ -99,7 +99,8 @@ export const ListRequestsQueryParams = zod.object({
   "category": zod.coerce.string().optional(),
   "area": zod.coerce.string().optional(),
   "status": zod.coerce.string().optional(),
-  "customerId": zod.coerce.number().optional()
+  "customerId": zod.coerce.number().optional(),
+  "helperId": zod.coerce.number().optional()
 })
 
 export const ListRequestsResponseItem = zod.object({
@@ -116,7 +117,8 @@ export const ListRequestsResponseItem = zod.object({
   "createdAt": zod.string(),
   "customerName": zod.string().nullish(),
   "customerPhone": zod.string().nullish(),
-  "helperName": zod.string().nullish()
+  "helperName": zod.string().nullish(),
+  "helperPhone": zod.string().nullish()
 })
 export const ListRequestsResponse = zod.array(ListRequestsResponseItem)
 
@@ -156,7 +158,8 @@ export const GetRequestResponse = zod.object({
   "createdAt": zod.string(),
   "customerName": zod.string().nullish(),
   "customerPhone": zod.string().nullish(),
-  "helperName": zod.string().nullish()
+  "helperName": zod.string().nullish(),
+  "helperPhone": zod.string().nullish()
 })
 
 
@@ -191,7 +194,8 @@ export const UpdateRequestResponse = zod.object({
   "createdAt": zod.string(),
   "customerName": zod.string().nullish(),
   "customerPhone": zod.string().nullish(),
-  "helperName": zod.string().nullish()
+  "helperName": zod.string().nullish(),
+  "helperPhone": zod.string().nullish()
 })
 
 
@@ -200,6 +204,36 @@ export const UpdateRequestResponse = zod.object({
  */
 export const DeleteRequestParams = zod.object({
   "id": zod.coerce.number()
+})
+
+
+/**
+ * @summary Helper updates request status (in_progress / completed)
+ */
+export const UpdateRequestStatusParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const UpdateRequestStatusBody = zod.object({
+  "status": zod.enum(['in_progress', 'completed', 'cancelled'])
+})
+
+export const UpdateRequestStatusResponse = zod.object({
+  "id": zod.number(),
+  "customerId": zod.number(),
+  "helperId": zod.number().nullish(),
+  "category": zod.enum(['transport', 'delivery', 'government', 'shopping', 'home_services', 'labor']),
+  "details": zod.string(),
+  "area": zod.string(),
+  "timeType": zod.enum(['now', 'scheduled']),
+  "scheduledDateTime": zod.string().nullish(),
+  "offeredAmount": zod.number(),
+  "status": zod.enum(['available', 'accepted', 'in_progress', 'completed', 'cancelled']),
+  "createdAt": zod.string(),
+  "customerName": zod.string().nullish(),
+  "customerPhone": zod.string().nullish(),
+  "helperName": zod.string().nullish(),
+  "helperPhone": zod.string().nullish()
 })
 
 
@@ -228,7 +262,8 @@ export const AcceptRequestResponse = zod.object({
   "createdAt": zod.string(),
   "customerName": zod.string().nullish(),
   "customerPhone": zod.string().nullish(),
-  "helperName": zod.string().nullish()
+  "helperName": zod.string().nullish(),
+  "helperPhone": zod.string().nullish()
 })
 
 
@@ -253,7 +288,8 @@ export const CancelRequestResponse = zod.object({
   "createdAt": zod.string(),
   "customerName": zod.string().nullish(),
   "customerPhone": zod.string().nullish(),
-  "helperName": zod.string().nullish()
+  "helperName": zod.string().nullish(),
+  "helperPhone": zod.string().nullish()
 })
 
 

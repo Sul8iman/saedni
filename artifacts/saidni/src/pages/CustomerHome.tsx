@@ -45,7 +45,7 @@ export default function CustomerHome() {
       {
         data: {
           customerId: user.id,
-          category: data.category,
+          category: data.category as "transport" | "delivery" | "government" | "shopping" | "home_services" | "labor",
           details: data.details,
           timeType: data.timeType,
           scheduledDateTime: data.timeType === "scheduled" ? data.scheduledDateTime : undefined,

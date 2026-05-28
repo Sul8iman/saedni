@@ -25,6 +25,8 @@ export * from './loginInput';
 export * from './registerInput';
 export * from './registerInputUserType';
 export * from './successResponse';
+export * from './updateRequestStatusInput';
+export * from './updateRequestStatusInputStatus';
 export * from './user';
 export * from './userUpdate';
 export * from './userUserType';

@@ -1,0 +1,109 @@
+Update the “ساعدني” app with these changes:
+
+1. Available Requests Screen / قسم الطلبات المتاحة:
+   For every request card, show exactly 3 action buttons:
+
+* مراسلة
+* اتصال
+* قبول الطلب
+
+Button behavior:
+
+* مراسلة: open WhatsApp chat with the customer phone number.
+  Use WhatsApp URL format:
+  https://wa.me/{customerPhone}?text=مرحباً، بخصوص طلبك في ساعدني
+* اتصال: open phone dialer using:
+  tel:{customerPhone}
+* قبول الطلب: assign the logged-in helper to this request.
+
+When helper accepts a request:
+
+* Set request status to “accepted”
+* Set helperId to current helper id
+* Save helperName
+* Save helperPhone
+* Change Arabic status label to: “مقبولة”
+* Remove or disable the “قبول الطلب” button for that request
+* Show success message:
+  “تم قبول الطلب بنجاح”
+
+2. Helper Page:
+   Add a new tab or section called:
+   “طلباتي”
+
+This page should show requests assigned to the current helper.
+
+Split the helper requests into:
+
+* الطلبات الحالية
+* الطلبات السابقة
+
+For each request inside “طلباتي”, show:
+
+* نوع الطلب
+* تفاصيل الطلب
+* المنطقة
+* الوقت
+* المبلغ
+* اسم طالب المساعدة
+* رقم طالب المساعدة
+* حالة الطلب
+
+Status labels in Arabic:
+
+* accepted = مقبولة
+* in_progress = قيد التنفيذ
+* completed = مكتملة
+
+Add action buttons inside each accepted/current request:
+
+* بدء التنفيذ → changes status to in_progress / قيد التنفيذ
+* إنهاء الطلب → changes status to completed / مكتملة
+* مراسلة العميل → opens WhatsApp to customer phone
+* اتصال → opens phone dialer to customer phone
+
+Move completed requests to:
+“الطلبات السابقة”
+
+3. Customer Side:
+   When a helper accepts the customer’s request, show helper details inside the customer’s request card.
+
+Customer should see:
+
+* تم قبول طلبك
+* اسم المساعد
+* رقم المساعد
+* حالة الطلب: مقبولة / قيد التنفيذ / مكتملة
+
+Also add customer action buttons:
+
+* مراسلة المساعد → opens WhatsApp to helper phone
+* اتصال بالمساعد → opens phone dialer to helper phone
+
+4. Database / Data Model Updates:
+   Update Requests model to include:
+
+* helperId
+* helperName
+* helperPhone
+* customerName
+* customerPhone
+* status
+
+Request status values:
+
+* available
+* accepted
+* in_progress
+* completed
+* cancelled
+
+5. Important:
+
+* Keep full Arabic RTL layout.
+* Do not add real payment gateway.
+* Do not add internal chat yet.
+* Do not break existing login, registration, admin, or request creation features.
+* Make the UI clean, simple, and mobile-first.
+* Use modern cards and clear buttons.
+* Add comments in code explaining the request acceptance flow.

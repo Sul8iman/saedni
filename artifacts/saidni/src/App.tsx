@@ -10,6 +10,7 @@ import Register from "@/pages/Register";
 import CustomerHome from "@/pages/CustomerHome";
 import MyRequests from "@/pages/MyRequests";
 import HelperRequests from "@/pages/HelperRequests";
+import HelperMyRequests from "@/pages/HelperMyRequests";
 import RequestDetails from "@/pages/RequestDetails";
 import Profile from "@/pages/Profile";
 import Admin from "@/pages/Admin";
@@ -46,6 +47,9 @@ function Router() {
       </Route>
       <Route path="/helper-requests">
         <Protected><HelperRequests /></Protected>
+      </Route>
+      <Route path="/helper-my-requests">
+        <Protected><HelperMyRequests /></Protected>
       </Route>
       <Route path="/request/:id">
         <Protected><RequestDetails /></Protected>

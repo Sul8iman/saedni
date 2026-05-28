@@ -11,10 +11,13 @@ import {
   AcceptRequestParams,
   CancelRequestParams,
   ListRequestsQueryParams,
+  UpdateRequestStatusBody,
+  UpdateRequestStatusParams,
 } from "@workspace/api-zod";
 
 const router: IRouter = Router();
 
+// Enrich a raw DB request row with customer/helper name and phone
 async function enrichRequest(req: typeof requestsTable.$inferSelect) {
   const ids = [req.customerId, req.helperId].filter(Boolean) as number[];
   const users =
@@ -33,6 +36,7 @@ async function enrichRequest(req: typeof requestsTable.$inferSelect) {
     customerName: userMap[req.customerId]?.name ?? null,
     customerPhone: userMap[req.customerId]?.phone ?? null,
     helperName: req.helperId ? (userMap[req.helperId]?.name ?? null) : null,
+    helperPhone: req.helperId ? (userMap[req.helperId]?.phone ?? null) : null,
   };
 }
 
@@ -46,6 +50,7 @@ router.get("/requests", async (req, res): Promise<void> => {
   if (params.area) conditions.push(eq(requestsTable.area, params.area));
   if (params.status) conditions.push(eq(requestsTable.status, params.status));
   if (params.customerId) conditions.push(eq(requestsTable.customerId, Number(params.customerId)));
+  if (params.helperId) conditions.push(eq(requestsTable.helperId, Number(params.helperId)));
 
   const rows =
     conditions.length > 0
@@ -143,7 +148,50 @@ router.delete("/requests/:id", async (req, res): Promise<void> => {
   res.sendStatus(204);
 });
 
-// PATCH /requests/:id/accept
+// PATCH /requests/:id/status — helper advances status (in_progress → completed)
+router.patch("/requests/:id/status", async (req, res): Promise<void> => {
+  const params = UpdateRequestStatusParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+
+  const parsed = UpdateRequestStatusBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  const [existing] = await db
+    .select()
+    .from(requestsTable)
+    .where(eq(requestsTable.id, params.data.id));
+
+  if (!existing) {
+    res.status(404).json({ error: "الطلب غير موجود" });
+    return;
+  }
+
+  // Validate allowed status transitions
+  const allowed: Record<string, string[]> = {
+    accepted: ["in_progress", "cancelled"],
+    in_progress: ["completed", "cancelled"],
+  };
+  if (!allowed[existing.status]?.includes(parsed.data.status)) {
+    res.status(400).json({ error: "تحويل الحالة غير مسموح" });
+    return;
+  }
+
+  const [row] = await db
+    .update(requestsTable)
+    .set({ status: parsed.data.status })
+    .where(eq(requestsTable.id, params.data.id))
+    .returning();
+
+  res.json(await enrichRequest(row));
+});
+
+// PATCH /requests/:id/accept — helper accepts an available request
 router.patch("/requests/:id/accept", async (req, res): Promise<void> => {
   const params = AcceptRequestParams.safeParse(req.params);
   if (!params.success) {
@@ -181,7 +229,7 @@ router.patch("/requests/:id/accept", async (req, res): Promise<void> => {
   res.json(await enrichRequest(row));
 });
 
-// PATCH /requests/:id/cancel
+// PATCH /requests/:id/cancel — customer cancels a request
 router.patch("/requests/:id/cancel", async (req, res): Promise<void> => {
   const params = CancelRequestParams.safeParse(req.params);
   if (!params.success) {

@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { PlusCircle, List, User, ClipboardList, LayoutDashboard, Users } from "lucide-react";
+import { PlusCircle, List, User, ClipboardList, LayoutDashboard, Users, Briefcase } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
 export function BottomNav() {
@@ -45,6 +45,12 @@ export function BottomNav() {
           <button className={`flex flex-col items-center gap-0.5 text-xs px-4 py-1 ${isActive("/helper-requests")}`} data-testid="nav-helper-requests">
             <ClipboardList className="w-5 h-5" />
             <span>الطلبات المتاحة</span>
+          </button>
+        </Link>
+        <Link href="/helper-my-requests">
+          <button className={`flex flex-col items-center gap-0.5 text-xs px-4 py-1 ${isActive("/helper-my-requests")}`} data-testid="nav-helper-my-requests">
+            <Briefcase className="w-5 h-5" />
+            <span>طلباتي</span>
           </button>
         </Link>
         <Link href="/profile">

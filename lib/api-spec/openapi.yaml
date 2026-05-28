@@ -145,6 +145,10 @@ paths:
           in: query
           schema:
             type: integer
+        - name: helperId
+          in: query
+          schema:
+            type: integer
       responses:
         "200":
           description: List of requests
@@ -232,6 +236,35 @@ paths:
       responses:
         "204":
           description: Deleted
+
+  /requests/{id}/status:
+    patch:
+      operationId: updateRequestStatus
+      tags: [requests]
+      summary: Helper updates request status (in_progress / completed)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateRequestStatusInput"
+      responses:
+        "200":
+          description: Updated request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HelpRequest"
+        "400":
+          description: Invalid status transition
+        "404":
+          description: Not found
 
   /requests/{id}/accept:
     patch:
@@ -530,6 +563,8 @@ components:
           type: ["string", "null"]
         helperName:
           type: ["string", "null"]
+        helperPhone:
+          type: ["string", "null"]
 
     HelpRequestInput:
       type: object
@@ -576,6 +611,14 @@ components:
       properties:
         helperId:
           type: integer
+
+    UpdateRequestStatusInput:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [in_progress, completed, cancelled]
 
     AdminStats:
       type: object

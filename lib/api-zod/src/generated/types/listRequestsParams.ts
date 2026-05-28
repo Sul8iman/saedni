@@ -11,4 +11,5 @@ category?: string;
 area?: string;
 status?: string;
 customerId?: number;
+helperId?: number;
 };

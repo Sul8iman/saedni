@@ -20,7 +20,7 @@ export default function Profile() {
 
   const handleLogout = () => {
     logoutMutation.mutate(
-      {},
+      undefined,
       {
         onSuccess: () => {
           logout();

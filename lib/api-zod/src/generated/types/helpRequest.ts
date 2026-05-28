@@ -29,4 +29,6 @@ export interface HelpRequest {
   customerPhone?: string | null;
   /** @nullable */
   helperName?: string | null;
+  /** @nullable */
+  helperPhone?: string | null;
 }

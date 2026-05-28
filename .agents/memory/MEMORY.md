@@ -1,0 +1,2 @@
+- [Expo cookie auth](expo-cookie-auth.md) — session cookies work in Expo if global fetch is patched with `credentials: "include"` in `_layout.tsx`.
+- [Expo role-based routing](expo-role-routing.md) — role-gated navigation uses `app/index.tsx` redirect + separate `(auth)/(customer)/(helper)/(admin)` route groups.

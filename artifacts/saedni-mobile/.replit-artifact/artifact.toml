@@ -1,0 +1,27 @@
+kind = "mobile"
+previewPath = "/saedni-mobile/"
+title = "ساعدني Mobile"
+version = "1.0.0"
+id = "artifacts/saedni-mobile"
+router = "expo-domain"
+
+[[integratedSkills]]
+name = "expo"
+version = "1.0.0"
+
+[[services]]
+ensurePreviewReachable = "/status"
+name = "expo"
+paths = [ "/saedni-mobile/" ]
+localPort = 23391
+
+[services.development]
+run = "pnpm --filter @workspace/saedni-mobile run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/saedni-mobile", "run", "build" ]
+run = [ "pnpm", "--filter", "@workspace/saedni-mobile", "run", "serve" ]
+
+[services.env]
+PORT = "23391"
+BASE_PATH = "/saedni-mobile/"

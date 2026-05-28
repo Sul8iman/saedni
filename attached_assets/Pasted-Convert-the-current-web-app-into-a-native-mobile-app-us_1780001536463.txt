@@ -1,0 +1,87 @@
+Convert the current “ساعدني” web app into a native mobile app using Expo / React Native inside Replit.
+
+Goal:
+I want this app to become a real iOS and Android mobile app that can be previewed with Expo Go and later submitted to TestFlight and the App Store.
+
+Requirements:
+
+1. Keep the same app:
+
+* Name: ساعدني
+* Full Arabic RTL
+* Same colors and branding
+* Same login/OTP flow
+* Same admin dashboard
+* Same customer request creation
+* Same helper current requests screen
+* Same WhatsApp and phone call buttons
+
+2. Convert frontend:
+   Convert the current React web UI into React Native / Expo screens.
+
+Create mobile screens:
+
+* Welcome/Login
+* Register
+* OTP Verification
+* Customer Home / Create Request
+* Customer Account
+* Helper Current Requests
+* Helper Account
+* Admin Dashboard
+* Users list
+* User details
+* Requests list
+
+3. Mobile-specific behavior:
+
+* WhatsApp button should open WhatsApp using Linking
+* Call button should open phone dialer using Linking
+* Use mobile-friendly components
+* Use SafeAreaView
+* Use ScrollView where needed
+* Keep layout responsive for iPhone and Android
+
+4. Data:
+   Keep the existing backend/database logic if possible.
+   If current storage is web-only, replace it with mobile-compatible storage:
+
+* AsyncStorage for session
+* Keep database API calls working
+
+5. Remove browser-only features:
+   Remove or replace:
+
+* localStorage
+* window-specific code
+* browser-only routing
+
+Use mobile-compatible navigation:
+
+* React Navigation or Expo Router
+
+6. Preview:
+   Make the app run in Expo Go.
+   Add proper Expo configuration:
+
+* app.json
+* app name: ساعدني
+* slug: saedni
+* bundle identifier: com.saedni.app
+* Android package: com.saedni.app
+
+7. App Store readiness:
+   Prepare the project for Replit Mobile App publishing:
+
+* Expo project structure
+* iOS-ready configuration
+* Android-ready configuration
+* App icon placeholder
+* Splash screen placeholder
+
+8. Important:
+   Do not change the business logic.
+   Do not add payments.
+   Do not add internal chat.
+   Do not make the app more complex.
+   Focus only on converting it to a real mobile app.

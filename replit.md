@@ -1,6 +1,6 @@
-# [Project name]
+# ساعدني
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+منصة المساعدة اليومية في عُمان — a marketplace where customers post daily help tasks and registered helpers accept them for payment in Omani Rials.
 
 ## Run & Operate
 
@@ -11,9 +11,15 @@ _Replace the heading above with the project's name, and this line with one sente
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
 - Required env: `DATABASE_URL` — Postgres connection string
 
+## Demo accounts (password: 123456)
+- Customer: 96891000001 (أحمد الريامي)
+- Helper: 96891000003 (سالم الحارثي)
+- Admin: 96891000000 (مدير النظام)
+
 ## Stack
 
 - pnpm workspaces, Node.js 24, TypeScript 5.9
+- Frontend: React + Vite + Wouter + shadcn/ui + Tailwind, full Arabic RTL
 - API: Express 5
 - DB: PostgreSQL + Drizzle ORM
 - Validation: Zod (`zod/v4`), `drizzle-zod`
@@ -22,15 +28,28 @@ _Replace the heading above with the project's name, and this line with one sente
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `lib/api-spec/openapi.yaml` — API contract (source of truth)
+- `lib/db/src/schema/` — DB schema (users.ts, requests.ts)
+- `artifacts/api-server/src/routes/` — Express route handlers
+- `artifacts/saidni/src/` — React frontend
+  - `pages/` — all page components
+  - `contexts/AuthContext.tsx` — auth state + localStorage
+  - `lib/categories.ts` — category/area/status constants
+  - `components/BottomNav.tsx` — role-aware bottom navigation
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- **Session storage**: Simple in-memory session map in app.ts (MVP). Replace with express-session + DB for production.
+- **Auth**: phone + password, password hashed with base64(password + salt). Use bcrypt in production.
+- **RTL**: `dir="rtl"` set on html/body globally in index.css, Noto Sans Arabic font loaded.
+- **User types**: customer / helper / admin — routing after login diverges by type.
+- **No payment gateway / chat / maps**: intentionally excluded from v1 per spec.
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+- Customers create help requests (category, details, area, time, amount in OMR)
+- Helpers browse available requests, filter by category/area, and accept them
+- Admin dashboard with stats, request management, and helper verification/blocking
 
 ## User preferences
 
@@ -38,7 +57,9 @@ _Populate as you build — explicit user instructions worth remembering across s
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- Password hash function in auth.ts uses base64 — swap for bcrypt before production
+- Demo password for all seed users: `123456`
+- Sessions are in-memory — restart loses session state; users must re-login after server restart
 
 ## Pointers
 

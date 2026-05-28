@@ -1,0 +1,203 @@
+Build a mobile-first Arabic RTL app called “ساعدني”.
+
+The app is a marketplace for daily help tasks in Oman. The idea: a customer creates a help request, and registered helpers can view available requests and accept them.
+
+Language and UI:
+
+* Full Arabic language.
+* Full RTL layout.
+* Modern clean Gulf-style design.
+* Use simple green/teal and white colors.
+* Rounded cards, clean icons, easy navigation.
+* Mobile-first design, suitable for Android and iPhone.
+* App name: ساعدني
+
+User types:
+
+1. Customer / طالب مساعدة
+2. Helper / مساعد
+3. Admin / مدير النظام
+
+Main Customer Screen:
+Title: ساعدني
+Subtitle: ماذا تحتاج اليوم؟
+
+Create request form with these fields:
+
+1. ساعدني في:
+   Show 6 main categories:
+
+* 🚚 نقل وتحميل
+* 🚗 مشاوير وتوصيل
+* 🏛 معاملات ومراجعات
+* 🛒 شراء أغراض
+* 🔧 خدمات منزلية
+* 👷 عمالة ومساعدة
+
+2. تفاصيل الطلب:
+   A text box where the user writes details.
+   Placeholder:
+   “مثال: أحتاج شخص ينقل أغراض من بوشر إلى الخوير”
+
+3. متى؟
+   Options:
+
+* الآن
+* اختر اليوم والوقت
+
+4. المنطقة:
+   Dropdown with:
+
+* مسقط
+* بوشر
+* الخوير
+* الغبرة
+* الموالح
+* السيب
+* العامرات
+* صور
+* صحار
+* نزوى
+* صلالة
+* أخرى
+
+5. المبلغ المدفوع:
+   Input field:
+   “كم ريال عماني؟”
+   Use OMR currency.
+
+6. زر:
+   “انشر الطلب”
+
+After publishing:
+Show confirmation:
+“تم نشر طلبك وسيظهر للمساعدين القريبين”
+
+Second Main Screen: طلبات متاحة
+This screen is for helpers.
+
+Show a list of request cards.
+
+Each request card should include:
+
+* Category icon and name
+* Request details
+* Area
+* Time
+* Offered payment in OMR
+* Status: متاح / تم القبول
+* Button: قبول الطلب
+
+Example request cards:
+
+1. نقل وتحميل
+   “نقل أغراض بسيطة من بوشر إلى الغبرة”
+   الموقع: بوشر
+   الوقت: الآن
+   المبلغ: 8 ريال
+   Button: قبول الطلب
+
+2. شراء أغراض
+   “شراء أغراض من السوق وتوصيلها للبيت”
+   الموقع: الخوير
+   الوقت: اليوم 6 مساءً
+   المبلغ: 3 ريال
+   Button: قبول الطلب
+
+3. معاملات ومراجعات
+   “مراجعة جهة حكومية واستلام ورقة”
+   الموقع: مسقط
+   الوقت: غداً صباحاً
+   المبلغ: 10 ريال
+   Button: قبول الطلب
+
+Helper Flow:
+
+* Helper can register/login.
+* Helper can view all available requests.
+* Helper can filter by category, area, and time.
+* Helper can accept a request.
+* Once accepted, request status changes to “تم القبول”.
+* Show customer contact placeholder after accepting:
+  “سيتم عرض بيانات التواصل بعد التأكيد”
+
+Customer Flow:
+
+* Customer can create request.
+* Customer can see his own requests.
+* Customer can see request status:
+
+  * منشور
+  * تم القبول
+  * قيد التنفيذ
+  * مكتمل
+* Customer can cancel request before acceptance.
+
+Admin Panel:
+Create a simple admin dashboard with:
+
+* Total users
+* Total helpers
+* Total requests
+* Active requests
+* Completed requests
+* Ability to view all requests
+* Ability to approve or block helpers
+* Ability to delete inappropriate requests
+* Ability to change request status manually
+
+Database structure:
+Users:
+
+* id
+* name
+* phone
+* userType: customer/helper/admin
+* area
+* rating
+* isVerified
+* createdAt
+
+Requests:
+
+* id
+* customerId
+* helperId
+* category
+* details
+* area
+* timeType: now/scheduled
+* scheduledDateTime
+* offeredAmount
+* status: available/accepted/in_progress/completed/cancelled
+* createdAt
+
+Core pages:
+
+1. Welcome page
+2. Login/Register page
+3. Customer home page: create request
+4. My requests page
+5. Helper requests page
+6. Request details page
+7. Profile page
+8. Admin dashboard
+
+Important:
+
+* Keep the first version simple.
+* Do not add payment gateway yet.
+* Do not add complex maps yet.
+* Do not add chat yet.
+* Use fake/demo data if backend setup is not complete.
+* Make sure the UI looks like a real startup app.
+* Make the code clean and easy to extend later.
+* Add comments in the code explaining the main sections.
+
+Goal:
+Build a working MVP prototype where:
+
+* A customer creates a request.
+* The request appears in the helper requests list.
+* A helper can accept the request.
+* The status changes correctly.

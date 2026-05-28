@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { useLocation } from "wouter";
 import { HandHeart, KeyRound, RefreshCw } from "lucide-react";
 import { useRegister, useLogin, useVerifyOtp } from "@workspace/api-client-react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -22,10 +23,11 @@ type Step = "form" | "otp";
 
 export default function Register() {
   const { setUser } = useAuth();
+  const [, setLocation] = useLocation();
   const { toast } = useToast();
 
   const registerMutation = useRegister();
-  const loginMutation    = useLogin();   // for resend OTP
+  const loginMutation    = useLogin();
   const verifyMutation   = useVerifyOtp();
 
   const [step, setStep]       = useState<Step>("form");
@@ -44,6 +46,7 @@ export default function Register() {
       { data },
       {
         onSuccess: (res) => {
+          console.log("OTP page phoneNumber:", data.phone);
           setPhone(data.phone);
           setTestOtp(res.otp ?? null);
           setStep("otp");
@@ -63,16 +66,16 @@ export default function Register() {
       toast({ title: "خطأ", description: "الرمز يتكون من 4 أرقام", variant: "destructive" });
       return;
     }
+    console.log("OTP page phoneNumber:", phone);
     verifyMutation.mutate(
       { data: { phone, otp: otp.trim() } },
       {
         onSuccess: (response) => {
+          console.log("OTP valid, logging in user:", response.user.id, response.user.userType);
           setUser(response.user);
           const t = response.user.userType;
-          // small delay so state settles before redirect
-          setTimeout(() => {
-            window.location.href = t === "admin" ? "/admin" : t === "helper" ? "/helper-requests" : "/customer";
-          }, 50);
+          const dest = t === "admin" ? "/admin" : t === "helper" ? "/helper-requests" : "/customer";
+          setLocation(dest);
         },
         onError: (err: any) => {
           const msg = err?.data?.error ?? "رمز التحقق غير صحيح";
@@ -82,7 +85,7 @@ export default function Register() {
     );
   };
 
-  // ── Resend OTP (re-call login endpoint to regenerate) ────────────────────
+  // ── Resend OTP ────────────────────────────────────────────────────────────
   const handleResend = () => {
     setOtp("");
     setTestOtp(null);
@@ -200,7 +203,8 @@ export default function Register() {
               </div>
               <p className="font-semibold text-sm">تم إنشاء حسابك بنجاح</p>
               <p className="text-xs text-muted-foreground mt-1">
-                يرجى التواصل مع الإدارة للحصول على رمز التحقق لتفعيل حسابك
+                أدخل رمز التحقق المرسل من الإدارة للرقم:{" "}
+                <span className="font-mono font-bold text-foreground" dir="ltr">{phone}</span>
               </p>
             </div>
 

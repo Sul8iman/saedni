@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { HandHeart, Phone, KeyRound, RefreshCw, ShieldAlert } from "lucide-react";
 import { useLogin, useVerifyOtp } from "@workspace/api-client-react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -10,16 +11,17 @@ type Step = "phone" | "otp";
 
 export default function Login() {
   const { setUser } = useAuth();
+  const [, setLocation] = useLocation();
   const { toast } = useToast();
 
   const loginMutation  = useLogin();
   const verifyMutation = useVerifyOtp();
 
-  const [step, setStep]         = useState<Step>("phone");
-  const [phone, setPhone]       = useState("");
-  const [otp, setOtp]           = useState("");
-  const [testOtp, setTestOtp]   = useState<string | null>(null);
-  const [unverified, setUnverified] = useState(false); // account not yet activated
+  const [step, setStep]             = useState<Step>("phone");
+  const [phone, setPhone]           = useState("");
+  const [otp, setOtp]               = useState("");
+  const [testOtp, setTestOtp]       = useState<string | null>(null);
+  const [unverified, setUnverified] = useState(false);
 
   // ── Step 1: Request OTP ───────────────────────────────────────────────────
   const handleRequestOtp = (e: React.FormEvent) => {
@@ -32,6 +34,7 @@ export default function Login() {
       { data: { phone: phone.trim() } },
       {
         onSuccess: (res) => {
+          console.log("OTP page phoneNumber:", phone.trim());
           setTestOtp(res.otp ?? null);
           setUnverified(res.isVerified === false);
           setStep("otp");
@@ -51,15 +54,16 @@ export default function Login() {
       toast({ title: "خطأ", description: "الرمز يتكون من 4 أرقام", variant: "destructive" });
       return;
     }
+    console.log("OTP page phoneNumber:", phone.trim());
     verifyMutation.mutate(
       { data: { phone: phone.trim(), otp: otp.trim() } },
       {
         onSuccess: (response) => {
+          console.log("OTP valid, logging in user:", response.user.id, response.user.userType);
           setUser(response.user);
           const t = response.user.userType;
-          setTimeout(() => {
-            window.location.href = t === "admin" ? "/admin" : t === "helper" ? "/helper-requests" : "/customer";
-          }, 50);
+          const dest = t === "admin" ? "/admin" : t === "helper" ? "/helper-requests" : "/customer";
+          setLocation(dest);
         },
         onError: (err: any) => {
           const msg = err?.data?.error ?? "رمز التحقق غير صحيح";
@@ -113,7 +117,7 @@ export default function Login() {
               placeholder="968XXXXXXXX"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              className="rounded-xl h-12 text-right font-mono"
+              className="rounded-xl h-12 font-mono"
               data-testid="input-phone"
               dir="ltr"
             />
@@ -141,24 +145,23 @@ export default function Login() {
               <p className="font-semibold">
                 {unverified ? "حسابك غير مفعّل بعد" : "أدخل رمز التحقق"}
               </p>
-              <p className="text-sm text-muted-foreground mt-0.5">
+              <p className="text-xs text-muted-foreground mt-1">
                 {unverified
                   ? "يرجى إدخال رمز التحقق من الإدارة لتفعيل حسابك"
-                  : "تواصل مع الإدارة للحصول على الرمز"
+                  : <>أدخل رمز التحقق المرسل من الإدارة للرقم: <span className="font-mono font-bold text-foreground" dir="ltr">{phone}</span></>
                 }
               </p>
             </div>
 
-            {/* Unverified warning banner */}
             {unverified && (
               <div className="bg-orange-50 border border-orange-200 rounded-xl p-3 text-center" data-testid="unverified-banner">
                 <p className="text-xs text-orange-700 font-medium">
-                  حسابك غير مفعل. يرجى إدخال رمز التحقق من الإدارة
+                  حسابك غير مفعل. يرجى إدخال رمز التحقق من الإدارة للرقم:{" "}
+                  <span className="font-mono font-bold" dir="ltr">{phone}</span>
                 </p>
               </div>
             )}
 
-            {/* MVP test mode: show the OTP directly */}
             {testOtp && (
               <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-center" data-testid="test-otp-box">
                 <p className="text-xs text-amber-700 font-medium mb-1">رمز التحقق (للاختبار)</p>
@@ -187,7 +190,10 @@ export default function Login() {
               disabled={verifyMutation.isPending || otp.length < 4}
               data-testid="btn-verify-otp"
             >
-              {verifyMutation.isPending ? "جارٍ التحقق..." : unverified ? "تفعيل الحساب والدخول" : "تأكيد الدخول"}
+              {verifyMutation.isPending
+                ? "جارٍ التحقق..."
+                : unverified ? "تفعيل الحساب والدخول" : "تأكيد الدخول"
+              }
             </Button>
 
             <div className="flex items-center justify-between text-sm">

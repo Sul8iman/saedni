@@ -1,0 +1,78 @@
+Fix the OTP verification bug in the “ساعدني” app.
+
+Problem:
+After registration, when the user enters the OTP code, the app does not log in and asks for the phone number again.
+
+Goal:
+After creating a new account, the app must keep the newly registered phone number and verify OTP for that same user without asking for the phone number again.
+
+Required fix:
+
+1. Registration flow:
+   After user clicks “إنشاء حساب”:
+
+* Create the user record
+* Generate OTP
+* Save otpCode and otpCreatedAt in the user record
+* Store the registered phone number temporarily in app state/session state
+* Navigate directly to OTP verification page
+* Pass the phone number to the OTP page using route state, context, or query parameter
+
+Do NOT redirect back to login.
+Do NOT ask for phone number again immediately after registration.
+
+2. OTP Verification page:
+   The OTP page must receive the phone number from registration/login flow.
+
+If phone number exists:
+
+* Show message:
+  “أدخل رمز التحقق المرسل من الإدارة للرقم: {phoneNumber}”
+* Only ask for OTP code
+* Do NOT ask for phone number again
+
+When user enters OTP:
+
+* Find user by phoneNumber
+* Compare entered OTP with user.otpCode
+* Check OTP expiration
+* If valid:
+
+  * Set isVerified = true
+  * Set isActive = true
+  * Clear otpCode
+  * Clear otpCreatedAt
+  * Set the authenticated user in AuthContext
+  * Save user session safely
+  * Redirect based on userType:
+    customer → customer dashboard/home
+    helper → helper dashboard/current requests
+    admin → admin dashboard
+
+3. Login flow:
+   If existing user logs in with phone number and isVerified = false:
+
+* Generate or use existing OTP
+* Navigate to OTP verification page
+* Pass phoneNumber to OTP page
+* OTP page should not request phone number again
+
+4. Prevent redirect loop:
+   Make sure protected routes do not redirect the user back to login during OTP verification.
+   OTP verification page should be a public route.
+
+5. Add debug logs temporarily:
+   Add console logs:
+
+* “OTP page phoneNumber:”
+* “User found for OTP:”
+* “OTP valid, logging in user:”
+
+6. Important:
+
+* Do not use password.
+* Do not send SMS.
+* Keep OTP admin-only.
+* Keep full Arabic RTL.
+* Do not break existing login/register/admin dashboard.
+* Fix the issue so the user enters OTP once and enters the app successfully.

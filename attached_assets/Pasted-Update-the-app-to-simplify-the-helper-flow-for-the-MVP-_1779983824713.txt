@@ -1,0 +1,89 @@
+Update the “ساعدني” app to simplify the helper flow for the MVP.
+
+Important concept:
+In the first version, helpers should NOT accept requests inside the app.
+The app should only show current available requests, and helpers contact the customer outside the app by WhatsApp or phone call.
+
+1. Helper interface:
+   For helper accounts, keep only:
+
+* الطلبات الحالية
+* حسابي
+
+Remove completely:
+
+* طلباتي
+* قبول الطلب
+* بدء التنفيذ
+* إنهاء الطلب
+* حالة الطلب للمساعد
+* أي نظام قبول أو تعيين helperId
+
+2. Current Requests Screen / الطلبات الحالية:
+   Show only active/current customer requests.
+
+Each request card should show:
+
+* نوع الطلب
+* تفاصيل الطلب
+* المنطقة
+* الوقت
+* المبلغ
+* اسم طالب الخدمة
+* رقم طالب الخدمة
+
+Each request card should have only 2 buttons:
+
+* مراسلة
+* اتصال
+
+Button behavior:
+
+* مراسلة: open WhatsApp chat with the customer phone number.
+  Use:
+  https://wa.me/{customerPhone}?text=مرحباً، بخصوص طلبك في ساعدني
+* اتصال: open phone dialer:
+  tel:{customerPhone}
+
+3. Remove Accept Request:
+   Remove the “قبول الطلب” button from all helper screens.
+   Remove any logic that changes request status when a helper interacts with the request.
+   Do not assign the request to any helper.
+   Do not save helperId, helperName, or helperPhone when clicking WhatsApp or Call.
+
+4. Customer side:
+   Keep customer request creation simple.
+   Customer creates a request and it appears in “الطلبات الحالية” for helpers.
+
+Customer request statuses can remain simple:
+
+* منشور
+* ملغي
+
+No need for:
+
+* مقبولة
+* قيد التنفيذ
+* مكتملة
+
+5. Admin side:
+   Admin can still view all requests and users.
+   Admin can delete inappropriate requests.
+   Admin can manually hide or cancel a request if needed.
+
+6. UI:
+   Use full Arabic RTL.
+   Keep the design clean and mobile-first.
+   Use modern cards.
+   Make the helper page very simple:
+   Title: الطلبات الحالية
+   Subtitle: تواصل مباشرة مع طالب الخدمة عبر الواتساب أو الاتصال
+
+7. Goal:
+   Make the app easier for early-stage testing:
+
+* Customer publishes request
+* Helpers see current requests
+* Helpers contact customer outside the app
+* No in-app acceptance flow
+* No in-app task management

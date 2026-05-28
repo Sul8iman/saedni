@@ -57,10 +57,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (res.ok) {
         const freshUser: User = await res.json();
         setUser(freshUser);
+      } else {
+        // Session expired or invalid — clear stale localStorage data so the
+        // user is sent back to login with the correct role after re-auth.
+        setUser(null);
       }
-      // If 401: session expired (server restarted) — keep localStorage data as-is
     } catch {
-      // network error — keep cached data
+      // Network error — keep cached data to avoid logout on flaky connection
     } finally {
       refreshingRef.current = false;
     }

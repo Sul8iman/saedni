@@ -14,6 +14,7 @@ import RequestDetails from "@/pages/RequestDetails";
 import Profile from "@/pages/Profile";
 import Admin from "@/pages/Admin";
 import UsersManagement from "@/pages/UsersManagement";
+import HelperMyRequests from "@/pages/HelperMyRequests";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -24,11 +25,30 @@ const queryClient = new QueryClient({
   },
 });
 
-// Protected route: redirects to /login if not authenticated
+// Redirect to the correct dashboard based on userType
+function roleDashboard(userType: string): string {
+  if (userType === "admin")  return "/admin";
+  if (userType === "helper") return "/helper-requests";
+  return "/customer";
+}
+
+// Require authentication. While loading, render nothing (avoid flash).
 function Protected({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
   if (isLoading) return null;
   if (!user) return <Redirect to="/login" />;
+  return <>{children}</>;
+}
+
+// Require a specific userType — redirects to correct dashboard if wrong role.
+function RoleProtected({ role, children }: { role: string | string[]; children: React.ReactNode }) {
+  const { user, isLoading } = useAuth();
+  if (isLoading) return null;
+  if (!user) return <Redirect to="/login" />;
+  const allowed = Array.isArray(role) ? role : [role];
+  if (!allowed.includes(user.userType)) {
+    return <Redirect to={roleDashboard(user.userType)} />;
+  }
   return <>{children}</>;
 }
 
@@ -38,27 +58,39 @@ function Router() {
       <Route path="/" component={Welcome} />
       <Route path="/login" component={Login} />
       <Route path="/register" component={Register} />
+
+      {/* Customer-only routes */}
       <Route path="/customer">
-        <Protected><CustomerHome /></Protected>
+        <RoleProtected role="customer"><CustomerHome /></RoleProtected>
       </Route>
       <Route path="/my-requests">
-        <Protected><MyRequests /></Protected>
+        <RoleProtected role="customer"><MyRequests /></RoleProtected>
       </Route>
+
+      {/* Helper-only routes */}
       <Route path="/helper-requests">
-        <Protected><HelperRequests /></Protected>
+        <RoleProtected role="helper"><HelperRequests /></RoleProtected>
       </Route>
+      <Route path="/helper-my-requests">
+        <RoleProtected role="helper"><HelperMyRequests /></RoleProtected>
+      </Route>
+
+      {/* Shared (customer + helper) */}
       <Route path="/request/:id">
-        <Protected><RequestDetails /></Protected>
+        <RoleProtected role={["customer", "helper"]}><RequestDetails /></RoleProtected>
       </Route>
       <Route path="/profile">
         <Protected><Profile /></Protected>
       </Route>
+
+      {/* Admin-only routes */}
       <Route path="/admin">
-        <Protected><Admin /></Protected>
+        <RoleProtected role="admin"><Admin /></RoleProtected>
       </Route>
       <Route path="/users-management">
-        <Protected><UsersManagement /></Protected>
+        <RoleProtected role="admin"><UsersManagement /></RoleProtected>
       </Route>
+
       <Route component={NotFound} />
     </Switch>
   );

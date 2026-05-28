@@ -142,17 +142,19 @@ router.post("/auth/admin-login", async (req, res): Promise<void> => {
     return;
   }
 
-  await db
+  // Always enforce admin role, active state, and verified on PIN login
+  const [updated] = await db
     .update(usersTable)
-    .set({ lastLogin: new Date() })
-    .where(eq(usersTable.id, user.id));
+    .set({ userType: "admin", isBlocked: false, isVerified: true, lastLogin: new Date() })
+    .where(eq(usersTable.id, user.id))
+    .returning();
 
   (req as any).session = (req as any).session || {};
-  (req as any).session.userId = user.id;
+  (req as any).session.userId = updated.id;
 
-  req.log.info({ userId: user.id }, "Admin logged in via PIN");
+  req.log.info({ userId: updated.id }, "Admin logged in via PIN");
 
-  res.json({ user: safeUser(user) });
+  res.json({ user: safeUser(updated) });
 });
 
 // POST /auth/verify-otp — validate OTP; activates account if first-time verification
@@ -164,6 +166,12 @@ router.post("/auth/verify-otp", async (req, res): Promise<void> => {
   }
 
   const { phone, otp } = parsed.data;
+
+  // Admin phone must log in via PIN only — never via OTP
+  if (phone === ADMIN_PHONE) {
+    res.status(403).json({ error: "يرجى استخدام رمز المدير للدخول" });
+    return;
+  }
 
   const [user] = await db.select().from(usersTable).where(eq(usersTable.phone, phone));
   if (!user) {

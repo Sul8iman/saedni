@@ -1,11 +1,13 @@
+import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Users, ClipboardList, CheckCircle, Activity, Phone, MapPin, Clock, Banknote, User, Calendar, CheckCheck } from "lucide-react";
+import { Users, ClipboardList, CheckCircle, Activity, Phone, MapPin, Clock, Banknote, User, Calendar, CheckCheck, Trash2 } from "lucide-react";
 import {
   useGetAdminStats,
   getGetAdminStatsQueryKey,
   useListRequests,
   getListRequestsQueryKey,
   useUpdateRequest,
+  useDeleteRequest,
 } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
 import { CATEGORY_MAP } from "@/lib/categories";
@@ -13,6 +15,7 @@ import { BottomNav } from "@/components/BottomNav";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CategoryIcon } from "@/components/CategoryIcon";
+import { ConfirmModal } from "@/components/ConfirmModal";
 
 // Admin-only status labels
 const ADMIN_STATUS: Record<string, { label: string; color: string }> = {
@@ -44,14 +47,16 @@ export default function Admin() {
     query: { queryKey: getGetAdminStatsQueryKey() },
   });
 
-  // Fetch all requests (no filter) so admin sees everything
   const { data: requests, isLoading: requestsLoading } = useListRequests(undefined, {
     query: { queryKey: getListRequestsQueryKey() },
   });
 
   const updateMutation = useUpdateRequest();
+  const deleteMutation = useDeleteRequest();
 
-  // End a request — admin sets status to completed ("منتهي")
+  const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
+
+  // End a request — admin sets status to completed
   const handleEnd = (id: number) => {
     updateMutation.mutate(
       { id, data: { status: "completed" } },
@@ -68,19 +73,39 @@ export default function Admin() {
     );
   };
 
+  // Delete a request permanently
+  const handleDelete = () => {
+    if (!pendingDeleteId) return;
+    deleteMutation.mutate(
+      { id: pendingDeleteId },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getListRequestsQueryKey() });
+          queryClient.invalidateQueries({ queryKey: getGetAdminStatsQueryKey() });
+          setPendingDeleteId(null);
+          toast({ title: "تم حذف الطلب" });
+        },
+        onError: () => {
+          setPendingDeleteId(null);
+          toast({ title: "خطأ", description: "فشل حذف الطلب", variant: "destructive" });
+        },
+      }
+    );
+  };
+
   const statCards = [
-    { label: "إجمالي المستخدمين", value: stats?.totalUsers,      color: "text-blue-600 bg-blue-50",    icon: Users },
-    { label: "المساعدون",          value: stats?.totalHelpers,     color: "text-teal-600 bg-teal-50",    icon: Users },
-    { label: "طالبو المساعدة",     value: stats?.totalCustomers,   color: "text-purple-600 bg-purple-50", icon: Users },
-    { label: "إجمالي الطلبات",     value: stats?.totalRequests,    color: "text-primary bg-primary/10",  icon: ClipboardList },
-    { label: "الطلبات النشطة",     value: stats?.activeRequests,   color: "text-orange-600 bg-orange-50", icon: Activity },
-    { label: "المنتهية",           value: stats?.completedRequests, color: "text-green-600 bg-green-50",  icon: CheckCircle },
+    { label: "إجمالي المستخدمين", value: stats?.totalUsers,       color: "text-blue-600 bg-blue-50",     icon: Users },
+    { label: "المساعدون",          value: stats?.totalHelpers,      color: "text-teal-600 bg-teal-50",     icon: Users },
+    { label: "طالبو المساعدة",     value: stats?.totalCustomers,    color: "text-purple-600 bg-purple-50", icon: Users },
+    { label: "إجمالي الطلبات",     value: stats?.totalRequests,     color: "text-primary bg-primary/10",   icon: ClipboardList },
+    { label: "الطلبات النشطة",     value: stats?.activeRequests,    color: "text-orange-600 bg-orange-50", icon: Activity },
+    { label: "المنتهية",           value: stats?.completedRequests, color: "text-green-600 bg-green-50",   icon: CheckCircle },
   ];
 
   // Active requests first, then completed/cancelled
-  const active    = requests?.filter((r) => r.status !== "completed" && r.status !== "cancelled") ?? [];
-  const closed    = requests?.filter((r) => r.status === "completed" || r.status === "cancelled") ?? [];
-  const sorted    = [...active, ...closed];
+  const active = requests?.filter((r) => r.status !== "completed" && r.status !== "cancelled") ?? [];
+  const closed = requests?.filter((r) => r.status === "completed" || r.status === "cancelled") ?? [];
+  const sorted = [...active, ...closed];
 
   return (
     <div className="app-container bg-background" dir="rtl">
@@ -184,11 +209,11 @@ export default function Admin() {
                     </div>
                   </div>
 
-                  {/* Action button — only for active requests */}
-                  {isActive && (
-                    <div className="border-t border-border px-4 py-3">
+                  {/* Action buttons */}
+                  <div className="border-t border-border px-4 py-3 flex gap-2">
+                    {isActive && (
                       <Button
-                        className="w-full rounded-xl h-9 text-sm bg-gray-700 hover:bg-gray-800 text-white"
+                        className="flex-1 rounded-xl h-9 text-sm bg-gray-700 hover:bg-gray-800 text-white"
                         onClick={() => handleEnd(req.id)}
                         disabled={updateMutation.isPending}
                         data-testid={`btn-end-${req.id}`}
@@ -196,8 +221,18 @@ export default function Admin() {
                         <CheckCheck className="w-4 h-4 ml-1.5" />
                         إنهاء الطلب
                       </Button>
-                    </div>
-                  )}
+                    )}
+                    <Button
+                      variant="outline"
+                      className={`rounded-xl h-9 text-sm text-red-600 border-red-200 hover:bg-red-50 ${isActive ? "px-3" : "flex-1"}`}
+                      onClick={() => setPendingDeleteId(req.id)}
+                      disabled={deleteMutation.isPending}
+                      data-testid={`btn-delete-request-${req.id}`}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      {!isActive && <span className="mr-1.5">حذف الطلب</span>}
+                    </Button>
+                  </div>
                 </div>
               );
             })}
@@ -206,6 +241,17 @@ export default function Admin() {
       </div>
 
       <BottomNav />
+
+      {/* Confirm delete modal */}
+      <ConfirmModal
+        open={pendingDeleteId !== null}
+        title="حذف الطلب"
+        message="هل أنت متأكد من حذف هذا الطلب؟ لا يمكن التراجع عن هذا الإجراء."
+        confirmLabel="نعم، حذف الطلب"
+        onConfirm={handleDelete}
+        onCancel={() => setPendingDeleteId(null)}
+        loading={deleteMutation.isPending}
+      />
     </div>
   );
 }

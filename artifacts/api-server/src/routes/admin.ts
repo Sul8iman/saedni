@@ -93,6 +93,16 @@ router.delete("/admin/users/:id/delete", async (req, res): Promise<void> => {
     return;
   }
 
+  // Prevent admin from deleting themselves
+  const currentUserId = (req as any).session?.userId;
+  if (currentUserId === params.data.id) {
+    res.status(403).json({ error: "لا يمكنك حذف حساب المدير" });
+    return;
+  }
+
+  // Cascade: delete all requests created by this user
+  await db.delete(requestsTable).where(eq(requestsTable.customerId, params.data.id));
+
   const [user] = await db
     .delete(usersTable)
     .where(eq(usersTable.id, params.data.id))

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   ArrowRight, User, Phone, Calendar, Clock, ClipboardList, CheckCheck,
-  PowerOff, Power, KeyRound, RefreshCw,
+  PowerOff, Power, KeyRound, RefreshCw, Trash2,
 } from "lucide-react";
 import {
   useListUsers,
@@ -13,12 +13,15 @@ import {
   useListRequests,
   getListRequestsQueryKey,
   useLogin,
+  useDeleteUser,
 } from "@workspace/api-client-react";
+import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { CATEGORY_MAP } from "@/lib/categories";
 import { BottomNav } from "@/components/BottomNav";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ConfirmModal } from "@/components/ConfirmModal";
 
 const USER_TYPE_LABELS: Record<string, string> = {
   customer: "طالب مساعدة",
@@ -40,6 +43,7 @@ function formatDateTime(iso: string | null | undefined) {
 
 // ── User Detail Panel ─────────────────────────────────────────────────────────
 function UserDetail({ userId, onBack }: { userId: number; onBack: () => void }) {
+  const { user: currentUser } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -54,6 +58,9 @@ function UserDetail({ userId, onBack }: { userId: number; onBack: () => void }) 
 
   const updateMutation = useUpdateUser();
   const loginMutation  = useLogin();
+  const deleteMutation = useDeleteUser();
+
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const activeRequests = allRequests?.filter((r) => r.status !== "completed" && r.status !== "cancelled") ?? [];
   const pastRequests   = allRequests?.filter((r) => r.status === "completed" || r.status === "cancelled") ?? [];
@@ -87,6 +94,35 @@ function UserDetail({ userId, onBack }: { userId: number; onBack: () => void }) 
         },
         onError: () => {
           toast({ title: "خطأ", description: "فشل إنشاء الرمز", variant: "destructive" });
+        },
+      }
+    );
+  };
+
+  const handleDeleteUser = () => {
+    if (!user) return;
+
+    // Self-delete guard on frontend
+    if (currentUser?.id === user.id) {
+      setShowDeleteConfirm(false);
+      toast({ title: "غير مسموح", description: "لا يمكنك حذف حساب المدير", variant: "destructive" });
+      return;
+    }
+
+    deleteMutation.mutate(
+      { id: user.id },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getListUsersQueryKey() });
+          queryClient.invalidateQueries({ queryKey: getListRequestsQueryKey() });
+          setShowDeleteConfirm(false);
+          toast({ title: "تم حذف المستخدم وطلباته" });
+          onBack();
+        },
+        onError: (err: any) => {
+          setShowDeleteConfirm(false);
+          const msg = err?.data?.error ?? "فشل حذف المستخدم";
+          toast({ title: "خطأ", description: msg, variant: "destructive" });
         },
       }
     );
@@ -137,10 +173,10 @@ function UserDetail({ userId, onBack }: { userId: number; onBack: () => void }) 
         {/* Info rows */}
         <div className="bg-white rounded-2xl border border-border shadow-xs divide-y divide-border">
           {[
-            { icon: Phone,    label: "رقم الهاتف",       value: user.phone,                                   ltr: true },
-            { icon: User,     label: "نوع الحساب",       value: USER_TYPE_LABELS[user.userType] ?? user.userType },
-            { icon: Calendar, label: "تاريخ التسجيل",    value: formatDate(user.createdAt) },
-            { icon: Clock,    label: "آخر تسجيل دخول",  value: formatDateTime(user.lastLogin) },
+            { icon: Phone,    label: "رقم الهاتف",      value: user.phone,                                    ltr: true },
+            { icon: User,     label: "نوع الحساب",      value: USER_TYPE_LABELS[user.userType] ?? user.userType },
+            { icon: Calendar, label: "تاريخ التسجيل",   value: formatDate(user.createdAt) },
+            { icon: Clock,    label: "آخر تسجيل دخول", value: formatDateTime(user.lastLogin) },
           ].map((row) => (
             <div key={row.label} className="flex items-center gap-3 px-4 py-3.5">
               <row.icon className="w-4 h-4 text-muted-foreground flex-shrink-0" />
@@ -249,8 +285,8 @@ function UserDetail({ userId, onBack }: { userId: number; onBack: () => void }) 
           </div>
         )}
 
-        {/* Single toggle: activate / deactivate */}
-        <div className="pt-1">
+        {/* Actions: toggle + delete */}
+        <div className="pt-1 space-y-2">
           {isActive ? (
             <Button
               variant="outline"
@@ -273,8 +309,30 @@ function UserDetail({ userId, onBack }: { userId: number; onBack: () => void }) 
               تفعيل المستخدم
             </Button>
           )}
+
+          <Button
+            variant="outline"
+            className="w-full h-11 rounded-xl text-red-600 border-red-200 hover:bg-red-50"
+            onClick={() => setShowDeleteConfirm(true)}
+            disabled={deleteMutation.isPending}
+            data-testid="btn-delete-user"
+          >
+            <Trash2 className="w-4 h-4 ml-2" />
+            حذف المستخدم
+          </Button>
         </div>
       </div>
+
+      {/* Confirm delete modal */}
+      <ConfirmModal
+        open={showDeleteConfirm}
+        title="حذف المستخدم"
+        message="هل أنت متأكد من حذف هذا المستخدم؟ سيتم حذف بياناته وجميع طلباته ولا يمكن التراجع."
+        confirmLabel="نعم، حذف المستخدم"
+        onConfirm={handleDeleteUser}
+        onCancel={() => setShowDeleteConfirm(false)}
+        loading={deleteMutation.isPending}
+      />
     </div>
   );
 }

@@ -19,7 +19,7 @@ interface HelpRequest {
   details: string;
   area: string;
   timeType: string;
-  scheduledAt?: string | null;
+  scheduledDateTime?: string | null;
   offeredAmount: number;
   status: string;
   createdAt: string;
@@ -34,12 +34,17 @@ function fmtDate(iso: string) {
   return `${dd}/${mm}/${d.getFullYear()}`;
 }
 
-// HH:MM (24h)
-function fmtTime(iso: string) {
+// DD/MM/YYYY - h:mm صباحاً/مساءً
+function fmtScheduled(iso: string) {
   const d = new Date(iso);
-  const hh = d.getHours().toString().padStart(2, "0");
+  const dd = d.getDate().toString().padStart(2, "0");
+  const mm = (d.getMonth() + 1).toString().padStart(2, "0");
+  const yyyy = d.getFullYear();
+  let h = d.getHours();
   const min = d.getMinutes().toString().padStart(2, "0");
-  return `${hh}:${min}`;
+  const period = h >= 12 ? "مساءً" : "صباحاً";
+  h = h % 12 || 12;
+  return `${dd}/${mm}/${yyyy} - ${h}:${min} ${period}`;
 }
 
 export default function CustomerMyRequestsScreen() {
@@ -110,10 +115,14 @@ export default function CustomerMyRequestsScreen() {
             <Ionicons name="location-outline" size={14} color={colors.mutedForeground} />
           </View>
 
-          {/* Time type */}
+          {/* Time — shows "الآن" or the actual scheduled date/time */}
           <View style={s.infoRow}>
             <Text style={s.infoVal}>
-              {item.timeType === "now" ? "الآن" : "لاحقاً"}
+              {item.timeType === "now"
+                ? "الآن"
+                : item.scheduledDateTime
+                  ? fmtScheduled(item.scheduledDateTime)
+                  : "لاحقاً"}
             </Text>
             <Text style={s.infoKey}>الوقت</Text>
             <Ionicons
@@ -122,17 +131,6 @@ export default function CustomerMyRequestsScreen() {
               color={colors.mutedForeground}
             />
           </View>
-
-          {/* Scheduled date/time — only if scheduled */}
-          {item.timeType === "scheduled" && item.scheduledAt && (
-            <View style={s.infoRow}>
-              <Text style={s.infoVal}>
-                {fmtDate(item.scheduledAt)} — {fmtTime(item.scheduledAt)}
-              </Text>
-              <Text style={s.infoKey}>موعد الطلب</Text>
-              <Ionicons name="time-outline" size={14} color={colors.mutedForeground} />
-            </View>
-          )}
 
           {/* Amount */}
           <View style={s.infoRow}>

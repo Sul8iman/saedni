@@ -20,7 +20,26 @@ interface Stats {
 }
 interface HelpRequest {
   id: number; category: string; details: string; area: string;
+  timeType: string; scheduledDateTime?: string | null;
   offeredAmount: number; status: string; customerName?: string | null;
+  createdAt: string;
+}
+
+function fmtScheduled(iso: string) {
+  const d = new Date(iso);
+  const dd = d.getDate().toString().padStart(2, "0");
+  const mm = (d.getMonth() + 1).toString().padStart(2, "0");
+  const yyyy = d.getFullYear();
+  let h = d.getHours();
+  const min = d.getMinutes().toString().padStart(2, "0");
+  const period = h >= 12 ? "مساءً" : "صباحاً";
+  h = h % 12 || 12;
+  return `${dd}/${mm}/${yyyy} - ${h}:${min} ${period}`;
+}
+
+function fmtDateShort(iso: string) {
+  const d = new Date(iso);
+  return `${d.getDate().toString().padStart(2, "0")}/${(d.getMonth() + 1).toString().padStart(2, "0")}/${d.getFullYear()}`;
 }
 
 const STAT_DEFS = (stats: Stats | undefined, c: string) => [
@@ -110,6 +129,19 @@ export default function AdminDashboard() {
           <View style={s.reqMeta}>
             <Ionicons name="location-outline" size={12} color={colors.mutedForeground} />
             <Text style={s.metaTxt}>{item.area}</Text>
+            <View style={s.dot} />
+            <Ionicons
+              name={item.timeType === "now" ? "flash" : "calendar-outline"}
+              size={12}
+              color={colors.mutedForeground}
+            />
+            <Text style={s.metaTxt}>
+              {item.timeType === "now"
+                ? "الآن"
+                : item.scheduledDateTime
+                  ? fmtScheduled(item.scheduledDateTime)
+                  : "لاحقاً"}
+            </Text>
             {item.customerName && (
               <>
                 <View style={s.dot} />

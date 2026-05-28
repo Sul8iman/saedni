@@ -18,11 +18,25 @@ interface HelpRequest {
   details: string;
   area: string;
   timeType: string;
+  scheduledDateTime?: string | null;
   offeredAmount: number;
   status: string;
   createdAt: string;
   customerName?: string | null;
   customerPhone?: string | null;
+}
+
+// DD/MM/YYYY - h:mm صباحاً/مساءً
+function fmtScheduled(iso: string) {
+  const d = new Date(iso);
+  const dd = d.getDate().toString().padStart(2, "0");
+  const mm = (d.getMonth() + 1).toString().padStart(2, "0");
+  const yyyy = d.getFullYear();
+  let h = d.getHours();
+  const min = d.getMinutes().toString().padStart(2, "0");
+  const period = h >= 12 ? "مساءً" : "صباحاً";
+  h = h % 12 || 12;
+  return `${dd}/${mm}/${yyyy} - ${h}:${min} ${period}`;
 }
 
 const CAT_FILTERS = [
@@ -121,7 +135,13 @@ export default function HelperRequestsScreen() {
             size={13}
             color={colors.mutedForeground}
           />
-          <Text style={s.metaTxt}>{item.timeType === "now" ? "الآن" : "لاحقاً"}</Text>
+          <Text style={s.metaTxt}>
+            {item.timeType === "now"
+              ? "الآن"
+              : item.scheduledDateTime
+                ? fmtScheduled(item.scheduledDateTime)
+                : "لاحقاً"}
+          </Text>
         </View>
       </View>
 

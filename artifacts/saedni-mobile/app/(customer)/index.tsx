@@ -91,12 +91,12 @@ export default function CustomerHomeScreen() {
     setLoading(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     try {
-      // Merge date and time into a single ISO string when scheduled
-      let scheduledAt: string | null = null;
+      // Merge date + time into ISO string and send as scheduledDateTime (DB field name)
+      let scheduledDateTime: string | null = null;
       if (timeType === "scheduled" && scheduledDate && scheduledTime) {
         const merged = new Date(scheduledDate);
         merged.setHours(scheduledTime.getHours(), scheduledTime.getMinutes(), 0, 0);
-        scheduledAt = merged.toISOString();
+        scheduledDateTime = merged.toISOString();
       }
       const res = await fetch(`${BASE}/api/requests`, {
         method: "POST",
@@ -105,7 +105,7 @@ export default function CustomerHomeScreen() {
         body: JSON.stringify({
           customerId: user.id, category, details, timeType, area,
           offeredAmount: parseFloat(amount),
-          ...(scheduledAt ? { scheduledAt } : {}),
+          ...(scheduledDateTime ? { scheduledDateTime } : {}),
         }),
       });
       if (!res.ok) {

@@ -20,7 +20,6 @@ export default function Login() {
   const [step, setStep]             = useState<Step>("phone");
   const [phone, setPhone]           = useState("");
   const [otp, setOtp]               = useState("");
-  const [testOtp, setTestOtp]       = useState<string | null>(null);
   const [unverified, setUnverified] = useState(false);
 
   // ── Step 1: Request OTP ───────────────────────────────────────────────────
@@ -35,7 +34,6 @@ export default function Login() {
       {
         onSuccess: (res) => {
           console.log("OTP page phoneNumber:", phone.trim());
-          setTestOtp(res.otp ?? null);
           setUnverified(res.isVerified === false);
           setStep("otp");
         },
@@ -76,12 +74,10 @@ export default function Login() {
   // ── Resend OTP ────────────────────────────────────────────────────────────
   const handleResend = () => {
     setOtp("");
-    setTestOtp(null);
     loginMutation.mutate(
       { data: { phone: phone.trim() } },
       {
         onSuccess: (res) => {
-          setTestOtp(res.otp ?? null);
           setUnverified(res.isVerified === false);
           toast({ title: "تم إنشاء رمز جديد" });
         },
@@ -162,14 +158,7 @@ export default function Login() {
               </div>
             )}
 
-            {testOtp && (
-              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-center" data-testid="test-otp-box">
-                <p className="text-xs text-amber-700 font-medium mb-1">رمز التحقق (للاختبار)</p>
-                <p className="text-3xl font-bold tracking-[0.3em] text-amber-800" data-testid="test-otp-value">
-                  {testOtp}
-                </p>
-              </div>
-            )}
+
 
             <Input
               type="text"
@@ -199,7 +188,7 @@ export default function Login() {
             <div className="flex items-center justify-between text-sm">
               <button
                 type="button"
-                onClick={() => { setStep("phone"); setOtp(""); setTestOtp(null); setUnverified(false); }}
+                onClick={() => { setStep("phone"); setOtp(""); setUnverified(false); }}
                 className="text-muted-foreground hover:text-foreground"
                 data-testid="btn-back-phone"
               >

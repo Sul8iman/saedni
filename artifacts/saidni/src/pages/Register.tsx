@@ -33,7 +33,6 @@ export default function Register() {
   const [step, setStep]       = useState<Step>("form");
   const [phone, setPhone]     = useState("");
   const [otp, setOtp]         = useState("");
-  const [testOtp, setTestOtp] = useState<string | null>(null);
 
   const form = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -45,10 +44,9 @@ export default function Register() {
     registerMutation.mutate(
       { data },
       {
-        onSuccess: (res) => {
+        onSuccess: (_res) => {
           console.log("OTP page phoneNumber:", data.phone);
           setPhone(data.phone);
-          setTestOtp(res.otp ?? null);
           setStep("otp");
         },
         onError: (err: any) => {
@@ -88,12 +86,10 @@ export default function Register() {
   // ── Resend OTP ────────────────────────────────────────────────────────────
   const handleResend = () => {
     setOtp("");
-    setTestOtp(null);
     loginMutation.mutate(
       { data: { phone } },
       {
-        onSuccess: (res) => {
-          setTestOtp(res.otp ?? null);
+        onSuccess: () => {
           toast({ title: "تم إنشاء رمز جديد" });
         },
         onError: () => {
@@ -208,15 +204,7 @@ export default function Register() {
               </p>
             </div>
 
-            {/* MVP test mode: show OTP */}
-            {testOtp && (
-              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-center" data-testid="test-otp-box">
-                <p className="text-xs text-amber-700 font-medium mb-1">رمز التحقق (للاختبار)</p>
-                <p className="text-3xl font-bold tracking-[0.3em] text-amber-800" data-testid="test-otp-value">
-                  {testOtp}
-                </p>
-              </div>
-            )}
+
 
             <Input
               type="text"
@@ -243,7 +231,7 @@ export default function Register() {
             <div className="flex items-center justify-between text-sm">
               <button
                 type="button"
-                onClick={() => { setStep("form"); setOtp(""); setTestOtp(null); }}
+                onClick={() => { setStep("form"); setOtp(""); }}
                 className="text-muted-foreground hover:text-foreground"
                 data-testid="btn-back-form"
               >

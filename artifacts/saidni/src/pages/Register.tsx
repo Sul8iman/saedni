@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useLocation } from "wouter";
-import { HandHeart, KeyRound, RefreshCw } from "lucide-react";
+import { HandHeart, KeyRound, RefreshCw, MessageCircle } from "lucide-react";
 import { useRegister, useLogin, useVerifyOtp } from "@workspace/api-client-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -204,7 +204,17 @@ export default function Register() {
               </p>
             </div>
 
-
+            {/* WhatsApp contact button */}
+            <a
+              href={`https://wa.me/96892771450?text=${encodeURIComponent("مرحباً، قمت بإنشاء حساب جديد في تطبيق ساعدني وأحتاج رمز التحقق")}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center gap-2 w-full h-12 rounded-xl bg-[#25D366] hover:bg-[#1ebe5d] text-white font-semibold text-sm transition-colors"
+              data-testid="btn-whatsapp-admin"
+            >
+              <MessageCircle className="w-5 h-5 flex-shrink-0" />
+              التواصل مع الإدارة عبر الواتساب
+            </a>
 
             <Input
               type="text"

@@ -35,8 +35,36 @@ export const LoginBody = zod.object({
 
 export const LoginResponse = zod.object({
   "message": zod.string(),
-  "otp": zod.string(),
-  "isVerified": zod.boolean().optional()
+  "otp": zod.string().optional(),
+  "isVerified": zod.boolean().optional(),
+  "isAdmin": zod.boolean().optional()
+})
+
+
+/**
+ * @summary Admin login with phone + PIN (no OTP)
+ */
+export const AdminLoginBody = zod.object({
+  "phone": zod.string(),
+  "pin": zod.string()
+})
+
+export const AdminLoginResponse = zod.object({
+  "user": zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "phone": zod.string(),
+  "userType": zod.enum(['customer', 'helper', 'admin']),
+  "area": zod.string().nullish(),
+  "rating": zod.number().nullish(),
+  "isActive": zod.boolean(),
+  "isVerified": zod.boolean().optional(),
+  "isBlocked": zod.boolean().optional(),
+  "lastLogin": zod.string().nullish(),
+  "otpCode": zod.string().nullish(),
+  "otpCreatedAt": zod.string().nullish(),
+  "createdAt": zod.string()
+})
 })
 
 

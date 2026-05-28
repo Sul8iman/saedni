@@ -7,6 +7,7 @@
  */
 
 export * from './acceptRequestInput';
+export * from './adminLoginInput';
 export * from './adminStats';
 export * from './authResponse';
 export * from './healthStatus';

@@ -1,12 +1,15 @@
 import { Router, type IRouter } from "express";
 import { eq } from "drizzle-orm";
 import { db, usersTable } from "@workspace/db";
-import { RegisterBody, LoginBody, VerifyOtpBody } from "@workspace/api-zod";
+import { RegisterBody, LoginBody, VerifyOtpBody, AdminLoginBody } from "@workspace/api-zod";
 import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
 
 const OTP_EXPIRY_MS = 10 * 60 * 1000; // 10 minutes
+
+const ADMIN_PHONE = "98584898";
+const ADMIN_PIN   = "2724";
 
 function generate4DigitOtp(): string {
   return Math.floor(1000 + Math.random() * 9000).toString();
@@ -64,7 +67,7 @@ router.post("/auth/register", async (req, res): Promise<void> => {
   });
 });
 
-// POST /auth/login — generates 4-digit OTP for the given phone number
+// POST /auth/login — generates OTP for regular users; signals admin-PIN flow for admin phone
 router.post("/auth/login", async (req, res): Promise<void> => {
   const parsed = LoginBody.safeParse(req.body);
   if (!parsed.success) {
@@ -73,6 +76,15 @@ router.post("/auth/login", async (req, res): Promise<void> => {
   }
 
   const { phone } = parsed.data;
+
+  // Admin phone → skip OTP, signal the frontend to show PIN field
+  if (phone === ADMIN_PHONE) {
+    res.json({
+      message: "أدخل رمز المدير للمتابعة",
+      isAdmin: true,
+    });
+    return;
+  }
 
   const [user] = await db.select().from(usersTable).where(eq(usersTable.phone, phone));
   if (!user) {
@@ -102,6 +114,45 @@ router.post("/auth/login", async (req, res): Promise<void> => {
     otp,
     isVerified: user.isVerified,
   });
+});
+
+// POST /auth/admin-login — validates admin phone + PIN, creates session directly
+router.post("/auth/admin-login", async (req, res): Promise<void> => {
+  const parsed = AdminLoginBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  const { phone, pin } = parsed.data;
+
+  if (phone !== ADMIN_PHONE) {
+    res.status(404).json({ error: "رقم الهاتف غير مسجل" });
+    return;
+  }
+
+  if (pin !== ADMIN_PIN) {
+    res.status(403).json({ error: "رمز المدير غير صحيح" });
+    return;
+  }
+
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.phone, phone));
+  if (!user) {
+    res.status(404).json({ error: "رقم الهاتف غير مسجل" });
+    return;
+  }
+
+  await db
+    .update(usersTable)
+    .set({ lastLogin: new Date() })
+    .where(eq(usersTable.id, user.id));
+
+  (req as any).session = (req as any).session || {};
+  (req as any).session.userId = user.id;
+
+  req.log.info({ userId: user.id }, "Admin logged in via PIN");
+
+  res.json({ user: safeUser(user) });
 });
 
 // POST /auth/verify-otp — validate OTP; activates account if first-time verification

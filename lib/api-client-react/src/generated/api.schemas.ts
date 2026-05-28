@@ -66,10 +66,16 @@ export interface VerifyOtpInput {
   otp: string;
 }
 
+export interface AdminLoginInput {
+  phone: string;
+  pin: string;
+}
+
 export interface OtpRequestResponse {
   message: string;
-  otp: string;
+  otp?: string;
   isVerified?: boolean;
+  isAdmin?: boolean;
 }
 
 export interface AuthResponse {

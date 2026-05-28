@@ -74,6 +74,29 @@ paths:
         "404":
           description: Phone not found
 
+  /auth/admin-login:
+    post:
+      operationId: adminLogin
+      tags: [auth]
+      summary: Admin login with phone + PIN (no OTP)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminLoginInput"
+      responses:
+        "200":
+          description: Logged in as admin
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "403":
+          description: Invalid PIN
+        "404":
+          description: Phone not found
+
   /auth/verify-otp:
     post:
       operationId: verifyOtp
@@ -514,15 +537,26 @@ components:
         otp:
           type: string
 
+    AdminLoginInput:
+      type: object
+      required: [phone, pin]
+      properties:
+        phone:
+          type: string
+        pin:
+          type: string
+
     OtpRequestResponse:
       type: object
-      required: [message, otp]
+      required: [message]
       properties:
         message:
           type: string
         otp:
           type: string
         isVerified:
+          type: boolean
+        isAdmin:
           type: boolean
 
     AuthResponse:

@@ -1,28 +1,30 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { HandHeart, Phone, KeyRound, RefreshCw, ShieldAlert } from "lucide-react";
-import { useLogin, useVerifyOtp } from "@workspace/api-client-react";
+import { HandHeart, Phone, KeyRound, RefreshCw, ShieldAlert, ShieldCheck } from "lucide-react";
+import { useLogin, useVerifyOtp, useAdminLogin } from "@workspace/api-client-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-type Step = "phone" | "otp";
+type Step = "phone" | "otp" | "admin-pin";
 
 export default function Login() {
   const { setUser } = useAuth();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
 
-  const loginMutation  = useLogin();
-  const verifyMutation = useVerifyOtp();
+  const loginMutation      = useLogin();
+  const verifyMutation     = useVerifyOtp();
+  const adminLoginMutation = useAdminLogin();
 
   const [step, setStep]             = useState<Step>("phone");
   const [phone, setPhone]           = useState("");
   const [otp, setOtp]               = useState("");
+  const [pin, setPin]               = useState("");
   const [unverified, setUnverified] = useState(false);
 
-  // ── Step 1: Request OTP ───────────────────────────────────────────────────
+  // ── Step 1: Request OTP (or detect admin phone) ───────────────────────────
   const handleRequestOtp = (e: React.FormEvent) => {
     e.preventDefault();
     if (phone.trim().length < 8) {
@@ -33,9 +35,12 @@ export default function Login() {
       { data: { phone: phone.trim() } },
       {
         onSuccess: (res) => {
-          console.log("OTP page phoneNumber:", phone.trim());
-          setUnverified(res.isVerified === false);
-          setStep("otp");
+          if (res.isAdmin) {
+            setStep("admin-pin");
+          } else {
+            setUnverified(res.isVerified === false);
+            setStep("otp");
+          }
         },
         onError: (err: any) => {
           const msg = err?.data?.error ?? "رقم الهاتف غير مسجل في النظام";
@@ -45,19 +50,17 @@ export default function Login() {
     );
   };
 
-  // ── Step 2: Verify OTP ────────────────────────────────────────────────────
+  // ── Step 2a: Verify OTP (regular users) ──────────────────────────────────
   const handleVerifyOtp = (e: React.FormEvent) => {
     e.preventDefault();
     if (otp.trim().length !== 4) {
       toast({ title: "خطأ", description: "الرمز يتكون من 4 أرقام", variant: "destructive" });
       return;
     }
-    console.log("OTP page phoneNumber:", phone.trim());
     verifyMutation.mutate(
       { data: { phone: phone.trim(), otp: otp.trim() } },
       {
         onSuccess: (response) => {
-          console.log("OTP valid, logging in user:", response.user.id, response.user.userType);
           setUser(response.user);
           const t = response.user.userType;
           const dest = t === "admin" ? "/admin" : t === "helper" ? "/helper-requests" : "/customer";
@@ -66,6 +69,26 @@ export default function Login() {
         onError: (err: any) => {
           const msg = err?.data?.error ?? "رمز التحقق غير صحيح";
           toast({ title: "خطأ", description: msg, variant: "destructive" });
+        },
+      }
+    );
+  };
+
+  // ── Step 2b: Verify admin PIN ─────────────────────────────────────────────
+  const handleAdminPin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (pin.trim().length < 1) return;
+    adminLoginMutation.mutate(
+      { data: { phone: phone.trim(), pin: pin.trim() } },
+      {
+        onSuccess: (response) => {
+          setUser(response.user);
+          setLocation("/admin");
+        },
+        onError: (err: any) => {
+          const msg = err?.data?.error ?? "رمز المدير غير صحيح";
+          toast({ title: "خطأ", description: msg, variant: "destructive" });
+          setPin("");
         },
       }
     );
@@ -123,12 +146,12 @@ export default function Login() {
               disabled={loginMutation.isPending}
               data-testid="btn-request-otp"
             >
-              {loginMutation.isPending ? "جارٍ الإرسال..." : "إرسال رمز التحقق"}
+              {loginMutation.isPending ? "جارٍ الإرسال..." : "متابعة"}
             </Button>
           </form>
         )}
 
-        {/* ── Step 2: OTP ── */}
+        {/* ── Step 2a: OTP (regular users) ── */}
         {step === "otp" && (
           <form onSubmit={handleVerifyOtp} className="space-y-4">
             <div className="text-center mb-2">
@@ -157,8 +180,6 @@ export default function Login() {
                 </p>
               </div>
             )}
-
-
 
             <Input
               type="text"
@@ -207,6 +228,53 @@ export default function Login() {
             </div>
           </form>
         )}
+
+        {/* ── Step 2b: Admin PIN ── */}
+        {step === "admin-pin" && (
+          <form onSubmit={handleAdminPin} className="space-y-4">
+            <div className="text-center mb-2">
+              <div className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3 bg-primary/10">
+                <ShieldCheck className="w-6 h-6 text-primary" />
+              </div>
+              <p className="font-semibold">دخول المدير</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                أدخل رمز المدير للمتابعة
+              </p>
+            </div>
+
+            <Input
+              type="password"
+              inputMode="numeric"
+              placeholder="رمز المدير"
+              value={pin}
+              onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
+              className="rounded-xl h-14 text-center text-2xl tracking-[0.4em] font-mono"
+              data-testid="input-admin-pin"
+              dir="ltr"
+              autoComplete="off"
+            />
+
+            <Button
+              type="submit"
+              className="w-full h-12 text-base font-semibold rounded-xl"
+              disabled={adminLoginMutation.isPending || pin.length < 1}
+              data-testid="btn-verify-admin-pin"
+            >
+              {adminLoginMutation.isPending ? "جارٍ التحقق..." : "دخول"}
+            </Button>
+
+            <div className="text-center">
+              <button
+                type="button"
+                onClick={() => { setStep("phone"); setPin(""); }}
+                className="text-sm text-muted-foreground hover:text-foreground"
+                data-testid="btn-back-from-pin"
+              >
+                تغيير الرقم
+              </button>
+            </div>
+          </form>
+        )}
       </div>
 
       <p className="mt-5 text-center text-sm text-muted-foreground">
@@ -220,8 +288,6 @@ export default function Login() {
         <p className="font-medium text-foreground">حسابات تجريبية:</p>
         <p>طالب مساعدة: 96891000001</p>
         <p>مساعد: 96891000003</p>
-        <p>مدير: 96891000000</p>
-        <p className="text-primary font-medium">الرمز يظهر تلقائياً عند تسجيل الدخول</p>
       </div>
     </div>
   );

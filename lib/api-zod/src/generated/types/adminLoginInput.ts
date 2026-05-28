@@ -6,9 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface OtpRequestResponse {
-  message: string;
-  otp?: string;
-  isVerified?: boolean;
-  isAdmin?: boolean;
+export interface AdminLoginInput {
+  phone: string;
+  pin: string;
 }

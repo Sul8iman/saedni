@@ -245,6 +245,33 @@ router.patch("/requests/:id/accept", async (req, res): Promise<void> => {
   res.json(await enrichRequest(row));
 });
 
+// PATCH /requests/:id/complete — customer ends/completes a request
+router.patch("/requests/:id/complete", async (req, res): Promise<void> => {
+  const params = CancelRequestParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+
+  const [existing] = await db
+    .select()
+    .from(requestsTable)
+    .where(eq(requestsTable.id, params.data.id));
+
+  if (!existing) {
+    res.status(404).json({ error: "الطلب غير موجود" });
+    return;
+  }
+
+  const [row] = await db
+    .update(requestsTable)
+    .set({ status: "completed" })
+    .where(eq(requestsTable.id, params.data.id))
+    .returning();
+
+  res.json(await enrichRequest(row));
+});
+
 // PATCH /requests/:id/cancel — customer cancels a request
 router.patch("/requests/:id/cancel", async (req, res): Promise<void> => {
   const params = CancelRequestParams.safeParse(req.params);

@@ -16,11 +16,17 @@ import type { CategoryValue } from "@/constants/categories";
 
 const BASE = process.env.EXPO_PUBLIC_DOMAIN ? `https://${process.env.EXPO_PUBLIC_DOMAIN}` : "";
 
+// Gregorian DD/MM/YYYY — never use ar-SA (produces Hijri)
 function formatDate(d: Date) {
-  return d.toLocaleDateString("ar-SA", { year: "numeric", month: "long", day: "numeric" });
+  const dd = d.getDate().toString().padStart(2, "0");
+  const mm = (d.getMonth() + 1).toString().padStart(2, "0");
+  return `${dd}/${mm}/${d.getFullYear()}`;
 }
+// HH:MM 24-hour
 function formatTime(d: Date) {
-  return d.toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" });
+  const hh = d.getHours().toString().padStart(2, "0");
+  const min = d.getMinutes().toString().padStart(2, "0");
+  return `${hh}:${min}`;
 }
 
 export default function CustomerHomeScreen() {

@@ -42,6 +42,21 @@ function fmtDateShort(iso: string) {
   return `${d.getDate().toString().padStart(2, "0")}/${(d.getMonth() + 1).toString().padStart(2, "0")}/${d.getFullYear()}`;
 }
 
+// null-safe publish date formatter
+function fmtCreatedAt(iso: string | null | undefined): string {
+  if (!iso) return "غير متوفر";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "غير متوفر";
+  const dd = d.getDate().toString().padStart(2, "0");
+  const mm = (d.getMonth() + 1).toString().padStart(2, "0");
+  const yyyy = d.getFullYear();
+  let h = d.getHours();
+  const min = d.getMinutes().toString().padStart(2, "0");
+  const period = h >= 12 ? "مساءً" : "صباحاً";
+  h = h % 12 || 12;
+  return `${dd}/${mm}/${yyyy} - ${h}:${min} ${period}`;
+}
+
 const STAT_DEFS = (stats: Stats | undefined, c: string) => [
   { label: "المستخدمون", val: stats?.totalUsers ?? 0,      icon: "people-outline",           color: c },
   { label: "العملاء",    val: stats?.totalCustomers ?? 0,  icon: "person-outline",           color: "#6366F1" },
@@ -181,6 +196,13 @@ export default function AdminDashboard() {
               </>
             )}
           </View>
+        <View style={s.publishRow}>
+          <Ionicons name="time-outline" size={11} color={colors.mutedForeground} />
+          <Text style={s.publishTxt}>
+            {"تاريخ نشر الطلب: "}
+            <Text style={s.publishVal}>{fmtCreatedAt(item.createdAt)}</Text>
+          </Text>
+        </View>
       </View>
     );
   };
@@ -291,9 +313,12 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
     endTxt: { fontSize: 12, color: c.primary, fontWeight: "700" },
     deleteBtn: { flexDirection: "row-reverse", alignItems: "center", gap: 4, backgroundColor: "#FEF2F2", borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 },
     deleteTxt: { fontSize: 12, color: "#DC2626", fontWeight: "600" },
-    reqMeta: { flexDirection: "row-reverse", alignItems: "center", gap: 5 },
+    reqMeta: { flexDirection: "row-reverse", alignItems: "center", gap: 5, marginBottom: 6 },
     metaTxt: { fontSize: 12, color: c.mutedForeground },
     dot: { width: 3, height: 3, borderRadius: 1.5, backgroundColor: c.mutedForeground },
+    publishRow: { flexDirection: "row-reverse", alignItems: "center", gap: 5 },
+    publishTxt: { fontSize: 11, color: c.mutedForeground },
+    publishVal: { fontSize: 11, color: c.foreground, fontWeight: "600" },
     empty: { alignItems: "center", justifyContent: "center", paddingTop: 60, gap: 10 },
     emptyTxt: { fontSize: 16, color: c.mutedForeground },
   });

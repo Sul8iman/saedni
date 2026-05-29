@@ -26,6 +26,21 @@ interface HelpRequest {
   customerPhone?: string | null;
 }
 
+// DD/MM/YYYY - h:mm صباحاً/مساءً  (null-safe, returns "غير متوفر" if missing)
+function fmtCreatedAt(iso: string | null | undefined): string {
+  if (!iso) return "غير متوفر";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "غير متوفر";
+  const dd = d.getDate().toString().padStart(2, "0");
+  const mm = (d.getMonth() + 1).toString().padStart(2, "0");
+  const yyyy = d.getFullYear();
+  let h = d.getHours();
+  const min = d.getMinutes().toString().padStart(2, "0");
+  const period = h >= 12 ? "مساءً" : "صباحاً";
+  h = h % 12 || 12;
+  return `${dd}/${mm}/${yyyy} - ${h}:${min} ${period}`;
+}
+
 // DD/MM/YYYY - h:mm صباحاً/مساءً
 function fmtScheduled(iso: string) {
   const d = new Date(iso);
@@ -143,6 +158,15 @@ export default function HelperRequestsScreen() {
                 : "لاحقاً"}
           </Text>
         </View>
+      </View>
+
+      {/* Publish date */}
+      <View style={s.publishRow}>
+        <Ionicons name="time-outline" size={13} color={colors.mutedForeground} />
+        <Text style={s.publishTxt}>
+          {"تاريخ نشر الطلب: "}
+          <Text style={s.publishVal}>{fmtCreatedAt(item.createdAt)}</Text>
+        </Text>
       </View>
 
       {/* Customer info */}
@@ -358,6 +382,9 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
       lineHeight: 21, marginBottom: 12,
     },
 
+    publishRow: { flexDirection: "row-reverse", alignItems: "center", gap: 5, marginBottom: 10 },
+    publishTxt: { fontSize: 11, color: c.mutedForeground, textAlign: "right" },
+    publishVal: { fontSize: 11, color: c.foreground, fontWeight: "600" },
     metaRow: { flexDirection: "row-reverse", gap: 8, marginBottom: 12, flexWrap: "wrap" },
     metaChip: {
       flexDirection: "row-reverse", alignItems: "center", gap: 4,

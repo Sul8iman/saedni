@@ -26,12 +26,19 @@ interface HelpRequest {
   customerPhone?: string | null;
 }
 
-// Gregorian DD/MM/YYYY — no Hijri
-function fmtDate(iso: string) {
+// Gregorian DD/MM/YYYY - h:mm صباحاً/مساءً — no Hijri
+function fmtDate(iso: string | null | undefined): string {
+  if (!iso) return "غير متوفر";
   const d = new Date(iso);
+  if (isNaN(d.getTime())) return "غير متوفر";
   const dd = d.getDate().toString().padStart(2, "0");
   const mm = (d.getMonth() + 1).toString().padStart(2, "0");
-  return `${dd}/${mm}/${d.getFullYear()}`;
+  const yyyy = d.getFullYear();
+  let h = d.getHours();
+  const min = d.getMinutes().toString().padStart(2, "0");
+  const period = h >= 12 ? "مساءً" : "صباحاً";
+  h = h % 12 || 12;
+  return `${dd}/${mm}/${yyyy} - ${h}:${min} ${period}`;
 }
 
 // DD/MM/YYYY - h:mm صباحاً/مساءً
@@ -148,10 +155,10 @@ export default function CustomerMyRequestsScreen() {
             </View>
           )}
 
-          {/* Created at */}
+          {/* Publish date */}
           <View style={s.infoRow}>
             <Text style={s.infoVal}>{fmtDate(item.createdAt)}</Text>
-            <Text style={s.infoKey}>تاريخ الإنشاء</Text>
+            <Text style={s.infoKey}>تاريخ نشر الطلب</Text>
             <Ionicons name="calendar-clear-outline" size={14} color={colors.mutedForeground} />
           </View>
         </View>

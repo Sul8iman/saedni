@@ -173,8 +173,8 @@ export default function RegisterScreen() {
                 </Text>
               </View>
               <TouchableOpacity style={s.waBtn} onPress={openWhatsApp} activeOpacity={0.85}>
-                <Ionicons name="logo-whatsapp" size={20} color="#fff" />
-                <Text style={s.waBtnTxt}>التواصل مع الإدارة عبر واتساب</Text>
+                <Ionicons name="headset-outline" size={20} color="#fff" />
+                <Text style={s.waBtnTxt}>تواصل مع الإدارة</Text>
               </TouchableOpacity>
               <Text style={s.fieldLabel}>رمز التحقق</Text>
               <TextInput
@@ -264,11 +264,11 @@ const makeStyles = (c: ReturnType<typeof useColors>) =>
     ghostTxt: { fontSize: 14, color: c.mutedForeground, textAlign: "center" },
     ghostLink: { color: c.primary, fontWeight: "700" },
     waBtn: {
-      backgroundColor: "#25D366", borderRadius: 12, paddingVertical: 13,
+      backgroundColor: c.primary, borderRadius: 12, paddingVertical: 13,
       flexDirection: "row-reverse", alignItems: "center", justifyContent: "center",
       gap: 10, marginBottom: 16,
     },
-    waBtnTxt: { color: "#fff", fontSize: 14, fontWeight: "700" },
+    waBtnTxt: { color: c.primaryForeground, fontSize: 14, fontWeight: "700" },
     successBox: {
       backgroundColor: c.secondary, borderRadius: 12, padding: 14,
       flexDirection: "row-reverse", alignItems: "flex-start", gap: 10, marginBottom: 16,

@@ -161,9 +161,10 @@ export default function LoginScreen() {
               <Text style={s.subLabel}>
                 الرقم: <Text style={s.subLabelBold}>{phone}</Text>
               </Text>
+              <Text style={s.adminHint}>للحصول على رمز التحقق، تواصل مع الإدارة</Text>
               <TouchableOpacity style={s.waBtn} onPress={openWhatsApp} activeOpacity={0.85}>
-                <Ionicons name="logo-whatsapp" size={20} color="#fff" />
-                <Text style={s.waBtnTxt}>التواصل مع الإدارة عبر واتساب</Text>
+                <Ionicons name="headset-outline" size={20} color="#fff" />
+                <Text style={s.waBtnTxt}>تواصل مع الإدارة</Text>
               </TouchableOpacity>
               <TextInput
                 style={[s.input, s.otpInput]}
@@ -281,12 +282,16 @@ const makeStyles = (c: ReturnType<typeof useColors>) =>
     ghostBtn: { alignItems: "center", paddingVertical: 10 },
     ghostTxt: { fontSize: 14, color: c.mutedForeground, textAlign: "center" },
     ghostLink: { color: c.primary, fontWeight: "700" },
+    adminHint: {
+      fontSize: 13, color: c.mutedForeground, textAlign: "center",
+      marginBottom: 12, lineHeight: 20,
+    },
     waBtn: {
-      backgroundColor: "#25D366", borderRadius: 12, paddingVertical: 13,
+      backgroundColor: c.primary, borderRadius: 12, paddingVertical: 13,
       flexDirection: "row-reverse", alignItems: "center", justifyContent: "center",
       gap: 10, marginBottom: 16,
     },
-    waBtnTxt: { color: "#fff", fontSize: 14, fontWeight: "700" },
+    waBtnTxt: { color: c.primaryForeground, fontSize: 14, fontWeight: "700" },
     warnBox: {
       backgroundColor: "#FEF3C7", borderRadius: 10, padding: 12,
       flexDirection: "row-reverse", alignItems: "flex-start", gap: 8, marginBottom: 16,

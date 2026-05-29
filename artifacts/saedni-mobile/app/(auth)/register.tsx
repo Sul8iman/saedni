@@ -112,7 +112,7 @@ export default function RegisterScreen() {
                       color={userType === v ? colors.primary : colors.mutedForeground}
                     />
                     <Text style={[s.roleLabel, userType === v && s.roleLabelActive]}>
-                      {v === "customer" ? "أحتاج مساعدة" : "أريد المساعدة"}
+                      {v === "customer" ? "أحتاج مساعدة" : "أريد أساعد"}
                     </Text>
                     <Text style={[s.roleHint, userType === v && s.roleHintActive]}>
                       {v === "customer" ? "عميل" : "مساعد"}

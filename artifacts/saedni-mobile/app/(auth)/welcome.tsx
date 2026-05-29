@@ -1,8 +1,17 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
+
+const EXAMPLES = [
+  { emoji: "🚚", text: "أحتاج بيكب لنقل أغراض من بوشر إلى الخوير",        amount: "15" },
+  { emoji: "🛒", text: "أحتاج شراء أغراض من السوق وتسليمها اليوم",        amount: "10" },
+  { emoji: "🏛️", text: "أحتاج تخليص معاملة في جهة حكومية",               amount: "20" },
+  { emoji: "🚗", text: "أحتاج مشوار من الموالح إلى المطار",               amount: "12" },
+  { emoji: "🔧", text: "أحتاج شخص لتركيب أثاث منزلي",                    amount: "25" },
+  { emoji: "📌", text: "أحتاج مساعدة في مهمة أخرى",                      amount: "5"  },
+] as const;
 
 export default function WelcomeScreen() {
   const colors = useColors();
@@ -11,34 +20,38 @@ export default function WelcomeScreen() {
 
   return (
     <SafeAreaView style={s.safe} edges={["top", "bottom"]}>
-      <View style={s.container}>
-
-        {/* Hero section */}
+      <ScrollView
+        style={s.scroll}
+        contentContainerStyle={s.content}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        {/* Hero */}
         <View style={s.hero}>
           <View style={s.logoCircle}>
-            <Ionicons name="hand-left" size={48} color={colors.primaryForeground} />
+            <Ionicons name="hand-left" size={44} color={colors.primaryForeground} />
           </View>
           <Text style={s.appName}>ساعدني</Text>
           <Text style={s.tagline}>منصة المساعدة اليومية في عُمان</Text>
-          <Text style={s.desc}>
-            انشر طلبك أو ساعد غيرك — أسرع طريقة للحصول على المساعدة في منطقتك
-          </Text>
         </View>
 
-        {/* Feature chips */}
-        <View style={s.chips}>
-          <View style={s.chip}>
-            <Ionicons name="flash-outline" size={16} color={colors.primary} />
-            <Text style={s.chipTxt}>سريع وسهل</Text>
-          </View>
-          <View style={s.chip}>
-            <Ionicons name="location-outline" size={16} color={colors.primary} />
-            <Text style={s.chipTxt}>في منطقتك</Text>
-          </View>
-          <View style={s.chip}>
-            <Ionicons name="shield-checkmark-outline" size={16} color={colors.primary} />
-            <Text style={s.chipTxt}>موثوق</Text>
-          </View>
+        {/* Examples section */}
+        <View style={s.section}>
+          <Text style={s.sectionTitle}>اطلب أي مساعدة بسهولة</Text>
+          <Text style={s.sectionSub}>أمثلة على الطلبات</Text>
+
+          {EXAMPLES.map((ex, i) => (
+            <View key={i} style={s.card}>
+              <View style={s.cardRight}>
+                <Text style={s.cardEmoji}>{ex.emoji}</Text>
+                <Text style={s.cardText}>{ex.text}</Text>
+              </View>
+              <View style={s.amountBadge}>
+                <Text style={s.amountTxt}>{ex.amount}</Text>
+                <Text style={s.amountCur}>ر.ع</Text>
+              </View>
+            </View>
+          ))}
         </View>
 
         {/* Action buttons */}
@@ -59,8 +72,7 @@ export default function WelcomeScreen() {
             <Text style={s.secondaryBtnTxt}>إنشاء حساب جديد</Text>
           </TouchableOpacity>
         </View>
-
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -68,41 +80,65 @@ export default function WelcomeScreen() {
 const makeStyles = (c: ReturnType<typeof useColors>) =>
   StyleSheet.create({
     safe: { flex: 1, backgroundColor: c.background },
-    container: {
-      flex: 1, paddingHorizontal: 24,
-      justifyContent: "space-between", paddingTop: 48, paddingBottom: 32,
-    },
-    hero: { alignItems: "center", gap: 12 },
+    scroll: { flex: 1 },
+    content: { paddingHorizontal: 20, paddingTop: 36, paddingBottom: 32, gap: 28 },
+
+    // Hero
+    hero: { alignItems: "center", gap: 10 },
     logoCircle: {
-      width: 100, height: 100, borderRadius: 50,
+      width: 88, height: 88, borderRadius: 44,
       backgroundColor: c.primary, alignItems: "center", justifyContent: "center",
-      marginBottom: 8,
-      shadowColor: c.primary, shadowOffset: { width: 0, height: 8 },
-      shadowOpacity: 0.35, shadowRadius: 16, elevation: 10,
+      marginBottom: 4,
+      shadowColor: c.primary, shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: 0.3, shadowRadius: 14, elevation: 8,
     },
     appName: {
-      fontSize: 40, fontWeight: "800", color: c.foreground,
+      fontSize: 38, fontWeight: "800", color: c.foreground,
       letterSpacing: -1, textAlign: "center",
     },
     tagline: {
-      fontSize: 16, color: c.primary, fontWeight: "600",
+      fontSize: 15, color: c.mutedForeground, fontWeight: "500",
       textAlign: "center",
     },
-    desc: {
-      fontSize: 14, color: c.mutedForeground, textAlign: "center",
-      lineHeight: 22, marginTop: 4, maxWidth: 300,
+
+    // Examples section
+    section: { gap: 10 },
+    sectionTitle: {
+      fontSize: 18, fontWeight: "700", color: c.foreground,
+      textAlign: "right", marginBottom: 2,
     },
-    chips: {
-      flexDirection: "row-reverse", justifyContent: "center",
-      gap: 10, flexWrap: "wrap",
+    sectionSub: {
+      fontSize: 13, color: c.mutedForeground,
+      textAlign: "right", marginBottom: 6,
     },
-    chip: {
-      flexDirection: "row-reverse", alignItems: "center", gap: 6,
-      backgroundColor: c.secondary, borderRadius: 20,
-      paddingHorizontal: 14, paddingVertical: 8,
+    card: {
+      backgroundColor: c.card, borderRadius: 14,
       borderWidth: 1, borderColor: c.border,
+      paddingHorizontal: 14, paddingVertical: 12,
+      flexDirection: "row-reverse", alignItems: "center",
+      justifyContent: "space-between", gap: 10,
+      shadowColor: "#000", shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.05, shadowRadius: 4, elevation: 2,
     },
-    chipTxt: { fontSize: 13, color: c.foreground, fontWeight: "600" },
+    cardRight: {
+      flexDirection: "row-reverse", alignItems: "center",
+      gap: 10, flex: 1,
+    },
+    cardEmoji: { fontSize: 22 },
+    cardText: {
+      fontSize: 13, color: c.foreground, textAlign: "right",
+      flex: 1, lineHeight: 20,
+    },
+    amountBadge: {
+      backgroundColor: c.secondary, borderRadius: 8,
+      paddingHorizontal: 8, paddingVertical: 4,
+      alignItems: "center", borderWidth: 1, borderColor: c.border,
+      minWidth: 44,
+    },
+    amountTxt: { fontSize: 13, fontWeight: "700", color: c.primary },
+    amountCur: { fontSize: 10, color: c.mutedForeground, fontWeight: "500" },
+
+    // Buttons
     actions: { gap: 12 },
     primaryBtn: {
       backgroundColor: c.primary, borderRadius: 14,

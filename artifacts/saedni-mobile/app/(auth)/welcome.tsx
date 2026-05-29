@@ -5,12 +5,9 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 
 const EXAMPLES = [
-  { emoji: "🚚", text: "أحتاج بيكب لنقل أغراض من بوشر إلى الخوير",        amount: "15" },
-  { emoji: "🛒", text: "أحتاج شراء أغراض من السوق وتسليمها اليوم",        amount: "10" },
-  { emoji: "🏛️", text: "أحتاج تخليص معاملة في جهة حكومية",               amount: "20" },
-  { emoji: "🚗", text: "أحتاج مشوار من الموالح إلى المطار",               amount: "12" },
-  { emoji: "🔧", text: "أحتاج شخص لتركيب أثاث منزلي",                    amount: "25" },
-  { emoji: "📌", text: "أحتاج مساعدة في مهمة أخرى",                      amount: "5"  },
+  { emoji: "🚚", text: "أحتاج بيكب لنقل أغراض من بوشر إلى الخوير", amount: "15" },
+  { emoji: "🏛️", text: "أحتاج تخليص معاملة في جهة حكومية",          amount: "20" },
+  { emoji: "🔧", text: "أحتاج شخص لتركيب أثاث منزلي",               amount: "25" },
 ] as const;
 
 export default function WelcomeScreen() {

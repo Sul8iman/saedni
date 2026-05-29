@@ -1,0 +1,122 @@
+Update the Expo / React Native version of the “ساعدني” app.
+
+Part 1: Expand Location Lists
+
+Add the following locations to all location selectors and filters across the app:
+
+* المعبيلة
+* الخوض
+* الأنصب
+* العذيبة
+* القرم
+* غلا
+* روي
+
+Apply these locations in:
+
+* Create Request page
+* Helper request filters
+* Helper "اهتماماتي" → "المناطق المفضلة"
+* Admin request details
+* Any location dropdown or selector
+
+Keep all existing locations and simply add the new ones.
+
+---
+
+Part 2: Helper Interests & Future Notification Preferences
+
+Inside Helper Account → "حسابي"
+
+Add a new section:
+
+"اهتماماتي"
+
+Purpose:
+Allow helpers to define which requests they are interested in receiving notifications about in the future.
+
+A. Task Type Interests
+
+Allow multi-select:
+
+☑ نقل وتحميل
+☑ مشاوير وتوصيل
+☑ معاملات ومراجعات
+☑ شراء أغراض
+☑ خدمات منزلية
+☑ أخرى
+
+B. Preferred Locations
+
+Allow multi-select:
+
+☑ مسقط
+☑ بوشر
+☑ الخوير
+☑ الغبرة
+☑ الموالح
+☑ السيب
+☑ العامرات
+☑ المعبيلة
+☑ الخوض
+☑ الأنصب
+☑ العذيبة
+☑ القرم
+☑ غلا
+☑ روي
+☑ صور
+☑ صحار
+☑ نزوى
+☑ صلالة
+☑ أخرى
+
+C. Save Preferences
+
+Add button:
+
+"حفظ الاهتمامات"
+
+Save these selections to the helper profile.
+
+---
+
+Part 3: Future Notification Logic (Do Not Implement Notifications Yet)
+
+Prepare the database/profile structure so it can be used later for push notifications.
+
+Example:
+
+If helper interests include:
+
+* نقل وتحميل
+* بوشر
+
+And a customer creates a request:
+
+* نوع الطلب = نقل وتحميل
+* الموقع = بوشر
+
+Then that helper becomes eligible to receive a notification.
+
+For now:
+
+* Save preferences only
+* Do not send notifications yet
+* Do not add push notification services yet
+
+---
+
+UI Requirements
+
+* Full Arabic RTL
+* Mobile-first design
+* Modern chips/toggle selections
+* Clean spacing
+* Consistent with existing app design
+
+Important:
+
+* Do not affect current request filters
+* Do not change customer flow
+* Do not change admin flow
+* Only add helper interests and prepare future notification targeting

@@ -63,7 +63,9 @@ export const AdminLoginResponse = zod.object({
   "lastLogin": zod.string().nullish(),
   "otpCode": zod.string().nullish(),
   "otpCreatedAt": zod.string().nullish(),
-  "createdAt": zod.string()
+  "createdAt": zod.string(),
+  "helperInterests": zod.string().nullish(),
+  "preferredAreas": zod.string().nullish()
 })
 })
 
@@ -90,7 +92,9 @@ export const VerifyOtpResponse = zod.object({
   "lastLogin": zod.string().nullish(),
   "otpCode": zod.string().nullish(),
   "otpCreatedAt": zod.string().nullish(),
-  "createdAt": zod.string()
+  "createdAt": zod.string(),
+  "helperInterests": zod.string().nullish(),
+  "preferredAreas": zod.string().nullish()
 })
 })
 
@@ -111,7 +115,9 @@ export const GetMeResponse = zod.object({
   "lastLogin": zod.string().nullish(),
   "otpCode": zod.string().nullish(),
   "otpCreatedAt": zod.string().nullish(),
-  "createdAt": zod.string()
+  "createdAt": zod.string(),
+  "helperInterests": zod.string().nullish(),
+  "preferredAreas": zod.string().nullish()
 })
 
 
@@ -344,7 +350,9 @@ export const ListUsersResponseItem = zod.object({
   "lastLogin": zod.string().nullish(),
   "otpCode": zod.string().nullish(),
   "otpCreatedAt": zod.string().nullish(),
-  "createdAt": zod.string()
+  "createdAt": zod.string(),
+  "helperInterests": zod.string().nullish(),
+  "preferredAreas": zod.string().nullish()
 })
 export const ListUsersResponse = zod.array(ListUsersResponseItem)
 
@@ -369,7 +377,9 @@ export const GetUserResponse = zod.object({
   "lastLogin": zod.string().nullish(),
   "otpCode": zod.string().nullish(),
   "otpCreatedAt": zod.string().nullish(),
-  "createdAt": zod.string()
+  "createdAt": zod.string(),
+  "helperInterests": zod.string().nullish(),
+  "preferredAreas": zod.string().nullish()
 })
 
 
@@ -383,7 +393,9 @@ export const UpdateUserParams = zod.object({
 export const UpdateUserBody = zod.object({
   "name": zod.string().optional(),
   "area": zod.string().optional(),
-  "isActive": zod.boolean().optional()
+  "isActive": zod.boolean().optional(),
+  "helperInterests": zod.string().nullish(),
+  "preferredAreas": zod.string().nullish()
 })
 
 export const UpdateUserResponse = zod.object({
@@ -399,7 +411,9 @@ export const UpdateUserResponse = zod.object({
   "lastLogin": zod.string().nullish(),
   "otpCode": zod.string().nullish(),
   "otpCreatedAt": zod.string().nullish(),
-  "createdAt": zod.string()
+  "createdAt": zod.string(),
+  "helperInterests": zod.string().nullish(),
+  "preferredAreas": zod.string().nullish()
 })
 
 
@@ -441,7 +455,9 @@ export const VerifyHelperResponse = zod.object({
   "lastLogin": zod.string().nullish(),
   "otpCode": zod.string().nullish(),
   "otpCreatedAt": zod.string().nullish(),
-  "createdAt": zod.string()
+  "createdAt": zod.string(),
+  "helperInterests": zod.string().nullish(),
+  "preferredAreas": zod.string().nullish()
 })
 
 

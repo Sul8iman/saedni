@@ -12,6 +12,8 @@ export interface AuthUser {
   isVerified?: boolean;
   isBlocked?: boolean;
   area?: string | null;
+  helperInterests?: string | null;  // JSON-encoded string[]
+  preferredAreas?: string | null;   // JSON-encoded string[]
 }
 
 interface AuthContextType {

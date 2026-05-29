@@ -16,6 +16,9 @@ export const usersTable = pgTable("users", {
   otpCode: text("otp_code"),
   otpCreatedAt: timestamp("otp_created_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  // Helper interest preferences for future notification targeting
+  helperInterests: text("helper_interests"),   // JSON: string[] of category values
+  preferredAreas:  text("preferred_areas"),    // JSON: string[] of area names
 });
 
 export const insertUserSchema = createInsertSchema(usersTable).omit({

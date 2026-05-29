@@ -69,7 +69,13 @@ router.patch("/users/:id", async (req, res): Promise<void> => {
   }
 
   // Translate isActive → isBlocked for storage
-  const { isActive, ...rest } = parsed.data as { isActive?: boolean; name?: string; area?: string };
+  const { isActive, ...rest } = parsed.data as {
+    isActive?: boolean;
+    name?: string;
+    area?: string;
+    helperInterests?: string | null;
+    preferredAreas?: string | null;
+  };
   const updates: Record<string, unknown> = { ...rest };
   if (isActive !== undefined) updates.isBlocked = !isActive;
 

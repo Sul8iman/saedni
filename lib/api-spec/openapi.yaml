@@ -508,6 +508,10 @@ components:
           type: ["string", "null"]
         createdAt:
           type: string
+        helperInterests:
+          type: ["string", "null"]
+        preferredAreas:
+          type: ["string", "null"]
 
     RegisterInput:
       type: object
@@ -575,6 +579,10 @@ components:
           type: string
         isActive:
           type: boolean
+        helperInterests:
+          type: ["string", "null"]
+        preferredAreas:
+          type: ["string", "null"]
 
     HelpRequest:
       type: object

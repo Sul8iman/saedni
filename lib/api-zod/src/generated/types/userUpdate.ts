@@ -10,4 +10,8 @@ export interface UserUpdate {
   name?: string;
   area?: string;
   isActive?: boolean;
+  /** @nullable */
+  helperInterests?: string | null;
+  /** @nullable */
+  preferredAreas?: string | null;
 }

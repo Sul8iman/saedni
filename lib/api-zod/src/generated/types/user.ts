@@ -26,4 +26,8 @@ export interface User {
   /** @nullable */
   otpCreatedAt?: string | null;
   createdAt: string;
+  /** @nullable */
+  helperInterests?: string | null;
+  /** @nullable */
+  preferredAreas?: string | null;
 }

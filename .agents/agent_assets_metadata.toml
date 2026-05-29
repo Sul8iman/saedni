@@ -1,8 +1,3 @@
 uploads = []
+generated = []
 outputs = []
-
-[[generated]]
-id = "0wq9Djthi30SmDPlAT2bU"
-uri = "file://artifacts/saedni-mobile/assets/images/icon.png"
-type = "image"
-title = "saedni clean teal hand icon"

@@ -21,7 +21,7 @@ export default function CustomerProfileScreen() {
         onPress: async () => {
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
           await logout();
-          router.replace("/");
+          router.replace("/(auth)/welcome");
         },
       },
     ]);

@@ -118,7 +118,7 @@ export default function AdminDashboard() {
   function handleLogout() {
     Alert.alert("تسجيل الخروج", "هل تريد الخروج؟", [
       { text: "إلغاء", style: "cancel" },
-      { text: "خروج", style: "destructive", onPress: async () => { await logout(); router.replace("/"); } },
+      { text: "خروج", style: "destructive", onPress: async () => { await logout(); router.replace("/(auth)/welcome"); } },
     ]);
   }
 

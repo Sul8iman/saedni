@@ -22,7 +22,7 @@ export default function HelperProfileScreen() {
         onPress: async () => {
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
           await logout();
-          router.replace("/");
+          router.replace("/(auth)/welcome");
         },
       },
     ]);

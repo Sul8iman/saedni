@@ -15,7 +15,7 @@ export default function Index() {
     );
   }
 
-  if (!user) return <Redirect href="/(auth)/login" />;
+  if (!user) return <Redirect href="/(auth)/welcome" />;
   if (user.userType === "admin") return <Redirect href="/(admin)" />;
   if (user.userType === "customer") return <Redirect href="/(customer)" />;
   return <Redirect href="/(helper)" />;

@@ -230,6 +230,21 @@ export interface VerifyHelperInput {
   action: VerifyHelperInputAction;
 }
 
+export interface AdminNotification {
+  id: number;
+  type: string;
+  title: string;
+  /** @nullable */
+  userId?: number | null;
+  /** @nullable */
+  userName?: string | null;
+  phone: string;
+  /** @nullable */
+  userType?: string | null;
+  isRead: boolean;
+  createdAt: string;
+}
+
 export type ListRequestsParams = {
 category?: string;
 area?: string;

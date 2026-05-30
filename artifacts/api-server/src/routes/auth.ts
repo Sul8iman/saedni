@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq } from "drizzle-orm";
-import { db, usersTable } from "@workspace/db";
+import { db, usersTable, adminNotificationsTable } from "@workspace/db";
 import { RegisterBody, LoginBody, VerifyOtpBody, AdminLoginBody } from "@workspace/api-zod";
 import { logger } from "../lib/logger";
 
@@ -24,6 +24,27 @@ function safeUser(user: typeof usersTable.$inferSelect) {
     lastLogin: safe.lastLogin?.toISOString() ?? null,
     otpCreatedAt: safe.otpCreatedAt?.toISOString() ?? null,
   };
+}
+
+async function createOtpNotification(opts: {
+  userId?: number;
+  userName?: string;
+  phone: string;
+  userType?: string;
+}) {
+  try {
+    await db.insert(adminNotificationsTable).values({
+      type: "otp_request",
+      title: "طلب رمز تحقق جديد",
+      userId: opts.userId ?? null,
+      userName: opts.userName ?? null,
+      phone: opts.phone,
+      userType: opts.userType ?? null,
+      isRead: false,
+    });
+  } catch (err) {
+    logger.error({ err }, "Failed to create OTP notification");
+  }
 }
 
 // POST /auth/register — creates account (inactive+unverified), generates OTP, does NOT log in
@@ -59,6 +80,9 @@ router.post("/auth/register", async (req, res): Promise<void> => {
     .returning();
 
   req.log.info({ userId: user.id, userType }, "User registered (unverified)");
+
+  // Create admin notification for OTP request
+  await createOtpNotification({ userId: user.id, userName: name, phone, userType });
 
   res.status(201).json({
     message: "تم إنشاء الحساب. يرجى التواصل مع الإدارة للحصول على رمز التحقق",
@@ -106,6 +130,9 @@ router.post("/auth/login", async (req, res): Promise<void> => {
     .where(eq(usersTable.id, user.id));
 
   req.log.info({ userId: user.id, isVerified: user.isVerified }, "OTP generated");
+
+  // Create admin notification for OTP request
+  await createOtpNotification({ userId: user.id, userName: user.name, phone, userType: user.userType });
 
   res.json({
     message: user.isVerified

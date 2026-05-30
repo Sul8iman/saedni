@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
-import { eq, count } from "drizzle-orm";
-import { db, usersTable, requestsTable } from "@workspace/db";
+import { eq, count, desc } from "drizzle-orm";
+import { db, usersTable, requestsTable, adminNotificationsTable } from "@workspace/db";
 import { VerifyHelperParams, VerifyHelperBody, DeleteUserParams } from "@workspace/api-zod";
 
 const router: IRouter = Router();
@@ -13,6 +13,13 @@ function safeUser(user: typeof usersTable.$inferSelect) {
     createdAt: safe.createdAt.toISOString(),
     lastLogin: safe.lastLogin?.toISOString() ?? null,
     otpCreatedAt: safe.otpCreatedAt?.toISOString() ?? null,
+  };
+}
+
+function safeNotification(n: typeof adminNotificationsTable.$inferSelect) {
+  return {
+    ...n,
+    createdAt: n.createdAt.toISOString(),
   };
 }
 
@@ -114,6 +121,38 @@ router.delete("/admin/users/:id/delete", async (req, res): Promise<void> => {
   }
 
   res.sendStatus(204);
+});
+
+// GET /admin/notifications
+router.get("/admin/notifications", async (_req, res): Promise<void> => {
+  const notifications = await db
+    .select()
+    .from(adminNotificationsTable)
+    .orderBy(desc(adminNotificationsTable.createdAt));
+
+  res.json(notifications.map(safeNotification));
+});
+
+// PATCH /admin/notifications/:id/read
+router.patch("/admin/notifications/:id/read", async (req, res): Promise<void> => {
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) {
+    res.status(400).json({ error: "معرف غير صالح" });
+    return;
+  }
+
+  const [notification] = await db
+    .update(adminNotificationsTable)
+    .set({ isRead: true })
+    .where(eq(adminNotificationsTable.id, id))
+    .returning();
+
+  if (!notification) {
+    res.status(404).json({ error: "الإشعار غير موجود" });
+    return;
+  }
+
+  res.json(safeNotification(notification));
 });
 
 export default router;

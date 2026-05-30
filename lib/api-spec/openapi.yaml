@@ -459,6 +459,42 @@ paths:
         "204":
           description: Deleted
 
+  /admin/notifications:
+    get:
+      operationId: getAdminNotifications
+      tags: [admin]
+      summary: Get all admin notifications
+      responses:
+        "200":
+          description: List of admin notifications
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AdminNotification"
+
+  /admin/notifications/{id}/read:
+    patch:
+      operationId: markNotificationRead
+      tags: [admin]
+      summary: Mark a notification as read
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Notification marked as read
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminNotification"
+        "404":
+          description: Not found
+
 components:
   schemas:
     HealthStatus:
@@ -702,3 +738,26 @@ components:
         action:
           type: string
           enum: [verify, block]
+
+    AdminNotification:
+      type: object
+      required: [id, type, title, phone, isRead, createdAt]
+      properties:
+        id:
+          type: integer
+        type:
+          type: string
+        title:
+          type: string
+        userId:
+          type: ["integer", "null"]
+        userName:
+          type: ["string", "null"]
+        phone:
+          type: string
+        userType:
+          type: ["string", "null"]
+        isRead:
+          type: boolean
+        createdAt:
+          type: string

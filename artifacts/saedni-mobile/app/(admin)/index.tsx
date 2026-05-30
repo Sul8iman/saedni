@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
   ActivityIndicator, RefreshControl, Alert,
@@ -24,6 +24,12 @@ interface HelpRequest {
   offeredAmount: number; status: string; customerName?: string | null;
   createdAt: string;
 }
+interface AdminNotification {
+  id: number; type: string; title: string;
+  userId?: number | null; userName?: string | null;
+  phone: string; userType?: string | null;
+  isRead: boolean; createdAt: string;
+}
 
 function fmtScheduled(iso: string) {
   const d = new Date(iso);
@@ -37,12 +43,6 @@ function fmtScheduled(iso: string) {
   return `${dd}/${mm}/${yyyy} - ${h}:${min} ${period}`;
 }
 
-function fmtDateShort(iso: string) {
-  const d = new Date(iso);
-  return `${d.getDate().toString().padStart(2, "0")}/${(d.getMonth() + 1).toString().padStart(2, "0")}/${d.getFullYear()}`;
-}
-
-// null-safe publish date formatter
 function fmtCreatedAt(iso: string | null | undefined): string {
   if (!iso) return "غير متوفر";
   const d = new Date(iso);
@@ -66,12 +66,21 @@ const STAT_DEFS = (stats: Stats | undefined, c: string) => [
   { label: "المنتهية",   val: stats?.completedRequests ?? 0, icon: "checkmark-done-outline", color: "#6B7280" },
 ];
 
+const USER_TYPE_LABEL: Record<string, string> = {
+  customer: "عميل",
+  helper: "مساعد",
+  admin: "مدير",
+};
+
+type Tab = "requests" | "notifications";
+
 export default function AdminDashboard() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { logout } = useAuth();
   const qc = useQueryClient();
+  const [activeTab, setActiveTab] = useState<Tab>("requests");
 
   const { data: stats, refetch: refetchStats } = useQuery({
     queryKey: ["admin-stats"],
@@ -81,13 +90,23 @@ export default function AdminDashboard() {
     },
   });
 
-  const { data: requests, isLoading, refetch: refetchReqs, isRefetching } = useQuery({
+  const { data: requests, isLoading: reqLoading, refetch: refetchReqs, isRefetching: reqRefetching } = useQuery({
     queryKey: ["admin-requests"],
     queryFn: async () => {
       const r = await fetch(`${BASE}/api/requests`, { credentials: "include" });
       return r.json() as Promise<HelpRequest[]>;
     },
   });
+
+  const { data: notifications, isLoading: notifLoading, refetch: refetchNotifs, isRefetching: notifRefetching } = useQuery({
+    queryKey: ["admin-notifications"],
+    queryFn: async () => {
+      const r = await fetch(`${BASE}/api/admin/notifications`, { credentials: "include" });
+      return r.json() as Promise<AdminNotification[]>;
+    },
+  });
+
+  const unreadCount = notifications?.filter(n => !n.isRead).length ?? 0;
 
   const deleteReqMutation = useMutation({
     mutationFn: async (id: number) => {
@@ -115,11 +134,32 @@ export default function AdminDashboard() {
     onError: () => Alert.alert("خطأ", "تعذر إنهاء الطلب"),
   });
 
+  const markReadMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const r = await fetch(`${BASE}/api/admin/notifications/${id}/read`, {
+        method: "PATCH",
+        credentials: "include",
+      });
+      if (!r.ok) throw new Error();
+      return r.json() as Promise<AdminNotification>;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin-notifications"] });
+    },
+  });
+
   function handleLogout() {
     Alert.alert("تسجيل الخروج", "هل تريد الخروج؟", [
       { text: "إلغاء", style: "cancel" },
       { text: "خروج", style: "destructive", onPress: async () => { await logout(); router.replace("/(auth)/welcome"); } },
     ]);
+  }
+
+  function handleNotifPress(notif: AdminNotification) {
+    if (!notif.isRead) markReadMutation.mutate(notif.id);
+    if (notif.userId) {
+      router.push("/(admin)/users");
+    }
   }
 
   const catLabel = (v: string) => CATEGORIES.find(c => c.value === v)?.label ?? v;
@@ -140,7 +180,6 @@ export default function AdminDashboard() {
           <Text style={s.reqCat}>{catLabel(item.category)}</Text>
         </View>
         <Text style={s.reqDetails} numberOfLines={1}>{item.details}</Text>
-        {/* Admin action buttons */}
         <View style={s.reqActions}>
           {item.status !== "completed" && (
             <TouchableOpacity
@@ -174,28 +213,28 @@ export default function AdminDashboard() {
           </TouchableOpacity>
         </View>
         <View style={s.reqMeta}>
-            <Ionicons name="location-outline" size={12} color={colors.mutedForeground} />
-            <Text style={s.metaTxt}>{item.area}</Text>
-            <View style={s.dot} />
-            <Ionicons
-              name={item.timeType === "now" ? "flash" : "calendar-outline"}
-              size={12}
-              color={colors.mutedForeground}
-            />
-            <Text style={s.metaTxt}>
-              {item.timeType === "now"
-                ? "الآن"
-                : item.scheduledDateTime
-                  ? fmtScheduled(item.scheduledDateTime)
-                  : "لاحقاً"}
-            </Text>
-            {item.customerName && (
-              <>
-                <View style={s.dot} />
-                <Text style={s.metaTxt}>{item.customerName}</Text>
-              </>
-            )}
-          </View>
+          <Ionicons name="location-outline" size={12} color={colors.mutedForeground} />
+          <Text style={s.metaTxt}>{item.area}</Text>
+          <View style={s.dot} />
+          <Ionicons
+            name={item.timeType === "now" ? "flash" : "calendar-outline"}
+            size={12}
+            color={colors.mutedForeground}
+          />
+          <Text style={s.metaTxt}>
+            {item.timeType === "now"
+              ? "الآن"
+              : item.scheduledDateTime
+                ? fmtScheduled(item.scheduledDateTime)
+                : "لاحقاً"}
+          </Text>
+          {item.customerName && (
+            <>
+              <View style={s.dot} />
+              <Text style={s.metaTxt}>{item.customerName}</Text>
+            </>
+          )}
+        </View>
         <View style={s.publishRow}>
           <Ionicons name="time-outline" size={11} color={colors.mutedForeground} />
           <Text style={s.publishTxt}>
@@ -206,6 +245,65 @@ export default function AdminDashboard() {
       </View>
     );
   };
+
+  const renderNotification = ({ item }: { item: AdminNotification }) => (
+    <TouchableOpacity
+      style={[s.notifCard, !item.isRead && s.notifCardUnread]}
+      onPress={() => handleNotifPress(item)}
+      activeOpacity={0.8}
+    >
+      <View style={s.notifRow}>
+        <View style={s.notifRight}>
+          <View style={[s.notifIcon, !item.isRead && s.notifIconUnread]}>
+            <Ionicons
+              name="key-outline"
+              size={18}
+              color={item.isRead ? colors.mutedForeground : colors.primary}
+            />
+          </View>
+          <View style={s.notifText}>
+            <View style={s.notifTitleRow}>
+              {!item.isRead && <View style={s.unreadDot} />}
+              <Text style={[s.notifTitle, !item.isRead && s.notifTitleUnread]}>
+                {item.title}
+              </Text>
+            </View>
+            {item.userName && (
+              <Text style={s.notifMeta}>
+                <Text style={s.notifMetaKey}>الاسم: </Text>
+                {item.userName}
+              </Text>
+            )}
+            <Text style={s.notifMeta}>
+              <Text style={s.notifMetaKey}>الهاتف: </Text>
+              {item.phone}
+            </Text>
+            {item.userType && (
+              <Text style={s.notifMeta}>
+                <Text style={s.notifMetaKey}>نوع الحساب: </Text>
+                {USER_TYPE_LABEL[item.userType] ?? item.userType}
+              </Text>
+            )}
+            <Text style={s.notifTime}>{fmtCreatedAt(item.createdAt)}</Text>
+          </View>
+        </View>
+        {item.userId && (
+          <View style={s.notifAction}>
+            <Ionicons name="chevron-back" size={14} color={colors.mutedForeground} />
+          </View>
+        )}
+      </View>
+      {item.userId && (
+        <View style={s.viewUserBtn}>
+          <Ionicons name="person-outline" size={13} color={colors.primary} />
+          <Text style={s.viewUserTxt}>عرض المستخدم</Text>
+        </View>
+      )}
+    </TouchableOpacity>
+  );
+
+  const isLoading = activeTab === "requests" ? reqLoading : notifLoading;
+  const isRefetching = activeTab === "requests" ? reqRefetching : notifRefetching;
 
   return (
     <View style={s.container}>
@@ -219,13 +317,52 @@ export default function AdminDashboard() {
             <Ionicons name="people-outline" size={22} color={colors.primary} />
           </TouchableOpacity>
         </View>
+
+        {/* Tab switcher */}
+        <View style={s.tabs}>
+          <TouchableOpacity
+            style={[s.tab, activeTab === "notifications" && s.tabActive]}
+            onPress={() => { Haptics.selectionAsync(); setActiveTab("notifications"); }}
+          >
+            <View style={s.tabInner}>
+              <Ionicons
+                name="notifications-outline"
+                size={16}
+                color={activeTab === "notifications" ? colors.primary : colors.mutedForeground}
+              />
+              <Text style={[s.tabTxt, activeTab === "notifications" && s.tabTxtActive]}>
+                الإشعارات
+              </Text>
+              {unreadCount > 0 && (
+                <View style={s.badge}>
+                  <Text style={s.badgeTxt}>{unreadCount > 99 ? "99+" : unreadCount}</Text>
+                </View>
+              )}
+            </View>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[s.tab, activeTab === "requests" && s.tabActive]}
+            onPress={() => { Haptics.selectionAsync(); setActiveTab("requests"); }}
+          >
+            <View style={s.tabInner}>
+              <Ionicons
+                name="document-text-outline"
+                size={16}
+                color={activeTab === "requests" ? colors.primary : colors.mutedForeground}
+              />
+              <Text style={[s.tabTxt, activeTab === "requests" && s.tabTxtActive]}>
+                الطلبات
+              </Text>
+            </View>
+          </TouchableOpacity>
+        </View>
       </SafeAreaView>
 
       {isLoading ? (
         <View style={s.centered}>
           <ActivityIndicator size="large" color={colors.primary} />
         </View>
-      ) : (
+      ) : activeTab === "requests" ? (
         <FlatList
           data={requests ?? []}
           keyExtractor={i => String(i.id)}
@@ -262,6 +399,37 @@ export default function AdminDashboard() {
             </View>
           }
         />
+      ) : (
+        <FlatList
+          data={notifications ?? []}
+          keyExtractor={i => String(i.id)}
+          renderItem={renderNotification}
+          contentContainerStyle={s.listContent}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefetching}
+              onRefresh={() => refetchNotifs()}
+              tintColor={colors.primary}
+            />
+          }
+          ListHeaderComponent={
+            unreadCount > 0 ? (
+              <View style={s.notifHeader}>
+                <Ionicons name="ellipse" size={8} color={colors.primary} />
+                <Text style={s.notifHeaderTxt}>
+                  {unreadCount} إشعار{unreadCount === 1 ? "" : "ات"} غير مقروء{unreadCount === 1 ? "" : "ة"}
+                </Text>
+              </View>
+            ) : null
+          }
+          ListEmptyComponent={
+            <View style={s.empty}>
+              <Ionicons name="notifications-off-outline" size={56} color={colors.border} />
+              <Text style={s.emptyTxt}>لا توجد إشعارات</Text>
+            </View>
+          }
+        />
       )}
     </View>
   );
@@ -278,7 +446,31 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
     },
     headerTitle: { fontSize: 20, fontWeight: "800", color: c.foreground },
     headerAction: { padding: 4 },
+
+    // Tabs
+    tabs: {
+      flexDirection: "row-reverse",
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: c.border,
+    },
+    tab: {
+      flex: 1, paddingVertical: 11, alignItems: "center",
+      borderBottomWidth: 2, borderBottomColor: "transparent",
+    },
+    tabActive: { borderBottomColor: c.primary },
+    tabInner: { flexDirection: "row-reverse", alignItems: "center", gap: 6 },
+    tabTxt: { fontSize: 14, fontWeight: "600", color: c.mutedForeground },
+    tabTxtActive: { color: c.primary },
+    badge: {
+      backgroundColor: "#EF4444", borderRadius: 10,
+      minWidth: 20, height: 20, alignItems: "center", justifyContent: "center",
+      paddingHorizontal: 5,
+    },
+    badgeTxt: { fontSize: 11, fontWeight: "800", color: "#fff" },
+
     listContent: { padding: 16, paddingBottom: bottomInset + 24 },
+
+    // Stats
     statsGrid: { flexDirection: "row-reverse", flexWrap: "wrap", gap: 10, marginBottom: 20 },
     statCard: {
       width: "31%", backgroundColor: c.card, borderRadius: 14, borderWidth: 1,
@@ -290,6 +482,8 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
     statVal: { fontSize: 24, fontWeight: "800", color: c.foreground },
     statLabel: { fontSize: 11, color: c.mutedForeground, textAlign: "right", marginTop: 2 },
     sectionTitle: { fontSize: 17, fontWeight: "700", color: c.foreground, textAlign: "right", marginBottom: 12 },
+
+    // Request cards
     reqCard: {
       backgroundColor: c.card, borderRadius: 14, borderWidth: 1, borderColor: c.border,
       padding: 14, marginBottom: 10,
@@ -303,7 +497,6 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
     statusBadge: { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
     statusTxt: { fontSize: 11, fontWeight: "700" },
     reqDetails: { fontSize: 13, color: c.mutedForeground, textAlign: "right", marginBottom: 8 },
-    reqFooter: { flexDirection: "row-reverse", alignItems: "center", justifyContent: "space-between" },
     reqActions: { flexDirection: "row-reverse", gap: 8, marginBottom: 10 },
     endBtn: {
       flex: 1, flexDirection: "row-reverse", alignItems: "center", justifyContent: "center",
@@ -319,6 +512,50 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
     publishRow: { flexDirection: "row-reverse", alignItems: "center", gap: 5 },
     publishTxt: { fontSize: 11, color: c.mutedForeground },
     publishVal: { fontSize: 11, color: c.foreground, fontWeight: "600" },
+
+    // Notification header
+    notifHeader: {
+      flexDirection: "row-reverse", alignItems: "center", gap: 8,
+      marginBottom: 12, backgroundColor: c.primary + "12",
+      borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8,
+    },
+    notifHeaderTxt: { fontSize: 13, color: c.primary, fontWeight: "700" },
+
+    // Notification cards
+    notifCard: {
+      backgroundColor: c.card, borderRadius: 14, borderWidth: 1, borderColor: c.border,
+      padding: 14, marginBottom: 10,
+      shadowColor: "#000", shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.04, shadowRadius: 3, elevation: 1,
+    },
+    notifCardUnread: {
+      borderColor: c.primary + "40",
+      backgroundColor: c.primary + "06",
+    },
+    notifRow: { flexDirection: "row-reverse", alignItems: "flex-start", justifyContent: "space-between" },
+    notifRight: { flexDirection: "row-reverse", alignItems: "flex-start", gap: 12, flex: 1 },
+    notifIcon: {
+      width: 40, height: 40, borderRadius: 12,
+      backgroundColor: c.muted, alignItems: "center", justifyContent: "center",
+    },
+    notifIconUnread: { backgroundColor: c.primary + "18" },
+    notifText: { flex: 1 },
+    notifTitleRow: { flexDirection: "row-reverse", alignItems: "center", gap: 6, marginBottom: 4 },
+    unreadDot: { width: 7, height: 7, borderRadius: 3.5, backgroundColor: c.primary },
+    notifTitle: { fontSize: 14, fontWeight: "700", color: c.foreground, textAlign: "right" },
+    notifTitleUnread: { color: c.primary },
+    notifMeta: { fontSize: 13, color: c.mutedForeground, textAlign: "right", marginBottom: 2 },
+    notifMetaKey: { fontWeight: "600", color: c.foreground },
+    notifTime: { fontSize: 11, color: c.mutedForeground, textAlign: "right", marginTop: 4 },
+    notifAction: { paddingTop: 2 },
+    viewUserBtn: {
+      marginTop: 10, flexDirection: "row-reverse", alignItems: "center", gap: 6,
+      alignSelf: "flex-end", backgroundColor: c.secondary,
+      borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6,
+      borderWidth: 1, borderColor: c.border,
+    },
+    viewUserTxt: { fontSize: 12, color: c.primary, fontWeight: "700" },
+
     empty: { alignItems: "center", justifyContent: "center", paddingTop: 60, gap: 10 },
     emptyTxt: { fontSize: 16, color: c.mutedForeground },
   });

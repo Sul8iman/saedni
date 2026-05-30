@@ -469,3 +469,40 @@ export const DeleteUserParams = zod.object({
 })
 
 
+/**
+ * @summary Get all admin notifications
+ */
+export const GetAdminNotificationsResponseItem = zod.object({
+  "id": zod.number(),
+  "type": zod.string(),
+  "title": zod.string(),
+  "userId": zod.number().nullish(),
+  "userName": zod.string().nullish(),
+  "phone": zod.string(),
+  "userType": zod.string().nullish(),
+  "isRead": zod.boolean(),
+  "createdAt": zod.string()
+})
+export const GetAdminNotificationsResponse = zod.array(GetAdminNotificationsResponseItem)
+
+
+/**
+ * @summary Mark a notification as read
+ */
+export const MarkNotificationReadParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const MarkNotificationReadResponse = zod.object({
+  "id": zod.number(),
+  "type": zod.string(),
+  "title": zod.string(),
+  "userId": zod.number().nullish(),
+  "userName": zod.string().nullish(),
+  "phone": zod.string(),
+  "userType": zod.string().nullish(),
+  "isRead": zod.boolean(),
+  "createdAt": zod.string()
+})
+
+

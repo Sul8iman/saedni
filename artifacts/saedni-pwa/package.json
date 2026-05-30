@@ -1,0 +1,11 @@
+{
+  "name": "@workspace/saedni-pwa",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "node server.js",
+    "build": "node build.js",
+    "serve": "SERVE_ONLY=true node server.js",
+    "typecheck": "echo 'no TypeScript sources in saedni-pwa'"
+  }
+}

@@ -1,2 +1,3 @@
 - [Expo cookie auth](expo-cookie-auth.md) — session cookies work in Expo if global fetch is patched with `credentials: "include"` in `_layout.tsx`.
 - [Expo role-based routing](expo-role-routing.md) — role-gated navigation uses `app/index.tsx` redirect + separate `(auth)/(customer)/(helper)/(admin)` route groups.
+- [Expo Router web basePath](expo-router-web-basepath.md) — expo-router 6 rejects `basePath` in plugin config; use `experiments.baseUrl` in app.json to serve web at a subpath.

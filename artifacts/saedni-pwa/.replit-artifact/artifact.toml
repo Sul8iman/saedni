@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/saedni-pwa/"
+title = "ساعدني PWA"
+version = "1.0.0"
+id = "artifacts/saedni-pwa"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/saedni-pwa/" ]
+localPort = 18261
+
+[services.development]
+run = "pnpm --filter @workspace/saedni-pwa run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/saedni-pwa", "run", "build" ]
+publicDir = "artifacts/saedni-mobile/dist"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "18261"
+BASE_PATH = "/saedni-pwa/"

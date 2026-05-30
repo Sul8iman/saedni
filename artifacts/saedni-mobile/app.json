@@ -25,7 +25,19 @@
       }
     },
     "web": {
-      "favicon": "./assets/images/icon.png"
+      "bundler": "metro",
+      "output": "single",
+      "favicon": "./assets/images/icon.png",
+      "name": "ساعدني",
+      "shortName": "ساعدني",
+      "lang": "ar",
+      "description": "منصة المساعدة اليومية في عُمان",
+      "themeColor": "#1AA87D",
+      "backgroundColor": "#1AA87D",
+      "display": "standalone",
+      "orientation": "portrait",
+      "scope": "/saedni-pwa/",
+      "startUrl": "/saedni-pwa/"
     },
     "plugins": [
       [
@@ -39,7 +51,8 @@
     ],
     "experiments": {
       "typedRoutes": true,
-      "reactCompiler": true
+      "reactCompiler": true,
+      "baseUrl": "/saedni-pwa"
     }
   }
 }

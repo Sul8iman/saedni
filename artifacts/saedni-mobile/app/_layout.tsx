@@ -9,7 +9,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect } from "react";
+import { Platform } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { WebInstallBanner } from "@/components/WebInstallBanner";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { setBaseUrl } from "@workspace/api-client-react";
@@ -70,6 +72,7 @@ export default function RootLayout() {
               <KeyboardProvider>
                 <RootLayoutNav />
               </KeyboardProvider>
+              {Platform.OS === 'web' && <WebInstallBanner />}
             </GestureHandlerRootView>
           </AuthProvider>
         </QueryClientProvider>

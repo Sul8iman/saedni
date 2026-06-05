@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
-  ActivityIndicator, RefreshControl, Alert, ScrollView,
+  ActivityIndicator, RefreshControl, Alert,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -76,24 +76,31 @@ export default function AdminUsersScreen() {
   const renderItem = ({ item }: { item: User }) => (
     <View style={s.card}>
       <View style={s.cardTop}>
-        {/* Avatar */}
-        <View style={[s.avatar, item.userType === "helper" && s.avatarHelper]}>
-          <Text style={s.avatarTxt}>{item.name?.[0] ?? "؟"}</Text>
-        </View>
-
-        {/* Info */}
-        <View style={s.info}>
-          <Text style={s.userName}>{item.name}</Text>
-          <Text style={s.userPhone}>{item.phone}</Text>
-          {item.otpCode && (
-            <View style={s.otpChip}>
-              <Ionicons name="key-outline" size={11} color={colors.mutedForeground} />
-              <Text style={s.otpTxt}>OTP: {item.otpCode}</Text>
+        {/* Tappable info area → navigate to user detail */}
+        <TouchableOpacity
+          style={s.infoArea}
+          onPress={() => router.push({ pathname: "/(admin)/user-detail", params: { id: item.id } })}
+          activeOpacity={0.7}
+        >
+          <View style={[s.avatar, item.userType === "helper" && s.avatarHelper]}>
+            <Text style={s.avatarTxt}>{item.name?.[0] ?? "؟"}</Text>
+          </View>
+          <View style={s.info}>
+            <View style={s.nameRow}>
+              <Text style={s.userName}>{item.name}</Text>
+              <Ionicons name="chevron-back" size={14} color={colors.mutedForeground} style={s.chevron} />
             </View>
-          )}
-        </View>
+            <Text style={s.userPhone}>{item.phone}</Text>
+            {item.otpCode && (
+              <View style={s.otpChip}>
+                <Ionicons name="key-outline" size={11} color={colors.mutedForeground} />
+                <Text style={s.otpTxt}>OTP: {item.otpCode}</Text>
+              </View>
+            )}
+          </View>
+        </TouchableOpacity>
 
-        {/* Actions */}
+        {/* Action buttons (independent column, not nested inside nav TouchableOpacity) */}
         <View style={s.actions}>
           {item.userType === "helper" && (
             <TouchableOpacity
@@ -135,6 +142,11 @@ export default function AdminUsersScreen() {
             <Text style={[s.tagTxt, item.isBlocked ? s.tagTxtBlocked : item.isVerified ? s.tagTxtVerified : s.tagTxtPending]}>
               {item.isBlocked ? "محظور" : item.isVerified ? "موثّق" : "قيد المراجعة"}
             </Text>
+          </View>
+        )}
+        {!item.isActive && item.userType !== "helper" && (
+          <View style={[s.tag, s.tagBlocked]}>
+            <Text style={[s.tagTxt, s.tagTxtBlocked]}>معطّل</Text>
           </View>
         )}
       </View>
@@ -218,6 +230,7 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
       shadowOpacity: 0.05, shadowRadius: 4, elevation: 2,
     },
     cardTop: { flexDirection: "row-reverse", alignItems: "flex-start", gap: 12, marginBottom: 10 },
+    infoArea: { flex: 1, flexDirection: "row-reverse", alignItems: "flex-start", gap: 12 },
     avatar: {
       width: 46, height: 46, borderRadius: 23, backgroundColor: c.muted,
       alignItems: "center", justifyContent: "center", flexShrink: 0,
@@ -225,7 +238,9 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
     avatarHelper: { backgroundColor: c.primary },
     avatarTxt: { fontSize: 19, fontWeight: "800", color: c.primaryForeground },
     info: { flex: 1 },
+    nameRow: { flexDirection: "row-reverse", alignItems: "center", gap: 4 },
     userName: { fontSize: 15, fontWeight: "700", color: c.foreground, textAlign: "right" },
+    chevron: { marginTop: 1 },
     userPhone: { fontSize: 13, color: c.mutedForeground, textAlign: "right", marginTop: 2 },
     otpChip: {
       flexDirection: "row-reverse", alignItems: "center", gap: 4,

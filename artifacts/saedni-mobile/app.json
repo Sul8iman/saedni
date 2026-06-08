@@ -9,16 +9,24 @@
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/images/icon.png",
+      "image": "./assets/images/splash.png",
       "resizeMode": "contain",
       "backgroundColor": "#1AA87D"
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.saedni.app"
+      "bundleIdentifier": "com.saedni.app",
+      "buildNumber": "1",
+      "infoPlist": {
+        "CFBundleDisplayName": "ساعدني",
+        "NSLocationWhenInUseUsageDescription": "نحتاج موقعك لعرض الطلبات القريبة منك",
+        "NSCameraUsageDescription": "نحتاج الكاميرا لرفع صور للطلبات",
+        "NSPhotoLibraryUsageDescription": "نحتاج مكتبة الصور لرفع صور للطلبات"
+      }
     },
     "android": {
       "package": "com.saedni.app",
+      "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/icon.png",
         "backgroundColor": "#1AA87D"
@@ -27,17 +35,7 @@
     "web": {
       "bundler": "metro",
       "output": "single",
-      "favicon": "./assets/images/icon.png",
-      "name": "ساعدني",
-      "shortName": "ساعدني",
-      "lang": "ar",
-      "description": "منصة المساعدة اليومية في عُمان",
-      "themeColor": "#1AA87D",
-      "backgroundColor": "#1AA87D",
-      "display": "standalone",
-      "orientation": "portrait",
-      "scope": "/saedni-pwa/",
-      "startUrl": "/saedni-pwa/"
+      "favicon": "./assets/images/icon.png"
     },
     "plugins": [
       [
@@ -51,8 +49,7 @@
     ],
     "experiments": {
       "typedRoutes": true,
-      "reactCompiler": true,
-      "baseUrl": "/saedni-pwa"
+      "reactCompiler": true
     }
   }
 }

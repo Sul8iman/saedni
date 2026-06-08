@@ -1,12 +1,16 @@
 {
   "cli": {
     "version": ">= 12.0.0",
-    "appVersionSource": "remote"
+    "appVersionSource": "local",
+    "requiresGitStatusToBeClean": false
   },
   "build": {
     "development": {
       "developmentClient": true,
-      "distribution": "internal"
+      "distribution": "internal",
+      "ios": {
+        "simulator": false
+      }
     },
     "preview": {
       "distribution": "internal",
@@ -15,15 +19,24 @@
       }
     },
     "production": {
+      "autoIncrement": false,
       "ios": {
-        "autoIncrement": true
+        "buildConfiguration": "Release",
+        "autoIncrement": "buildNumber"
       },
       "android": {
-        "autoIncrement": true
+        "buildType": "app-bundle",
+        "autoIncrement": "versionCode"
       }
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "ios": {
+        "appleId": "",
+        "ascAppId": "",
+        "appleTeamId": ""
+      }
+    }
   }
 }

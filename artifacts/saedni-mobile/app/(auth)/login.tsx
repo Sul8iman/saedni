@@ -15,6 +15,10 @@ type Step = "phone" | "otp" | "pin";
 
 const BASE = process.env.EXPO_PUBLIC_DOMAIN ? `https://${process.env.EXPO_PUBLIC_DOMAIN}` : "";
 
+// DEBUG — remove after Build 4 is confirmed working
+console.log("[saedni] EXPO_PUBLIC_DOMAIN =", process.env.EXPO_PUBLIC_DOMAIN ?? "(not set)");
+console.log("[saedni] BASE =", BASE || "(empty — all fetches will fail on native)");
+
 export default function LoginScreen() {
   const colors = useColors();
   const router = useRouter();
@@ -32,7 +36,9 @@ export default function LoginScreen() {
     setLoading(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     try {
-      const res = await fetch(`${BASE}/api/auth/login`, {
+      const loginUrl = `${BASE}/api/auth/login`;
+      console.log("[saedni] handlePhoneSubmit → fetching:", loginUrl);
+      const res = await fetch(loginUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -71,7 +77,9 @@ export default function LoginScreen() {
     setLoading(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     try {
-      const res = await fetch(`${BASE}/api/auth/admin-login`, {
+      const adminUrl = `${BASE}/api/auth/admin-login`;
+      console.log("[saedni] handlePinSubmit → fetching:", adminUrl);
+      const res = await fetch(adminUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

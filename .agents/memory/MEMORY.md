@@ -1,3 +1,3 @@
-- [Expo cookie auth](expo-cookie-auth.md) — session cookies work in Expo if global fetch is patched with `credentials: "include"` in `_layout.tsx`.
-- [Expo role-based routing](expo-role-routing.md) — role-gated navigation uses `app/index.tsx` redirect + separate `(auth)/(customer)/(helper)/(admin)` route groups.
-- [Expo Router web basePath](expo-router-web-basepath.md) — expo-router 6 rejects `basePath` in plugin config; use `experiments.baseUrl` in app.json to serve web at a subpath.
+- [Production API auth constants](prod-auth-constants.md) — admin phone/PIN are hardcoded in auth.ts, not from DB; know them before testing.
+- [Dev vs prod DBs](dev-prod-db-separation.md) — dev and production have separate PostgreSQL databases; executeSql(production) is read-only; seed production via API calls not executeSql inserts.
+- [EAS build domain fix](eas-domain-fix.md) — EXPO_PUBLIC_DOMAIN must be in eas.json production env block; missing it causes native fetch to use relative URLs which fail on device.

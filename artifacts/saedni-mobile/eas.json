@@ -20,6 +20,9 @@
     },
     "production": {
       "autoIncrement": false,
+      "env": {
+        "EXPO_PUBLIC_DOMAIN": "dc6a8939-d6ba-42fa-b4c1-6825c5ef765e-00-23ll88fwsiehs.pike.replit.dev"
+      },
       "ios": {
         "buildConfiguration": "Release",
         "autoIncrement": "buildNumber"

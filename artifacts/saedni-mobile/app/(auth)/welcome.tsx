@@ -11,6 +11,8 @@ const EXAMPLES = [
   { emoji: "🔧", text: "أحتاج شخص لتركيب أثاث منزلي",               amount: "25" },
 ] as const;
 
+const BUILD_STAMP = "BUILD_COMMIT=d9443ec  BUILD_NUMBER=6";
+
 export default function WelcomeScreen() {
   const colors = useColors();
   const router = useRouter();
@@ -25,32 +27,44 @@ export default function WelcomeScreen() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Debug panel — startup auth check results */}
-        {startupLog && (
-          <View style={s.debugBox}>
-            <Text style={s.debugTitle}>🔍 Auth Debug</Text>
-            <Text style={s.debugLine}>
-              🌐 {startupLog.domain}
-            </Text>
-            <Text style={s.debugLine}>
-              🔑 token: {startupLog.tokenFound ? `✅ found (${startupLog.tokenPreview})` : "❌ not found"}
-            </Text>
-            <Text style={s.debugLine}>
-              📡 /auth/me: {
-                startupLog.meStatus === "not-checked" ? "⏭ skipped" :
-                startupLog.meStatus === "network-error" ? "🔴 network error" :
-                startupLog.meStatus === 200 ? "✅ 200 OK" :
-                `❌ ${startupLog.meStatus}`
-              }
-            </Text>
-            <Text style={s.debugLine}>
-              👤 restored: {startupLog.userRestored ? "✅ yes" : "❌ no"}
-            </Text>
-            <Text style={s.debugLine}>
-              💾 storage: {startupLog.storageBackend}
-            </Text>
-          </View>
-        )}
+        {/* Unconditional build stamp — always visible regardless of auth state */}
+        <View style={s.stampBox}>
+          <Text style={s.stampText}>{BUILD_STAMP}</Text>
+        </View>
+
+        {/* Debug panel — startup auth check results (shown once log is ready) */}
+        <View style={s.debugBox}>
+          <Text style={s.debugTitle}>🔍 Auth Debug</Text>
+          <Text style={s.debugLine}>
+            🌐 {startupLog?.domain ?? "…checking"}
+          </Text>
+          <Text style={s.debugLine}>
+            🔑 token: {
+              startupLog == null ? "…checking" :
+              startupLog.tokenFound
+                ? `✅ found (${startupLog.tokenPreview})`
+                : "❌ not found"
+            }
+          </Text>
+          <Text style={s.debugLine}>
+            📡 /auth/me: {
+              startupLog == null ? "…checking" :
+              startupLog.meStatus === "not-checked" ? "⏭ skipped" :
+              startupLog.meStatus === "network-error" ? "🔴 network error" :
+              startupLog.meStatus === 200 ? "✅ 200 OK" :
+              `❌ ${startupLog.meStatus}`
+            }
+          </Text>
+          <Text style={s.debugLine}>
+            👤 restored: {
+              startupLog == null ? "…checking" :
+              startupLog.userRestored ? "✅ yes" : "❌ no"
+            }
+          </Text>
+          <Text style={s.debugLine}>
+            💾 storage: {startupLog?.storageBackend ?? "…checking"}
+          </Text>
+        </View>
 
         {/* Hero */}
         <View style={s.hero}>
@@ -107,7 +121,23 @@ const makeStyles = (c: ReturnType<typeof useColors>) =>
   StyleSheet.create({
     safe: { flex: 1, backgroundColor: c.background },
     scroll: { flex: 1 },
-    content: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 32, gap: 22 },
+    content: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 32, gap: 18 },
+
+    // Build stamp — always visible
+    stampBox: {
+      backgroundColor: "#fff3cd",
+      borderRadius: 6,
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      borderWidth: 1,
+      borderColor: "#ffc107",
+    },
+    stampText: {
+      fontSize: 10,
+      fontFamily: "monospace",
+      color: "#856404",
+      textAlign: "center",
+    },
 
     // Debug panel
     debugBox: {

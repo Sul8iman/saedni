@@ -3,6 +3,7 @@ import { useRouter } from "expo-router";
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
+import { useAuth } from "@/contexts/AuthContext";
 
 const EXAMPLES = [
   { emoji: "🚚", text: "أحتاج بيكب لنقل أغراض من بوشر إلى الخوير", amount: "15" },
@@ -13,6 +14,7 @@ const EXAMPLES = [
 export default function WelcomeScreen() {
   const colors = useColors();
   const router = useRouter();
+  const { startupLog } = useAuth();
   const s = makeStyles(colors);
 
   return (
@@ -23,6 +25,33 @@ export default function WelcomeScreen() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
+        {/* Debug panel — startup auth check results */}
+        {startupLog && (
+          <View style={s.debugBox}>
+            <Text style={s.debugTitle}>🔍 Auth Debug</Text>
+            <Text style={s.debugLine}>
+              🌐 {startupLog.domain}
+            </Text>
+            <Text style={s.debugLine}>
+              🔑 token: {startupLog.tokenFound ? `✅ found (${startupLog.tokenPreview})` : "❌ not found"}
+            </Text>
+            <Text style={s.debugLine}>
+              📡 /auth/me: {
+                startupLog.meStatus === "not-checked" ? "⏭ skipped" :
+                startupLog.meStatus === "network-error" ? "🔴 network error" :
+                startupLog.meStatus === 200 ? "✅ 200 OK" :
+                `❌ ${startupLog.meStatus}`
+              }
+            </Text>
+            <Text style={s.debugLine}>
+              👤 restored: {startupLog.userRestored ? "✅ yes" : "❌ no"}
+            </Text>
+            <Text style={s.debugLine}>
+              💾 storage: {startupLog.storageBackend}
+            </Text>
+          </View>
+        )}
+
         {/* Hero */}
         <View style={s.hero}>
           <View style={s.logoCircle}>
@@ -78,7 +107,30 @@ const makeStyles = (c: ReturnType<typeof useColors>) =>
   StyleSheet.create({
     safe: { flex: 1, backgroundColor: c.background },
     scroll: { flex: 1 },
-    content: { paddingHorizontal: 20, paddingTop: 36, paddingBottom: 32, gap: 28 },
+    content: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 32, gap: 22 },
+
+    // Debug panel
+    debugBox: {
+      backgroundColor: "#0d1117",
+      borderRadius: 10,
+      padding: 12,
+      gap: 3,
+      borderWidth: 1,
+      borderColor: "#30363d",
+    },
+    debugTitle: {
+      color: "#f0f6fc",
+      fontSize: 11,
+      fontWeight: "700",
+      fontFamily: "monospace",
+      marginBottom: 4,
+    },
+    debugLine: {
+      color: "#8b949e",
+      fontSize: 11,
+      fontFamily: "monospace",
+      lineHeight: 17,
+    },
 
     // Hero
     hero: { alignItems: "center", gap: 10 },

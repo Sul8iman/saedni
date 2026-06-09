@@ -88,7 +88,14 @@ export default function LoginScreen() {
         return;
       }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      await setSession(data.user as AuthUser, data.token as string);
+      const token = data.token as string | undefined;
+      const user  = data.user  as AuthUser | undefined;
+      console.log("[saedni] OTP verify OK — token:", token ? token.substring(0, 8) + "…" : "MISSING", "user:", user?.name);
+      if (!token || !user) {
+        Alert.alert("خطأ", `الخادم لم يُرجع رمز الدخول\nالاستجابة: ${JSON.stringify(data).substring(0, 120)}`);
+        return;
+      }
+      await setSession(user, token);
       router.replace("/");
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -116,7 +123,14 @@ export default function LoginScreen() {
         return;
       }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      await setSession(data.user as AuthUser, data.token as string);
+      const token = data.token as string | undefined;
+      const user  = data.user  as AuthUser | undefined;
+      console.log("[saedni] Admin login OK — token:", token ? token.substring(0, 8) + "…" : "MISSING", "user:", user?.name);
+      if (!token || !user) {
+        Alert.alert("خطأ", `الخادم لم يُرجع رمز الدخول\nالاستجابة: ${JSON.stringify(data).substring(0, 120)}`);
+        return;
+      }
+      await setSession(user, token);
       router.replace("/");
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);

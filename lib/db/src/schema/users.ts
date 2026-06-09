@@ -19,6 +19,8 @@ export const usersTable = pgTable("users", {
   // Helper interest preferences for future notification targeting
   helperInterests: text("helper_interests"),   // JSON: string[] of category values
   preferredAreas:  text("preferred_areas"),    // JSON: string[] of area names
+  // Persistent auth token — generated on login, cleared on logout
+  authToken: text("auth_token").unique(),
 });
 
 export const insertUserSchema = createInsertSchema(usersTable).omit({

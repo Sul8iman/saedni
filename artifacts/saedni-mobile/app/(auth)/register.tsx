@@ -9,7 +9,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
 import { useColors } from "@/hooks/useColors";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth, type AuthUser } from "@/contexts/AuthContext";
 
 type Step = "form" | "otp";
 type UserType = "customer" | "helper";
@@ -19,7 +19,7 @@ const BASE = process.env.EXPO_PUBLIC_DOMAIN ? `https://${process.env.EXPO_PUBLIC
 export default function RegisterScreen() {
   const colors = useColors();
   const router = useRouter();
-  const { setUser } = useAuth();
+  const { setSession } = useAuth();
 
   const [step, setStep] = useState<Step>("form");
   const [name, setName] = useState("");
@@ -60,7 +60,7 @@ export default function RegisterScreen() {
       const data = await res.json();
       if (!res.ok) { Alert.alert("خطأ", data.error || "رمز التحقق غير صحيح"); return; }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      await setUser(data.user);
+      await setSession(data.user as AuthUser, data.token as string);
       router.replace("/");
     } catch { Alert.alert("خطأ", "تعذر الاتصال بالخادم"); }
     finally { setLoading(false); }

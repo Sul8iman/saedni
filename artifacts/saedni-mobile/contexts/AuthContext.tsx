@@ -1,7 +1,30 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as SecureStore from "expo-secure-store";
+import { Alert } from "react-native";
 
-const AUTH_KEY = "@saedni/user";
+const TOKEN_KEY = "@saedni/authToken";
+const USER_KEY  = "@saedni/user";
+
+const BASE = process.env.EXPO_PUBLIC_DOMAIN
+  ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
+  : "";
+
+// SecureStore with AsyncStorage fallback
+async function secureGet(key: string): Promise<string | null> {
+  try { return await SecureStore.getItemAsync(key); }
+  catch { try { return await AsyncStorage.getItem(key); } catch { return null; } }
+}
+
+async function secureSet(key: string, value: string): Promise<void> {
+  try { await SecureStore.setItemAsync(key, value); return; } catch {}
+  try { await AsyncStorage.setItem(key, value); } catch {}
+}
+
+async function secureDelete(key: string): Promise<void> {
+  try { await SecureStore.deleteItemAsync(key); } catch {}
+  try { await AsyncStorage.removeItem(key); } catch {}
+}
 
 export interface AuthUser {
   id: number;
@@ -12,13 +35,16 @@ export interface AuthUser {
   isVerified?: boolean;
   isBlocked?: boolean;
   area?: string | null;
-  helperInterests?: string | null;  // JSON-encoded string[]
-  preferredAreas?: string | null;   // JSON-encoded string[]
+  helperInterests?: string | null;
+  preferredAreas?: string | null;
 }
 
 interface AuthContextType {
   user: AuthUser | null;
   loading: boolean;
+  /** Save user + token after login. Use this in all login flows. */
+  setSession: (user: AuthUser, token: string) => Promise<void>;
+  /** Update local user state without touching the token (e.g. preference saves). */
   setUser: (user: AuthUser | null) => Promise<void>;
   logout: () => Promise<void>;
 }
@@ -26,6 +52,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType>({
   user: null,
   loading: true,
+  setSession: async () => {},
   setUser: async () => {},
   logout: async () => {},
 });
@@ -37,56 +64,103 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     (async () => {
       try {
-        const stored = await AsyncStorage.getItem(AUTH_KEY);
-        if (stored) {
-          const parsed = JSON.parse(stored) as AuthUser;
-          setUserState(parsed);
+        const [storedToken, storedUser] = await Promise.all([
+          secureGet(TOKEN_KEY),
+          secureGet(USER_KEY),
+        ]);
+
+        // Show stored user immediately for a snappy launch
+        if (storedUser) {
+          try { setUserState(JSON.parse(storedUser) as AuthUser); } catch {}
+        }
+
+        if (storedToken && BASE) {
           try {
-            const base = process.env.EXPO_PUBLIC_DOMAIN
-              ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
-              : "";
-            const res = await fetch(`${base}/api/auth/me`, { credentials: "include" });
-            if (!res.ok) {
-              await AsyncStorage.removeItem(AUTH_KEY);
-              setUserState(null);
-            } else {
+            const res = await fetch(`${BASE}/api/auth/me`, {
+              credentials: "include",
+              headers: { Authorization: `Bearer ${storedToken}` },
+            });
+
+            if (res.ok) {
+              // Refresh user data from server
               const fresh = (await res.json()) as AuthUser;
-              await AsyncStorage.setItem(AUTH_KEY, JSON.stringify(fresh));
+              await secureSet(USER_KEY, JSON.stringify(fresh));
               setUserState(fresh);
+            } else if (res.status === 403) {
+              // Account disabled
+              await secureDelete(TOKEN_KEY);
+              await secureDelete(USER_KEY);
+              setUserState(null);
+              Alert.alert(
+                "الحساب معطّل",
+                "تم تعطيل حسابك، يرجى التواصل مع الإدارة",
+                [{ text: "حسناً" }],
+              );
+            } else {
+              // Token invalid (401) — clear and force re-login
+              await secureDelete(TOKEN_KEY);
+              await secureDelete(USER_KEY);
+              setUserState(null);
             }
           } catch {
-            // keep stored user if offline
+            // Network error — keep stored user (offline support)
           }
+        } else if (!storedToken) {
+          // No token stored — ensure user state is cleared
+          await secureDelete(USER_KEY);
+          setUserState(null);
         }
       } catch {
-        // ignore storage errors
+        // Ignore storage errors
       } finally {
         setLoading(false);
       }
     })();
   }, []);
 
-  const setUser = async (u: AuthUser | null) => {
-    if (u) {
-      await AsyncStorage.setItem(AUTH_KEY, JSON.stringify(u));
-    } else {
-      await AsyncStorage.removeItem(AUTH_KEY);
-    }
+  /** Called after successful login/OTP — persists both user and token. */
+  const setSession = async (u: AuthUser, token: string) => {
+    await Promise.all([
+      secureSet(TOKEN_KEY, token),
+      secureSet(USER_KEY, JSON.stringify(u)),
+    ]);
     setUserState(u);
+  };
+
+  /**
+   * Updates user state in storage.
+   * - Pass null to clear (legacy logout path).
+   * - Pass a user object to update local preferences without touching the token.
+   */
+  const setUser = async (u: AuthUser | null) => {
+    if (u === null) {
+      await secureDelete(TOKEN_KEY);
+      await secureDelete(USER_KEY);
+      setUserState(null);
+    } else {
+      await secureSet(USER_KEY, JSON.stringify(u));
+      setUserState(u);
+    }
   };
 
   const logout = async () => {
     try {
-      const base = process.env.EXPO_PUBLIC_DOMAIN
-        ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
-        : "";
-      await fetch(`${base}/api/auth/logout`, { method: "POST", credentials: "include" });
+      const token = await secureGet(TOKEN_KEY);
+      if (token && BASE) {
+        await fetch(`${BASE}/api/auth/logout`, {
+          method: "POST",
+          credentials: "include",
+          headers: { Authorization: `Bearer ${token}` },
+        });
+      }
     } catch {}
-    await setUser(null);
+    await secureDelete(TOKEN_KEY);
+    await secureDelete(USER_KEY);
+    setUserState(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, setUser, logout }}>
+    <AuthContext.Provider value={{ user, loading, setSession, setUser, logout }}>
       {children}
     </AuthContext.Provider>
   );

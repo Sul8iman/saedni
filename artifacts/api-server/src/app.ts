@@ -2,6 +2,8 @@ import express, { type Express } from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import pinoHttp from "pino-http";
+import { eq } from "drizzle-orm";
+import { db, usersTable } from "@workspace/db";
 import router from "./routes";
 import { logger } from "./lib/logger";
 
@@ -38,15 +40,46 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser(process.env.SESSION_SECRET ?? "saidni_secret"));
 
-// Simple in-memory session store (MVP — replace with express-session + DB for production)
+// Simple in-memory session store (MVP — replaced by token auth for mobile)
 const sessions: Record<string, { userId?: number }> = {};
 
+// Token-based auth middleware — reads Authorization: Bearer <token> header
+// and resolves the user from DB, making the request immune to server restarts.
+app.use(async (req, _res, next) => {
+  const authHeader = req.headers.authorization;
+  if (authHeader?.startsWith("Bearer ")) {
+    const token = authHeader.slice(7).trim();
+    if (token) {
+      try {
+        const [user] = await db
+          .select({ id: usersTable.id, isBlocked: usersTable.isBlocked })
+          .from(usersTable)
+          .where(eq(usersTable.authToken, token));
+        if (user) {
+          (req as any)._tokenUserId = user.id;
+          (req as any)._tokenIsBlocked = user.isBlocked;
+        }
+      } catch (err) {
+        logger.warn({ err }, "Token lookup failed");
+      }
+    }
+  }
+  next();
+});
+
+// Session middleware — token auth takes priority over cookie sessions
 app.use((req, _res, next) => {
+  const tokenUserId = (req as any)._tokenUserId;
+  if (tokenUserId != null) {
+    (req as any).session = { userId: tokenUserId };
+    next();
+    return;
+  }
+
   const sid = (req as any).signedCookies?.sid || req.cookies?.sid;
   if (sid && sessions[sid]) {
     (req as any).session = sessions[sid];
   } else {
-    // Create a new session ID
     const newSid = Math.random().toString(36).slice(2) + Date.now().toString(36);
     sessions[newSid] = {};
     (req as any).session = sessions[newSid];

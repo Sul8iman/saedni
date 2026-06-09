@@ -57,6 +57,7 @@
     "zod-validation-error": "^3.4.0"
   },
   "dependencies": {
-    "@react-native-community/datetimepicker": "^9.1.0"
+    "@react-native-community/datetimepicker": "^9.1.0",
+    "expo-secure-store": "^56.0.4"
   }
 }

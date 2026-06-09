@@ -9,7 +9,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
 import { useColors } from "@/hooks/useColors";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth, type AuthUser } from "@/contexts/AuthContext";
 
 type Step = "phone" | "otp" | "pin";
 
@@ -34,7 +34,7 @@ function debugAlert(title: string, url: string, status: number | null, errMsg: s
 export default function LoginScreen() {
   const colors = useColors();
   const router = useRouter();
-  const { setUser } = useAuth();
+  const { setSession } = useAuth();
 
   const [step, setStep] = useState<Step>("phone");
   const [phone, setPhone] = useState("");
@@ -88,7 +88,7 @@ export default function LoginScreen() {
         return;
       }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      await setUser(data.user as Parameters<typeof setUser>[0]);
+      await setSession(data.user as AuthUser, data.token as string);
       router.replace("/");
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -116,7 +116,7 @@ export default function LoginScreen() {
         return;
       }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      await setUser(data.user as Parameters<typeof setUser>[0]);
+      await setSession(data.user as AuthUser, data.token as string);
       router.replace("/");
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);

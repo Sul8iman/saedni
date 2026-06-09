@@ -1,12 +1,13 @@
 import { Router, type IRouter } from "express";
 import { eq } from "drizzle-orm";
+import { randomUUID } from "crypto";
 import { db, usersTable, adminNotificationsTable } from "@workspace/db";
 import { RegisterBody, LoginBody, VerifyOtpBody, AdminLoginBody } from "@workspace/api-zod";
 import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
 
-const OTP_EXPIRY_MS = 10 * 60 * 1000; // 10 minutes
+const OTP_EXPIRY_MS = 10 * 60 * 1000;
 
 const ADMIN_PHONE = "98584898";
 const ADMIN_PIN   = "2724";
@@ -16,7 +17,7 @@ function generate4DigitOtp(): string {
 }
 
 function safeUser(user: typeof usersTable.$inferSelect) {
-  const { passwordHash: _, ...safe } = user;
+  const { passwordHash: _, authToken: __, ...safe } = user;
   return {
     ...safe,
     isActive: !safe.isBlocked,
@@ -47,41 +48,24 @@ async function createOtpNotification(opts: {
   }
 }
 
-// POST /auth/register — creates account (inactive+unverified), generates OTP, does NOT log in
+// POST /auth/register
 router.post("/auth/register", async (req, res): Promise<void> => {
   const parsed = RegisterBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
-    return;
-  }
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
 
   const { name, phone, userType } = parsed.data;
 
   const existing = await db.select().from(usersTable).where(eq(usersTable.phone, phone));
-  if (existing.length > 0) {
-    res.status(400).json({ error: "رقم الهاتف مسجل مسبقاً" });
-    return;
-  }
+  if (existing.length > 0) { res.status(400).json({ error: "رقم الهاتف مسجل مسبقاً" }); return; }
 
   const otp = generate4DigitOtp();
 
   const [user] = await db
     .insert(usersTable)
-    .values({
-      name,
-      phone,
-      passwordHash: "",
-      userType,
-      isVerified: false,
-      isBlocked: false,
-      otpCode: otp,
-      otpCreatedAt: new Date(),
-    })
+    .values({ name, phone, passwordHash: "", userType, isVerified: false, isBlocked: false, otpCode: otp, otpCreatedAt: new Date() })
     .returning();
 
   req.log.info({ userId: user.id, userType }, "User registered (unverified)");
-
-  // Create admin notification for OTP request
   await createOtpNotification({ userId: user.id, userName: name, phone, userType });
 
   res.status(201).json({
@@ -91,47 +75,29 @@ router.post("/auth/register", async (req, res): Promise<void> => {
   });
 });
 
-// POST /auth/login — generates OTP for regular users; signals admin-PIN flow for admin phone
+// POST /auth/login — OTP for regular users; admin-PIN signal for admin phone
 router.post("/auth/login", async (req, res): Promise<void> => {
   const parsed = LoginBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
-    return;
-  }
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
 
   const { phone } = parsed.data;
 
-  // Admin phone → skip OTP, signal the frontend to show PIN field
   if (phone === ADMIN_PHONE) {
-    res.json({
-      message: "أدخل رمز المدير للمتابعة",
-      isAdmin: true,
-    });
+    res.json({ message: "أدخل رمز المدير للمتابعة", isAdmin: true });
     return;
   }
 
   const [user] = await db.select().from(usersTable).where(eq(usersTable.phone, phone));
-  if (!user) {
-    res.status(404).json({ error: "رقم الهاتف غير مسجل" });
-    return;
-  }
+  if (!user) { res.status(404).json({ error: "رقم الهاتف غير مسجل" }); return; }
 
-  // Blocked users cannot even request OTP (unless unverified — they need to verify first)
   if (user.isBlocked && user.isVerified) {
     res.status(403).json({ error: "تم تعطيل حسابك، يرجى التواصل مع الإدارة" });
     return;
   }
 
   const otp = generate4DigitOtp();
-
-  await db
-    .update(usersTable)
-    .set({ otpCode: otp, otpCreatedAt: new Date() })
-    .where(eq(usersTable.id, user.id));
-
+  await db.update(usersTable).set({ otpCode: otp, otpCreatedAt: new Date() }).where(eq(usersTable.id, user.id));
   req.log.info({ userId: user.id, isVerified: user.isVerified }, "OTP generated");
-
-  // Create admin notification for OTP request
   await createOtpNotification({ userId: user.id, userName: user.name, phone, userType: user.userType });
 
   res.json({
@@ -143,36 +109,24 @@ router.post("/auth/login", async (req, res): Promise<void> => {
   });
 });
 
-// POST /auth/admin-login — validates admin phone + PIN, creates session directly
+// POST /auth/admin-login — PIN login, returns persistent token
 router.post("/auth/admin-login", async (req, res): Promise<void> => {
   const parsed = AdminLoginBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
-    return;
-  }
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
 
   const { phone, pin } = parsed.data;
 
-  if (phone !== ADMIN_PHONE) {
-    res.status(404).json({ error: "رقم الهاتف غير مسجل" });
-    return;
-  }
-
-  if (pin !== ADMIN_PIN) {
-    res.status(403).json({ error: "رمز المدير غير صحيح" });
-    return;
-  }
+  if (phone !== ADMIN_PHONE) { res.status(404).json({ error: "رقم الهاتف غير مسجل" }); return; }
+  if (pin !== ADMIN_PIN) { res.status(403).json({ error: "رمز المدير غير صحيح" }); return; }
 
   const [user] = await db.select().from(usersTable).where(eq(usersTable.phone, phone));
-  if (!user) {
-    res.status(404).json({ error: "رقم الهاتف غير مسجل" });
-    return;
-  }
+  if (!user) { res.status(404).json({ error: "رقم الهاتف غير مسجل" }); return; }
 
-  // Always enforce admin role, active state, and verified on PIN login
+  const authToken = randomUUID();
+
   const [updated] = await db
     .update(usersTable)
-    .set({ userType: "admin", isBlocked: false, isVerified: true, lastLogin: new Date() })
+    .set({ userType: "admin", isBlocked: false, isVerified: true, lastLogin: new Date(), authToken })
     .where(eq(usersTable.id, user.id))
     .returning();
 
@@ -180,33 +134,24 @@ router.post("/auth/admin-login", async (req, res): Promise<void> => {
   (req as any).session.userId = updated.id;
 
   req.log.info({ userId: updated.id }, "Admin logged in via PIN");
-
-  res.json({ user: safeUser(updated) });
+  res.json({ user: safeUser(updated), token: authToken });
 });
 
-// POST /auth/verify-otp — validate OTP; activates account if first-time verification
+// POST /auth/verify-otp — validates OTP, returns persistent token
 router.post("/auth/verify-otp", async (req, res): Promise<void> => {
   const parsed = VerifyOtpBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
-    return;
-  }
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
 
   const { phone, otp } = parsed.data;
 
-  // Admin phone must log in via PIN only — never via OTP
   if (phone === ADMIN_PHONE) {
     res.status(403).json({ error: "يرجى استخدام رمز المدير للدخول" });
     return;
   }
 
   const [user] = await db.select().from(usersTable).where(eq(usersTable.phone, phone));
-  if (!user) {
-    res.status(404).json({ error: "رقم الهاتف غير مسجل" });
-    return;
-  }
+  if (!user) { res.status(404).json({ error: "رقم الهاتف غير مسجل" }); return; }
 
-  // Blocked verified users cannot log in
   if (user.isBlocked && user.isVerified) {
     res.status(403).json({ error: "تم تعطيل حسابك، يرجى التواصل مع الإدارة" });
     return;
@@ -222,15 +167,17 @@ router.post("/auth/verify-otp", async (req, res): Promise<void> => {
     return;
   }
 
-  // First-time verification: activate the account
+  const authToken = randomUUID();
+
   const updates: Partial<typeof usersTable.$inferInsert> = {
     otpCode: null,
     otpCreatedAt: null,
     lastLogin: new Date(),
+    authToken,
   };
   if (!user.isVerified) {
     updates.isVerified = true;
-    updates.isBlocked = false; // ensure active
+    updates.isBlocked = false;
   }
 
   const [updated] = await db
@@ -243,29 +190,33 @@ router.post("/auth/verify-otp", async (req, res): Promise<void> => {
   (req as any).session.userId = user.id;
 
   req.log.info({ userId: user.id, wasVerified: user.isVerified }, "User logged in via OTP");
-
-  res.json({ user: safeUser(updated) });
+  res.json({ user: safeUser(updated), token: authToken });
 });
 
-// GET /auth/me
+// GET /auth/me — validates token/session and returns fresh user; 403 if blocked
 router.get("/auth/me", async (req, res): Promise<void> => {
   const userId = (req as any).session?.userId;
-  if (!userId) {
-    res.status(401).json({ error: "غير مصرح" });
-    return;
-  }
+  if (!userId) { res.status(401).json({ error: "غير مصرح" }); return; }
 
   const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId));
-  if (!user) {
-    res.status(404).json({ error: "المستخدم غير موجود" });
+  if (!user) { res.status(401).json({ error: "المستخدم غير موجود" }); return; }
+
+  if (user.isBlocked) {
+    res.status(403).json({ error: "تم تعطيل حسابك، يرجى التواصل مع الإدارة", isActive: false });
     return;
   }
 
   res.json(safeUser(user));
 });
 
-// POST /auth/logout
+// POST /auth/logout — clears persistent token and session
 router.post("/auth/logout", async (req, res): Promise<void> => {
+  const userId = (req as any).session?.userId;
+  if (userId) {
+    try {
+      await db.update(usersTable).set({ authToken: null }).where(eq(usersTable.id, userId));
+    } catch {}
+  }
   if ((req as any).session) {
     (req as any).session.userId = null;
   }

@@ -15,9 +15,21 @@ type Step = "phone" | "otp" | "pin";
 
 const BASE = process.env.EXPO_PUBLIC_DOMAIN ? `https://${process.env.EXPO_PUBLIC_DOMAIN}` : "";
 
-// DEBUG — remove after Build 4 is confirmed working
 console.log("[saedni] EXPO_PUBLIC_DOMAIN =", process.env.EXPO_PUBLIC_DOMAIN ?? "(not set)");
 console.log("[saedni] BASE =", BASE || "(empty — all fetches will fail on native)");
+
+async function safeFetch(url: string, init: RequestInit) {
+  const res = await fetch(url, init);
+  let data: Record<string, unknown> = {};
+  try { data = await res.json(); } catch { /* non-JSON body */ }
+  return { res, data };
+}
+
+function debugAlert(title: string, url: string, status: number | null, errMsg: string) {
+  const lines = [errMsg, `\nURL: ${url || "(empty — domain not set)"}`];
+  if (status !== null) lines.push(`Status: ${status}`);
+  Alert.alert(title, lines.join("\n"));
+}
 
 export default function LoginScreen() {
   const colors = useColors();
@@ -35,63 +47,83 @@ export default function LoginScreen() {
     if (!phone.trim()) return;
     setLoading(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const loginUrl = `${BASE}/api/auth/login`;
+    console.log("[saedni] handlePhoneSubmit →", loginUrl);
     try {
-      const loginUrl = `${BASE}/api/auth/login`;
-      console.log("[saedni] handlePhoneSubmit → fetching:", loginUrl);
-      const res = await fetch(loginUrl, {
+      const { res, data } = await safeFetch(loginUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({ phone: phone.trim() }),
       });
-      const data = await res.json();
-      if (!res.ok) { Alert.alert("خطأ", data.error || "الرقم غير موجود"); return; }
+      if (!res.ok) {
+        debugAlert("خطأ", loginUrl, res.status, (data.error as string) || "رقم غير موجود");
+        return;
+      }
       if (data.isAdmin) { setStep("pin"); }
       else { setIsUnverified(data.isVerified === false); setStep("otp"); }
-    } catch { Alert.alert("خطأ", "تعذر الاتصال بالخادم"); }
-    finally { setLoading(false); }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      debugAlert("خطأ في الاتصال", loginUrl, null, `تعذر الاتصال بالخادم\n${msg}`);
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function handleOtpSubmit() {
     if (otp.length < 4) return;
     setLoading(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const otpUrl = `${BASE}/api/auth/verify-otp`;
+    console.log("[saedni] handleOtpSubmit →", otpUrl);
     try {
-      const res = await fetch(`${BASE}/api/auth/verify-otp`, {
+      const { res, data } = await safeFetch(otpUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({ phone: phone.trim(), otp }),
       });
-      const data = await res.json();
-      if (!res.ok) { Alert.alert("خطأ", data.error || "رمز التحقق غير صحيح"); return; }
+      if (!res.ok) {
+        debugAlert("خطأ", otpUrl, res.status, (data.error as string) || "رمز التحقق غير صحيح");
+        return;
+      }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      await setUser(data.user);
+      await setUser(data.user as Parameters<typeof setUser>[0]);
       router.replace("/");
-    } catch { Alert.alert("خطأ", "تعذر الاتصال بالخادم"); }
-    finally { setLoading(false); }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      debugAlert("خطأ في الاتصال", otpUrl, null, `تعذر الاتصال بالخادم\n${msg}`);
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function handlePinSubmit() {
     if (!pin.trim()) return;
     setLoading(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const adminUrl = `${BASE}/api/auth/admin-login`;
+    console.log("[saedni] handlePinSubmit →", adminUrl);
     try {
-      const adminUrl = `${BASE}/api/auth/admin-login`;
-      console.log("[saedni] handlePinSubmit → fetching:", adminUrl);
-      const res = await fetch(adminUrl, {
+      const { res, data } = await safeFetch(adminUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({ phone: phone.trim(), pin }),
       });
-      const data = await res.json();
-      if (!res.ok) { Alert.alert("خطأ", data.error || "رمز PIN غير صحيح"); return; }
+      if (!res.ok) {
+        debugAlert("خطأ", adminUrl, res.status, (data.error as string) || "رمز PIN غير صحيح");
+        return;
+      }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      await setUser(data.user);
+      await setUser(data.user as Parameters<typeof setUser>[0]);
       router.replace("/");
-    } catch { Alert.alert("خطأ", "تعذر الاتصال بالخادم"); }
-    finally { setLoading(false); }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      debugAlert("خطأ في الاتصال", adminUrl, null, `تعذر الاتصال بالخادم\n${msg}`);
+    } finally {
+      setLoading(false);
+    }
   }
 
   function openWhatsApp() {
@@ -118,6 +150,10 @@ export default function LoginScreen() {
           </View>
           <Text style={s.appName}>ساعدني</Text>
           <Text style={s.tagline}>منصة المساعدة اليومية في عُمان</Text>
+          {/* DEBUG BANNER — remove after domain is confirmed */}
+          <Text style={s.debugBanner}>
+            {BASE ? `🔗 ${BASE}` : "⚠️ DOMAIN NOT SET"}
+          </Text>
         </View>
 
         {/* Card */}
@@ -255,6 +291,10 @@ const makeStyles = (c: ReturnType<typeof useColors>) =>
     },
     appName: { fontSize: 32, fontWeight: "800", color: c.foreground, letterSpacing: -0.5 },
     tagline: { fontSize: 14, color: c.mutedForeground, marginTop: 6, textAlign: "center" },
+    debugBanner: {
+      fontSize: 10, color: "#888", marginTop: 6, textAlign: "center",
+      fontFamily: "monospace",
+    },
     card: {
       backgroundColor: c.card, borderRadius: 20, borderWidth: 1, borderColor: c.border,
       padding: 24,

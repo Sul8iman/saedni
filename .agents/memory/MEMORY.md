@@ -1,3 +1,4 @@
 - [Production API auth constants](prod-auth-constants.md) — admin phone/PIN are hardcoded in auth.ts, not from DB; know them before testing.
 - [Dev vs prod DBs](dev-prod-db-separation.md) — dev and production have separate PostgreSQL databases; executeSql(production) is read-only; seed production via API calls not executeSql inserts.
 - [EAS build domain fix](eas-domain-fix.md) — EXPO_PUBLIC_DOMAIN must be in eas.json production env block; missing it causes native fetch to use relative URLs which fail on device.
+- [Expo SecureStore+AsyncStorage dual-write](expo-securestore-dual-write.md) — three bugs that together caused persistent logout on every launch; secureGet/secureSet must dual-write and dual-check both stores.

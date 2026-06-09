@@ -95,8 +95,15 @@ export default function LoginScreen() {
         Alert.alert("خطأ", `الخادم لم يُرجع رمز الدخول\nالاستجابة: ${JSON.stringify(data).substring(0, 120)}`);
         return;
       }
-      await setSession(user, token);
-      router.replace("/");
+      const saveResult = await setSession(user, token);
+      if (!saveResult) return; // setSession already alerted
+      Alert.alert(
+        "✅ تم تسجيل الدخول",
+        `Token: ${token.substring(0, 8)}…\n` +
+        `SecureStore: ${saveResult.ssWrite ? (saveResult.ssRead ? "✅ saved+verified" : "⚠️ wrote/no-readback") : "❌ failed"}\n` +
+        `AsyncStorage: ${saveResult.asWrite ? (saveResult.asRead ? "✅ saved+verified" : "⚠️ wrote/no-readback") : "❌ failed"}`,
+        [{ text: "متابعة", onPress: () => router.replace("/") }],
+      );
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       debugAlert("خطأ في الاتصال", otpUrl, null, `تعذر الاتصال بالخادم\n${msg}`);
@@ -130,8 +137,15 @@ export default function LoginScreen() {
         Alert.alert("خطأ", `الخادم لم يُرجع رمز الدخول\nالاستجابة: ${JSON.stringify(data).substring(0, 120)}`);
         return;
       }
-      await setSession(user, token);
-      router.replace("/");
+      const saveResult = await setSession(user, token);
+      if (!saveResult) return;
+      Alert.alert(
+        "✅ تم تسجيل الدخول",
+        `Token: ${token.substring(0, 8)}…\n` +
+        `SecureStore: ${saveResult.ssWrite ? (saveResult.ssRead ? "✅ saved+verified" : "⚠️ wrote/no-readback") : "❌ failed"}\n` +
+        `AsyncStorage: ${saveResult.asWrite ? (saveResult.asRead ? "✅ saved+verified" : "⚠️ wrote/no-readback") : "❌ failed"}`,
+        [{ text: "متابعة", onPress: () => router.replace("/") }],
+      );
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       debugAlert("خطأ في الاتصال", adminUrl, null, `تعذر الاتصال بالخادم\n${msg}`);

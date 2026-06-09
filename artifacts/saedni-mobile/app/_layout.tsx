@@ -15,6 +15,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { setBaseUrl } from "@workspace/api-client-react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { DebugOverlay } from "@/components/DebugOverlay";
 
 // Patch global fetch to include session cookies on every request
 const _origFetch = global.fetch;
@@ -70,6 +71,8 @@ export default function RootLayout() {
               <KeyboardProvider>
                 <RootLayoutNav />
               </KeyboardProvider>
+              {/* Global debug overlay — visible on every screen, tap 🔍 to expand */}
+              <DebugOverlay />
             </GestureHandlerRootView>
           </AuthProvider>
         </QueryClientProvider>

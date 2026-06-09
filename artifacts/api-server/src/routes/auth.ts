@@ -122,7 +122,8 @@ router.post("/auth/admin-login", async (req, res): Promise<void> => {
   const [user] = await db.select().from(usersTable).where(eq(usersTable.phone, phone));
   if (!user) { res.status(404).json({ error: "رقم الهاتف غير مسجل" }); return; }
 
-  const authToken = randomUUID();
+  // Keep existing token to avoid invalidating sessions already on device
+  const authToken = user.authToken ?? randomUUID();
 
   const [updated] = await db
     .update(usersTable)
@@ -167,7 +168,10 @@ router.post("/auth/verify-otp", async (req, res): Promise<void> => {
     return;
   }
 
-  const authToken = randomUUID();
+  // Keep the existing token if the user already has one — this prevents
+  // a second OTP login from invalidating a token already stored on another device.
+  // Only generate a fresh token if none exists (first login or after explicit logout).
+  const authToken = user.authToken ?? randomUUID();
 
   const updates: Partial<typeof usersTable.$inferInsert> = {
     otpCode: null,

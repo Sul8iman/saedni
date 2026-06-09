@@ -6,46 +6,89 @@ import { Alert } from "react-native";
 const TOKEN_KEY = "@saedni/authToken";
 const USER_KEY  = "@saedni/user";
 
-const BASE = process.env.EXPO_PUBLIC_DOMAIN
+export const BASE = process.env.EXPO_PUBLIC_DOMAIN
   ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
   : "";
 
-// ─── SecureStore with AsyncStorage fallback ──────────────────────────────────
+// ─── Storage: always write to BOTH stores, always read from both ─────────────
 
-async function secureGet(key: string): Promise<string | null> {
-  try {
-    const val = await SecureStore.getItemAsync(key);
-    return val;
-  } catch {
-    try { return await AsyncStorage.getItem(key); } catch { return null; }
-  }
+export interface StorageResult {
+  ssWrite: boolean;
+  asWrite: boolean;
+  ssRead: boolean;
+  asRead: boolean;
 }
 
-async function secureSet(key: string, value: string): Promise<boolean> {
-  if (value === undefined || value === null) {
-    console.warn("[AuthContext] secureSet called with null/undefined for key:", key);
-    return false;
+/**
+ * Write value to BOTH SecureStore (encrypted keychain) and AsyncStorage.
+ * This makes reads resilient — if one store fails on retrieval the other has it.
+ */
+export async function secureSet(key: string, value: string): Promise<StorageResult> {
+  const result: StorageResult = { ssWrite: false, asWrite: false, ssRead: false, asRead: false };
+
+  if (!value) {
+    console.warn("[storage] secureSet called with empty value for", key);
+    return result;
   }
-  // Try SecureStore first (encrypted keychain)
+
+  // Write to SecureStore
   try {
     await SecureStore.setItemAsync(key, value);
-    // Verify the write succeeded
+    result.ssWrite = true;
+    // Verify read-back
     const check = await SecureStore.getItemAsync(key);
-    if (check === value) return true;
-  } catch {
-    // Fall through to AsyncStorage
+    result.ssRead = check === value;
+  } catch (e) {
+    console.warn("[storage] SecureStore write failed:", e);
   }
-  // Fallback: AsyncStorage
+
+  // ALWAYS write to AsyncStorage as well (dual-write for resilience)
   try {
     await AsyncStorage.setItem(key, value);
+    result.asWrite = true;
     const check = await AsyncStorage.getItem(key);
-    return check === value;
+    result.asRead = check === value;
+  } catch (e) {
+    console.warn("[storage] AsyncStorage write failed:", e);
+  }
+
+  console.log(`[storage] secureSet(${key.slice(-12)}): SS_write=${result.ssWrite} SS_read=${result.ssRead} AS_write=${result.asWrite} AS_read=${result.asRead}`);
+  return result;
+}
+
+/**
+ * Read from SecureStore; if null/missing, ALWAYS fall through to AsyncStorage.
+ * SecureStore.getItemAsync returns null (not throws) for missing keys,
+ * so the old catch-only fallback never ran. This version checks both explicitly.
+ */
+export async function secureGet(key: string): Promise<string | null> {
+  // Try SecureStore
+  let ssVal: string | null = null;
+  try {
+    ssVal = await SecureStore.getItemAsync(key);
+  } catch (e) {
+    console.warn("[storage] SecureStore read error:", e);
+  }
+  if (ssVal != null) {
+    console.log(`[storage] secureGet(${key.slice(-12)}): found in SecureStore`);
+    return ssVal;
+  }
+
+  // Explicitly fall through to AsyncStorage regardless of whether SS threw or returned null
+  try {
+    const asVal = await AsyncStorage.getItem(key);
+    if (asVal != null) {
+      console.log(`[storage] secureGet(${key.slice(-12)}): found in AsyncStorage (SecureStore was empty)`);
+    } else {
+      console.log(`[storage] secureGet(${key.slice(-12)}): not found in either store`);
+    }
+    return asVal;
   } catch {
-    return false;
+    return null;
   }
 }
 
-async function secureDelete(key: string): Promise<void> {
+export async function secureDelete(key: string): Promise<void> {
   try { await SecureStore.deleteItemAsync(key); } catch {}
   try { await AsyncStorage.removeItem(key); } catch {}
 }
@@ -71,17 +114,15 @@ export interface StartupLog {
   tokenPreview: string;
   meStatus: number | "network-error" | "not-checked";
   userRestored: boolean;
-  storageBackend: "SecureStore" | "AsyncStorage" | "none";
+  storageBackend: "SecureStore" | "AsyncStorage" | "both" | "none";
 }
 
 interface AuthContextType {
   user: AuthUser | null;
   loading: boolean;
   startupLog: StartupLog | null;
-  /** Save user + token after login. */
-  setSession: (user: AuthUser, token: string) => Promise<void>;
-  /** Update local user state without touching the token (preference saves). */
-  setUser: (user: AuthUser | null) => Promise<void>;
+  setSession: (user: AuthUser, token: string) => Promise<StorageResult | null>;
+  setUser: (user: AuthUser) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -89,7 +130,7 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   loading: true,
   startupLog: null,
-  setSession: async () => {},
+  setSession: async () => null,
   setUser: async () => {},
   logout: async () => {},
 });
@@ -103,6 +144,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     (async () => {
+      console.log("[AuthContext] startup check begin, BASE =", BASE || "(empty!)");
+
       const log: StartupLog = {
         domain: BASE || "(empty — EXPO_PUBLIC_DOMAIN not set)",
         tokenFound: false,
@@ -118,26 +161,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           secureGet(USER_KEY),
         ]);
 
+        console.log("[AuthContext] storedToken:", storedToken ? storedToken.substring(0, 8) + "…" : "null");
+        console.log("[AuthContext] storedUser:", storedUser ? storedUser.substring(0, 30) + "…" : "null");
+
         log.tokenFound = !!storedToken;
         log.tokenPreview = storedToken ? storedToken.substring(0, 8) + "…" : "—";
 
-        // Show stored user immediately for a snappy launch
+        // Determine which backend has the token
+        if (storedToken) {
+          let ssHas = false;
+          let asHas = false;
+          try { ssHas = (await SecureStore.getItemAsync(TOKEN_KEY)) != null; } catch {}
+          try { asHas = (await AsyncStorage.getItem(TOKEN_KEY)) != null; } catch {}
+          log.storageBackend = ssHas && asHas ? "both" : ssHas ? "SecureStore" : asHas ? "AsyncStorage" : "none";
+        }
+
+        // Show cached user immediately for fast launch
         if (storedUser) {
           try {
             const parsed = JSON.parse(storedUser) as AuthUser;
             setUserState(parsed);
             log.userRestored = true;
-          } catch {}
+          } catch (e) {
+            console.warn("[AuthContext] Failed to parse stored user:", e);
+          }
         }
 
         if (storedToken && BASE) {
           try {
+            console.log("[AuthContext] Calling /auth/me with token…");
             const res = await fetch(`${BASE}/api/auth/me`, {
               credentials: "include",
               headers: { Authorization: `Bearer ${storedToken}` },
             });
 
             log.meStatus = res.status;
+            console.log("[AuthContext] /auth/me status:", res.status);
 
             if (res.ok) {
               const fresh = (await res.json()) as AuthUser;
@@ -149,36 +208,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               await secureDelete(USER_KEY);
               setUserState(null);
               log.userRestored = false;
-              Alert.alert(
-                "الحساب معطّل",
-                "تم تعطيل حسابك، يرجى التواصل مع الإدارة",
-                [{ text: "حسناً" }],
-              );
+              Alert.alert("الحساب معطّل", "تم تعطيل حسابك، يرجى التواصل مع الإدارة", [{ text: "حسناً" }]);
             } else {
-              // 401 or other — token is invalid
+              // 401 — token invalid (could be overwritten by another login)
+              console.warn("[AuthContext] /auth/me returned", res.status, "— clearing stored token");
               await secureDelete(TOKEN_KEY);
               await secureDelete(USER_KEY);
               setUserState(null);
               log.userRestored = false;
             }
           } catch (err) {
-            // Network error — keep stored user for offline use
+            // Network error — keep the cached user so the app still works offline
             log.meStatus = "network-error";
             console.warn("[AuthContext] /auth/me network error:", err);
           }
         } else if (!storedToken) {
+          console.log("[AuthContext] No stored token — clearing user cache");
           await secureDelete(USER_KEY);
           setUserState(null);
-        }
-
-        // Determine which backend actually has the token
-        if (storedToken) {
-          try {
-            const ssVal = await SecureStore.getItemAsync(TOKEN_KEY);
-            log.storageBackend = ssVal ? "SecureStore" : "AsyncStorage";
-          } catch {
-            log.storageBackend = "AsyncStorage";
-          }
+        } else if (!BASE) {
+          console.error("[AuthContext] EXPO_PUBLIC_DOMAIN is not set — cannot validate token");
         }
       } catch (err) {
         console.error("[AuthContext] startup error:", err);
@@ -190,35 +239,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     })();
   }, []);
 
-  const setSession = async (u: AuthUser, token: string) => {
+  /** Save user + token after login. Returns storage write results for debug display. */
+  const setSession = async (u: AuthUser, token: string): Promise<StorageResult | null> => {
     if (!token || !u) {
-      console.error("[AuthContext] setSession: missing token or user", { token, u });
+      console.error("[AuthContext] setSession: missing token or user");
       Alert.alert("خطأ", "لم يتم استلام رمز الدخول من الخادم. يرجى المحاولة مجدداً.");
-      return;
+      return null;
     }
 
-    const tokenOk = await secureSet(TOKEN_KEY, token);
-    const userOk  = await secureSet(USER_KEY, JSON.stringify(u));
+    console.log("[AuthContext] setSession: saving token", token.substring(0, 8) + "…");
+    const tokenResult = await secureSet(TOKEN_KEY, token);
+    await secureSet(USER_KEY, JSON.stringify(u));
 
-    console.log("[AuthContext] setSession — token saved:", tokenOk, "user saved:", userOk,
-      "token preview:", token.substring(0, 8) + "…");
-
-    if (!tokenOk) {
-      console.error("[AuthContext] setSession: token write FAILED (both SecureStore and AsyncStorage)");
-    }
-
+    console.log("[AuthContext] setSession complete:", JSON.stringify(tokenResult));
     setUserState(u);
+    return tokenResult;
   };
 
-  const setUser = async (u: AuthUser | null) => {
-    if (u === null) {
-      await secureDelete(TOKEN_KEY);
-      await secureDelete(USER_KEY);
-      setUserState(null);
-    } else {
-      await secureSet(USER_KEY, JSON.stringify(u));
-      setUserState(u);
-    }
+  /** Update user profile without touching the token. */
+  const setUser = async (u: AuthUser) => {
+    await secureSet(USER_KEY, JSON.stringify(u));
+    setUserState(u);
   };
 
   const logout = async () => {

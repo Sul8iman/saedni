@@ -2,6 +2,7 @@
   "expo": {
     "name": "ساعدني",
     "slug": "saedni",
+    "owner": "sul8iman",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -16,7 +17,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.saedni.app",
-      "buildNumber": "5",
+      "buildNumber": "14",
       "infoPlist": {
         "CFBundleDisplayName": "ساعدني",
         "NSLocationWhenInUseUsageDescription": "نحتاج موقعك لعرض الطلبات القريبة منك",
@@ -52,6 +53,11 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "41abb564-bfc1-4e71-94c3-49e2d4ea642d"
+      }
     }
   }
 }

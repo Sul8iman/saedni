@@ -3,7 +3,6 @@ import { useRouter } from "expo-router";
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
-import { useAuth } from "@/contexts/AuthContext";
 
 const EXAMPLES = [
   { emoji: "🚚", text: "أحتاج بيكب لنقل أغراض من بوشر إلى الخوير", amount: "15" },
@@ -11,12 +10,9 @@ const EXAMPLES = [
   { emoji: "🔧", text: "أحتاج شخص لتركيب أثاث منزلي",               amount: "25" },
 ] as const;
 
-const BUILD_STAMP = "BUILD_COMMIT=d9443ec  BUILD_NUMBER=6";
-
 export default function WelcomeScreen() {
   const colors = useColors();
   const router = useRouter();
-  const { startupLog } = useAuth();
   const s = makeStyles(colors);
 
   return (
@@ -27,45 +23,6 @@ export default function WelcomeScreen() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Unconditional build stamp — always visible regardless of auth state */}
-        <View style={s.stampBox}>
-          <Text style={s.stampText}>{BUILD_STAMP}</Text>
-        </View>
-
-        {/* Debug panel — startup auth check results (shown once log is ready) */}
-        <View style={s.debugBox}>
-          <Text style={s.debugTitle}>🔍 Auth Debug</Text>
-          <Text style={s.debugLine}>
-            🌐 {startupLog?.domain ?? "…checking"}
-          </Text>
-          <Text style={s.debugLine}>
-            🔑 token: {
-              startupLog == null ? "…checking" :
-              startupLog.tokenFound
-                ? `✅ found (${startupLog.tokenPreview})`
-                : "❌ not found"
-            }
-          </Text>
-          <Text style={s.debugLine}>
-            📡 /auth/me: {
-              startupLog == null ? "…checking" :
-              startupLog.meStatus === "not-checked" ? "⏭ skipped" :
-              startupLog.meStatus === "network-error" ? "🔴 network error" :
-              startupLog.meStatus === 200 ? "✅ 200 OK" :
-              `❌ ${startupLog.meStatus}`
-            }
-          </Text>
-          <Text style={s.debugLine}>
-            👤 restored: {
-              startupLog == null ? "…checking" :
-              startupLog.userRestored ? "✅ yes" : "❌ no"
-            }
-          </Text>
-          <Text style={s.debugLine}>
-            💾 storage: {startupLog?.storageBackend ?? "…checking"}
-          </Text>
-        </View>
-
         {/* Hero */}
         <View style={s.hero}>
           <View style={s.logoCircle}>
@@ -123,46 +80,6 @@ const makeStyles = (c: ReturnType<typeof useColors>) =>
     scroll: { flex: 1 },
     content: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 32, gap: 18 },
 
-    // Build stamp — always visible
-    stampBox: {
-      backgroundColor: "#fff3cd",
-      borderRadius: 6,
-      paddingHorizontal: 10,
-      paddingVertical: 6,
-      borderWidth: 1,
-      borderColor: "#ffc107",
-    },
-    stampText: {
-      fontSize: 10,
-      fontFamily: "monospace",
-      color: "#856404",
-      textAlign: "center",
-    },
-
-    // Debug panel
-    debugBox: {
-      backgroundColor: "#0d1117",
-      borderRadius: 10,
-      padding: 12,
-      gap: 3,
-      borderWidth: 1,
-      borderColor: "#30363d",
-    },
-    debugTitle: {
-      color: "#f0f6fc",
-      fontSize: 11,
-      fontWeight: "700",
-      fontFamily: "monospace",
-      marginBottom: 4,
-    },
-    debugLine: {
-      color: "#8b949e",
-      fontSize: 11,
-      fontFamily: "monospace",
-      lineHeight: 17,
-    },
-
-    // Hero
     hero: { alignItems: "center", gap: 10 },
     logoCircle: {
       width: 88, height: 88, borderRadius: 44,
@@ -180,7 +97,6 @@ const makeStyles = (c: ReturnType<typeof useColors>) =>
       textAlign: "center",
     },
 
-    // Examples section
     section: { gap: 10 },
     sectionTitle: {
       fontSize: 18, fontWeight: "700", color: c.foreground,
@@ -217,7 +133,6 @@ const makeStyles = (c: ReturnType<typeof useColors>) =>
     amountTxt: { fontSize: 13, fontWeight: "700", color: c.primary },
     amountCur: { fontSize: 10, color: c.mutedForeground, fontWeight: "500" },
 
-    // Buttons
     actions: { gap: 12 },
     primaryBtn: {
       backgroundColor: c.primary, borderRadius: 14,

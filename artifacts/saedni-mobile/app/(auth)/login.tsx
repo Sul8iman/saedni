@@ -15,20 +15,11 @@ type Step = "phone" | "otp" | "pin";
 
 const BASE = process.env.EXPO_PUBLIC_DOMAIN ? `https://${process.env.EXPO_PUBLIC_DOMAIN}` : "";
 
-console.log("[saedni] EXPO_PUBLIC_DOMAIN =", process.env.EXPO_PUBLIC_DOMAIN ?? "(not set)");
-console.log("[saedni] BASE =", BASE || "(empty — all fetches will fail on native)");
-
 async function safeFetch(url: string, init: RequestInit) {
   const res = await fetch(url, init);
   let data: Record<string, unknown> = {};
   try { data = await res.json(); } catch { /* non-JSON body */ }
   return { res, data };
-}
-
-function debugAlert(title: string, url: string, status: number | null, errMsg: string) {
-  const lines = [errMsg, `\nURL: ${url || "(empty — domain not set)"}`];
-  if (status !== null) lines.push(`Status: ${status}`);
-  Alert.alert(title, lines.join("\n"));
 }
 
 export default function LoginScreen() {
@@ -47,24 +38,21 @@ export default function LoginScreen() {
     if (!phone.trim()) return;
     setLoading(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    const loginUrl = `${BASE}/api/auth/login`;
-    console.log("[saedni] handlePhoneSubmit →", loginUrl);
     try {
-      const { res, data } = await safeFetch(loginUrl, {
+      const { res, data } = await safeFetch(`${BASE}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({ phone: phone.trim() }),
       });
       if (!res.ok) {
-        debugAlert("خطأ", loginUrl, res.status, (data.error as string) || "رقم غير موجود");
+        Alert.alert("خطأ", (data.error as string) || "رقم غير موجود");
         return;
       }
       if (data.isAdmin) { setStep("pin"); }
       else { setIsUnverified(data.isVerified === false); setStep("otp"); }
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      debugAlert("خطأ في الاتصال", loginUrl, null, `تعذر الاتصال بالخادم\n${msg}`);
+    } catch {
+      Alert.alert("خطأ في الاتصال", "تعذر الاتصال بالخادم، يرجى المحاولة مجدداً");
     } finally {
       setLoading(false);
     }
@@ -74,39 +62,29 @@ export default function LoginScreen() {
     if (otp.length < 4) return;
     setLoading(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    const otpUrl = `${BASE}/api/auth/verify-otp`;
-    console.log("[saedni] handleOtpSubmit →", otpUrl);
     try {
-      const { res, data } = await safeFetch(otpUrl, {
+      const { res, data } = await safeFetch(`${BASE}/api/auth/verify-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({ phone: phone.trim(), otp }),
       });
       if (!res.ok) {
-        debugAlert("خطأ", otpUrl, res.status, (data.error as string) || "رمز التحقق غير صحيح");
+        Alert.alert("خطأ", (data.error as string) || "رمز التحقق غير صحيح");
         return;
       }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       const token = data.token as string | undefined;
       const user  = data.user  as AuthUser | undefined;
-      console.log("[saedni] OTP verify OK — token:", token ? token.substring(0, 8) + "…" : "MISSING", "user:", user?.name);
       if (!token || !user) {
-        Alert.alert("خطأ", `الخادم لم يُرجع رمز الدخول\nالاستجابة: ${JSON.stringify(data).substring(0, 120)}`);
+        Alert.alert("خطأ", "حدث خطأ غير متوقع، يرجى المحاولة مجدداً");
         return;
       }
       const saveResult = await setSession(user, token);
-      if (!saveResult) return; // setSession already alerted
-      Alert.alert(
-        "✅ تم تسجيل الدخول",
-        `Token: ${token.substring(0, 8)}…\n` +
-        `SecureStore: ${saveResult.ssWrite ? (saveResult.ssRead ? "✅ saved+verified" : "⚠️ wrote/no-readback") : "❌ failed"}\n` +
-        `AsyncStorage: ${saveResult.asWrite ? (saveResult.asRead ? "✅ saved+verified" : "⚠️ wrote/no-readback") : "❌ failed"}`,
-        [{ text: "متابعة", onPress: () => router.replace("/") }],
-      );
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      debugAlert("خطأ في الاتصال", otpUrl, null, `تعذر الاتصال بالخادم\n${msg}`);
+      if (!saveResult) return;
+      router.replace("/");
+    } catch {
+      Alert.alert("خطأ في الاتصال", "تعذر الاتصال بالخادم، يرجى المحاولة مجدداً");
     } finally {
       setLoading(false);
     }
@@ -116,39 +94,29 @@ export default function LoginScreen() {
     if (!pin.trim()) return;
     setLoading(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    const adminUrl = `${BASE}/api/auth/admin-login`;
-    console.log("[saedni] handlePinSubmit →", adminUrl);
     try {
-      const { res, data } = await safeFetch(adminUrl, {
+      const { res, data } = await safeFetch(`${BASE}/api/auth/admin-login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({ phone: phone.trim(), pin }),
       });
       if (!res.ok) {
-        debugAlert("خطأ", adminUrl, res.status, (data.error as string) || "رمز PIN غير صحيح");
+        Alert.alert("خطأ", (data.error as string) || "رمز PIN غير صحيح");
         return;
       }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       const token = data.token as string | undefined;
       const user  = data.user  as AuthUser | undefined;
-      console.log("[saedni] Admin login OK — token:", token ? token.substring(0, 8) + "…" : "MISSING", "user:", user?.name);
       if (!token || !user) {
-        Alert.alert("خطأ", `الخادم لم يُرجع رمز الدخول\nالاستجابة: ${JSON.stringify(data).substring(0, 120)}`);
+        Alert.alert("خطأ", "حدث خطأ غير متوقع، يرجى المحاولة مجدداً");
         return;
       }
       const saveResult = await setSession(user, token);
       if (!saveResult) return;
-      Alert.alert(
-        "✅ تم تسجيل الدخول",
-        `Token: ${token.substring(0, 8)}…\n` +
-        `SecureStore: ${saveResult.ssWrite ? (saveResult.ssRead ? "✅ saved+verified" : "⚠️ wrote/no-readback") : "❌ failed"}\n` +
-        `AsyncStorage: ${saveResult.asWrite ? (saveResult.asRead ? "✅ saved+verified" : "⚠️ wrote/no-readback") : "❌ failed"}`,
-        [{ text: "متابعة", onPress: () => router.replace("/") }],
-      );
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      debugAlert("خطأ في الاتصال", adminUrl, null, `تعذر الاتصال بالخادم\n${msg}`);
+      router.replace("/");
+    } catch {
+      Alert.alert("خطأ في الاتصال", "تعذر الاتصال بالخادم، يرجى المحاولة مجدداً");
     } finally {
       setLoading(false);
     }
@@ -178,10 +146,6 @@ export default function LoginScreen() {
           </View>
           <Text style={s.appName}>ساعدني</Text>
           <Text style={s.tagline}>منصة المساعدة اليومية في عُمان</Text>
-          {/* DEBUG BANNER — remove after domain is confirmed */}
-          <Text style={s.debugBanner}>
-            {BASE ? `🔗 ${BASE}` : "⚠️ DOMAIN NOT SET"}
-          </Text>
         </View>
 
         {/* Card */}
@@ -319,10 +283,6 @@ const makeStyles = (c: ReturnType<typeof useColors>) =>
     },
     appName: { fontSize: 32, fontWeight: "800", color: c.foreground, letterSpacing: -0.5 },
     tagline: { fontSize: 14, color: c.mutedForeground, marginTop: 6, textAlign: "center" },
-    debugBanner: {
-      fontSize: 10, color: "#888", marginTop: 6, textAlign: "center",
-      fontFamily: "monospace",
-    },
     card: {
       backgroundColor: c.card, borderRadius: 20, borderWidth: 1, borderColor: c.border,
       padding: 24,

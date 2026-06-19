@@ -24,9 +24,9 @@ interface HelpRequest {
   status: string;
   createdAt: string;
   customerPhone?: string | null;
+  helpCompleted?: boolean | null;
 }
 
-// Gregorian DD/MM/YYYY - h:mm صباحاً/مساءً — no Hijri
 function fmtDate(iso: string | null | undefined): string {
   if (!iso) return "غير متوفر";
   const d = new Date(iso);
@@ -41,7 +41,6 @@ function fmtDate(iso: string | null | undefined): string {
   return `${dd}/${mm}/${yyyy} - ${h}:${min} ${period}`;
 }
 
-// DD/MM/YYYY - h:mm صباحاً/مساءً
 function fmtScheduled(iso: string) {
   const d = new Date(iso);
   const dd = d.getDate().toString().padStart(2, "0");
@@ -70,11 +69,14 @@ export default function CustomerMyRequestsScreen() {
     enabled: !!user,
   });
 
-  // "إنهاء الطلب" marks as completed (hidden from helpers, visible in history)
   const endMutation = useMutation({
-    mutationFn: (id: number) =>
-      fetch(`${BASE}/api/requests/${id}/complete`, { method: "PATCH", credentials: "include" })
-        .then(r => { if (!r.ok) throw new Error(); }),
+    mutationFn: ({ id, helpCompleted }: { id: number; helpCompleted: boolean }) =>
+      fetch(`${BASE}/api/requests/${id}/complete`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ helpCompleted }),
+      }).then(r => { if (!r.ok) throw new Error(); }),
     onSuccess: () => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       qc.invalidateQueries({ queryKey: ["my-requests", user?.id] });
@@ -84,14 +86,22 @@ export default function CustomerMyRequestsScreen() {
 
   const confirmEnd = useCallback((id: number) => {
     Alert.alert(
-      "إنهاء الطلب",
-      "هل أنت متأكد من إنهاء هذا الطلب؟ سيُخفى عن المساعدين.",
+      "هل تمت المساعدة؟",
+      "",
       [
-        { text: "رجوع", style: "cancel" },
-        { text: "إنهاء الطلب", style: "destructive", onPress: () => endMutation.mutate(id) },
+        { text: "إلغاء", style: "cancel" },
+        {
+          text: "لا",
+          style: "destructive",
+          onPress: () => endMutation.mutate({ id, helpCompleted: false }),
+        },
+        {
+          text: "نعم",
+          onPress: () => endMutation.mutate({ id, helpCompleted: true }),
+        },
       ]
     );
-  }, []);
+  }, [endMutation]);
 
   const catLabel = useCallback((v: string) => CATEGORIES.find(c => c.value === v)?.label ?? v, []);
   const s = makeStyles(colors, insets.bottom);
@@ -102,7 +112,6 @@ export default function CustomerMyRequestsScreen() {
 
     return (
       <View style={s.card}>
-        {/* Status + Category row */}
         <View style={s.cardTopRow}>
           <View style={[s.statusBadge, { backgroundColor: st.bg }]}>
             <Text style={[s.statusTxt, { color: st.color }]}>{st.label}</Text>
@@ -110,19 +119,15 @@ export default function CustomerMyRequestsScreen() {
           <Text style={s.catLabel}>{catLabel(item.category)}</Text>
         </View>
 
-        {/* Details */}
         <Text style={s.details}>{item.details}</Text>
 
-        {/* Info rows */}
         <View style={s.infoGrid}>
-          {/* Location */}
           <View style={s.infoRow}>
             <Text style={s.infoVal}>{item.area}</Text>
             <Text style={s.infoKey}>الموقع</Text>
             <Ionicons name="location-outline" size={14} color={colors.mutedForeground} />
           </View>
 
-          {/* Time — shows "الآن" or the actual scheduled date/time */}
           <View style={s.infoRow}>
             <Text style={s.infoVal}>
               {item.timeType === "now"
@@ -139,14 +144,12 @@ export default function CustomerMyRequestsScreen() {
             />
           </View>
 
-          {/* Amount */}
           <View style={s.infoRow}>
             <Text style={[s.infoVal, s.amountVal]}>{item.offeredAmount} ر.ع.</Text>
             <Text style={s.infoKey}>المبلغ</Text>
             <Ionicons name="cash-outline" size={14} color={colors.mutedForeground} />
           </View>
 
-          {/* Phone */}
           {item.customerPhone && (
             <View style={s.infoRow}>
               <Text style={s.infoVal}>{item.customerPhone}</Text>
@@ -155,15 +158,31 @@ export default function CustomerMyRequestsScreen() {
             </View>
           )}
 
-          {/* Publish date */}
           <View style={s.infoRow}>
             <Text style={s.infoVal}>{fmtDate(item.createdAt)}</Text>
             <Text style={s.infoKey}>تاريخ نشر الطلب</Text>
             <Ionicons name="calendar-clear-outline" size={14} color={colors.mutedForeground} />
           </View>
+
+          {/* Feedback badge for completed requests */}
+          {item.status === "completed" && item.helpCompleted !== null && item.helpCompleted !== undefined && (
+            <View style={s.infoRow}>
+              <View style={[s.feedbackBadge, item.helpCompleted ? s.feedbackYes : s.feedbackNo]}>
+                <Ionicons
+                  name={item.helpCompleted ? "checkmark-circle" : "close-circle"}
+                  size={13}
+                  color={item.helpCompleted ? "#059669" : "#DC2626"}
+                />
+                <Text style={[s.feedbackTxt, { color: item.helpCompleted ? "#059669" : "#DC2626" }]}>
+                  {item.helpCompleted ? "تمت المساعدة" : "لم تتم المساعدة"}
+                </Text>
+              </View>
+              <Text style={s.infoKey}>التقييم</Text>
+              <Ionicons name="star-outline" size={14} color={colors.mutedForeground} />
+            </View>
+          )}
         </View>
 
-        {/* إنهاء الطلب button — shown for active requests only */}
         {isActive && (
           <TouchableOpacity
             style={s.endBtn}
@@ -242,7 +261,6 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
       shadowColor: "#000", shadowOffset: { width: 0, height: 1 },
       shadowOpacity: 0.05, shadowRadius: 4, elevation: 2,
     },
-
     cardTopRow: {
       flexDirection: "row-reverse", alignItems: "center",
       justifyContent: "space-between", marginBottom: 10,
@@ -250,13 +268,10 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
     statusBadge: { borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
     statusTxt: { fontSize: 12, fontWeight: "700" },
     catLabel: { fontSize: 16, fontWeight: "800", color: c.foreground },
-
     details: {
       fontSize: 14, color: c.mutedForeground, textAlign: "right",
       lineHeight: 22, marginBottom: 14,
     },
-
-    // Info grid
     infoGrid: {
       backgroundColor: c.muted, borderRadius: 12,
       paddingHorizontal: 14, paddingVertical: 6, gap: 0, marginBottom: 14,
@@ -273,7 +288,14 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
     },
     amountVal: { color: c.primary, fontWeight: "800", fontSize: 15 },
 
-    // إنهاء الطلب button
+    feedbackBadge: {
+      flexDirection: "row-reverse", alignItems: "center", gap: 4,
+      borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3, flex: 1,
+    },
+    feedbackYes: { backgroundColor: "#D1FAE5" },
+    feedbackNo:  { backgroundColor: "#FEE2E2" },
+    feedbackTxt: { fontSize: 12, fontWeight: "700" },
+
     endBtn: {
       borderWidth: 1.5, borderColor: c.border, borderRadius: 10,
       paddingVertical: 11, flexDirection: "row-reverse", alignItems: "center",

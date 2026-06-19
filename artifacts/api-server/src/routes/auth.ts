@@ -16,10 +16,18 @@ function generate4DigitOtp(): string {
   return Math.floor(1000 + Math.random() * 9000).toString();
 }
 
+function parseRoles(rolesJson: string | null, userType: string): string[] {
+  if (rolesJson) {
+    try { return JSON.parse(rolesJson); } catch {}
+  }
+  return [userType];
+}
+
 function safeUser(user: typeof usersTable.$inferSelect) {
   const { passwordHash: _, authToken: __, ...safe } = user;
   return {
     ...safe,
+    roles: parseRoles(safe.roles, safe.userType),
     isActive: !safe.isBlocked,
     createdAt: safe.createdAt.toISOString(),
     lastLogin: safe.lastLogin?.toISOString() ?? null,
@@ -55,14 +63,46 @@ router.post("/auth/register", async (req, res): Promise<void> => {
 
   const { name, phone, userType } = parsed.data;
 
-  const existing = await db.select().from(usersTable).where(eq(usersTable.phone, phone));
-  if (existing.length > 0) { res.status(400).json({ error: "رقم الهاتف مسجل مسبقاً" }); return; }
+  const [existing] = await db.select().from(usersTable).where(eq(usersTable.phone, phone));
+
+  if (existing) {
+    // Check if this role already exists for this user
+    const existingRoles = parseRoles(existing.roles, existing.userType);
+
+    if (existingRoles.includes(userType)) {
+      res.status(400).json({ error: "رقم الهاتف مسجل مسبقاً بهذا النوع" });
+      return;
+    }
+
+    // Add the new role to the existing user (dual-role registration)
+    const updatedRoles = [...existingRoles, userType];
+    const otp = generate4DigitOtp();
+
+    await db.update(usersTable)
+      .set({ roles: JSON.stringify(updatedRoles), otpCode: otp, otpCreatedAt: new Date() })
+      .where(eq(usersTable.id, existing.id));
+
+    req.log.info({ userId: existing.id, newRole: userType, roles: updatedRoles }, "Dual role added");
+    await createOtpNotification({ userId: existing.id, userName: existing.name, phone, userType });
+
+    res.status(201).json({
+      message: "تم إضافة الدور الجديد لحسابك. يرجى التواصل مع الإدارة للحصول على رمز التحقق",
+      otp,
+      isVerified: existing.isVerified,
+      roleAdded: true,
+    });
+    return;
+  }
 
   const otp = generate4DigitOtp();
 
   const [user] = await db
     .insert(usersTable)
-    .values({ name, phone, passwordHash: "", userType, isVerified: false, isBlocked: false, otpCode: otp, otpCreatedAt: new Date() })
+    .values({
+      name, phone, passwordHash: "", userType,
+      roles: JSON.stringify([userType]),
+      isVerified: false, isBlocked: false, otpCode: otp, otpCreatedAt: new Date(),
+    })
     .returning();
 
   req.log.info({ userId: user.id, userType }, "User registered (unverified)");
@@ -122,7 +162,6 @@ router.post("/auth/admin-login", async (req, res): Promise<void> => {
   const [user] = await db.select().from(usersTable).where(eq(usersTable.phone, phone));
   if (!user) { res.status(404).json({ error: "رقم الهاتف غير مسجل" }); return; }
 
-  // Keep existing token to avoid invalidating sessions already on device
   const authToken = user.authToken ?? randomUUID();
 
   const [updated] = await db
@@ -168,9 +207,6 @@ router.post("/auth/verify-otp", async (req, res): Promise<void> => {
     return;
   }
 
-  // Keep the existing token if the user already has one — this prevents
-  // a second OTP login from invalidating a token already stored on another device.
-  // Only generate a fresh token if none exists (first login or after explicit logout).
   const authToken = user.authToken ?? randomUUID();
 
   const updates: Partial<typeof usersTable.$inferInsert> = {

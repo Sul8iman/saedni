@@ -8,6 +8,7 @@ export const usersTable = pgTable("users", {
   phone: text("phone").notNull().unique(),
   passwordHash: text("password_hash").notNull(),
   userType: text("user_type").notNull().default("customer"),
+  roles: text("roles"),                                         // JSON: string[] e.g. ["customer","helper"]
   area: text("area"),
   rating: real("rating"),
   isVerified: boolean("is_verified").notNull().default(false),
@@ -16,10 +17,8 @@ export const usersTable = pgTable("users", {
   otpCode: text("otp_code"),
   otpCreatedAt: timestamp("otp_created_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  // Helper interest preferences for future notification targeting
-  helperInterests: text("helper_interests"),   // JSON: string[] of category values
-  preferredAreas:  text("preferred_areas"),    // JSON: string[] of area names
-  // Persistent auth token — generated on login, cleared on logout
+  helperInterests: text("helper_interests"),
+  preferredAreas:  text("preferred_areas"),
   authToken: text("auth_token").unique(),
 });
 

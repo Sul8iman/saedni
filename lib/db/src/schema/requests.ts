@@ -1,19 +1,20 @@
-import { pgTable, text, serial, timestamp, integer, real } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, timestamp, integer, real, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
-// Help requests table
 export const requestsTable = pgTable("requests", {
   id: serial("id").primaryKey(),
   customerId: integer("customer_id").notNull(),
   helperId: integer("helper_id"),
-  category: text("category").notNull(), // transport | delivery | government | shopping | home_services | labor
+  category: text("category").notNull(),
   details: text("details").notNull(),
   area: text("area").notNull(),
-  timeType: text("time_type").notNull().default("now"), // now | scheduled
+  timeType: text("time_type").notNull().default("now"),
   scheduledDateTime: text("scheduled_date_time"),
   offeredAmount: real("offered_amount").notNull(),
-  status: text("status").notNull().default("available"), // available | accepted | in_progress | completed | cancelled
+  status: text("status").notNull().default("available"),
+  helpCompleted: boolean("help_completed"),                               // true/false/null (null = no feedback yet)
+  completedAt: timestamp("completed_at", { withTimezone: true }),        // when customer pressed إنهاء الطلب
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

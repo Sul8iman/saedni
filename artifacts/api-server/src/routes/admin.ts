@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, count, desc } from "drizzle-orm";
+import { eq, count, desc, and } from "drizzle-orm";
 import { db, usersTable, requestsTable, adminNotificationsTable } from "@workspace/db";
 import { VerifyHelperParams, VerifyHelperBody, DeleteUserParams } from "@workspace/api-zod";
 
@@ -48,6 +48,22 @@ router.get("/admin/stats", async (_req, res): Promise<void> => {
     .from(requestsTable)
     .where(eq(requestsTable.status, "cancelled"));
 
+  // Feedback stats
+  const [helpCompletedResult] = await db
+    .select({ count: count() })
+    .from(requestsTable)
+    .where(and(eq(requestsTable.status, "completed"), eq(requestsTable.helpCompleted, true)));
+  const [helpNotCompletedResult] = await db
+    .select({ count: count() })
+    .from(requestsTable)
+    .where(and(eq(requestsTable.status, "completed"), eq(requestsTable.helpCompleted, false)));
+
+  const helpYes = helpCompletedResult.count;
+  const helpNo  = helpNotCompletedResult.count;
+  const successRate = (helpYes + helpNo) > 0
+    ? Math.round((helpYes / (helpYes + helpNo)) * 100)
+    : 0;
+
   res.json({
     totalUsers: totalUsersResult.count,
     totalHelpers: totalHelpersResult.count,
@@ -56,6 +72,9 @@ router.get("/admin/stats", async (_req, res): Promise<void> => {
     activeRequests: activeRequestsResult.count,
     completedRequests: completedRequestsResult.count,
     cancelledRequests: cancelledRequestsResult.count,
+    helpCompleted: helpYes,
+    helpNotCompleted: helpNo,
+    successRate,
   });
 });
 
@@ -100,14 +119,12 @@ router.delete("/admin/users/:id/delete", async (req, res): Promise<void> => {
     return;
   }
 
-  // Prevent admin from deleting themselves
   const currentUserId = (req as any).session?.userId;
   if (currentUserId === params.data.id) {
     res.status(403).json({ error: "لا يمكنك حذف حساب المدير" });
     return;
   }
 
-  // Cascade: delete all requests created by this user
   await db.delete(requestsTable).where(eq(requestsTable.customerId, params.data.id));
 
   const [user] = await db

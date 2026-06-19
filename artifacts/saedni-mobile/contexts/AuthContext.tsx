@@ -5,6 +5,7 @@ import { Alert } from "react-native";
 
 const TOKEN_KEY = "@saedni/authToken";
 const USER_KEY  = "@saedni/user";
+const ROLE_KEY  = "@saedni/activeRole";
 
 export const BASE = process.env.EXPO_PUBLIC_DOMAIN
   ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
@@ -19,10 +20,6 @@ export interface StorageResult {
   asRead: boolean;
 }
 
-/**
- * Write value to BOTH SecureStore (encrypted keychain) and AsyncStorage.
- * This makes reads resilient — if one store fails on retrieval the other has it.
- */
 export async function secureSet(key: string, value: string): Promise<StorageResult> {
   const result: StorageResult = { ssWrite: false, asWrite: false, ssRead: false, asRead: false };
 
@@ -31,18 +28,15 @@ export async function secureSet(key: string, value: string): Promise<StorageResu
     return result;
   }
 
-  // Write to SecureStore
   try {
     await SecureStore.setItemAsync(key, value);
     result.ssWrite = true;
-    // Verify read-back
     const check = await SecureStore.getItemAsync(key);
     result.ssRead = check === value;
   } catch (e) {
     console.warn("[storage] SecureStore write failed:", e);
   }
 
-  // ALWAYS write to AsyncStorage as well (dual-write for resilience)
   try {
     await AsyncStorage.setItem(key, value);
     result.asWrite = true;
@@ -56,13 +50,7 @@ export async function secureSet(key: string, value: string): Promise<StorageResu
   return result;
 }
 
-/**
- * Read from SecureStore; if null/missing, ALWAYS fall through to AsyncStorage.
- * SecureStore.getItemAsync returns null (not throws) for missing keys,
- * so the old catch-only fallback never ran. This version checks both explicitly.
- */
 export async function secureGet(key: string): Promise<string | null> {
-  // Try SecureStore
   let ssVal: string | null = null;
   try {
     ssVal = await SecureStore.getItemAsync(key);
@@ -74,7 +62,6 @@ export async function secureGet(key: string): Promise<string | null> {
     return ssVal;
   }
 
-  // Explicitly fall through to AsyncStorage regardless of whether SS threw or returned null
   try {
     const asVal = await AsyncStorage.getItem(key);
     if (asVal != null) {
@@ -100,6 +87,7 @@ export interface AuthUser {
   name: string;
   phone: string;
   userType: "customer" | "helper" | "admin";
+  roles?: string[];
   isActive: boolean;
   isVerified?: boolean;
   isBlocked?: boolean;
@@ -121,8 +109,10 @@ interface AuthContextType {
   user: AuthUser | null;
   loading: boolean;
   startupLog: StartupLog | null;
+  activeRole: string | null;
   setSession: (user: AuthUser, token: string) => Promise<StorageResult | null>;
   setUser: (user: AuthUser) => Promise<void>;
+  setActiveRole: (role: string) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -130,8 +120,10 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   loading: true,
   startupLog: null,
+  activeRole: null,
   setSession: async () => null,
   setUser: async () => {},
+  setActiveRole: async () => {},
   logout: async () => {},
 });
 
@@ -141,6 +133,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUserState] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [startupLog, setStartupLog] = useState<StartupLog | null>(null);
+  const [activeRole, setActiveRoleState] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -156,18 +149,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       };
 
       try {
-        const [storedToken, storedUser] = await Promise.all([
+        const [storedToken, storedUser, storedRole] = await Promise.all([
           secureGet(TOKEN_KEY),
           secureGet(USER_KEY),
+          AsyncStorage.getItem(ROLE_KEY).catch(() => null),
         ]);
 
-        console.log("[AuthContext] storedToken:", storedToken ? storedToken.substring(0, 8) + "…" : "null");
-        console.log("[AuthContext] storedUser:", storedUser ? storedUser.substring(0, 30) + "…" : "null");
+        if (storedRole) {
+          setActiveRoleState(storedRole);
+          console.log("[AuthContext] restored activeRole:", storedRole);
+        }
 
         log.tokenFound = !!storedToken;
         log.tokenPreview = storedToken ? storedToken.substring(0, 8) + "…" : "—";
 
-        // Determine which backend has the token
         if (storedToken) {
           let ssHas = false;
           let asHas = false;
@@ -176,7 +171,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           log.storageBackend = ssHas && asHas ? "both" : ssHas ? "SecureStore" : asHas ? "AsyncStorage" : "none";
         }
 
-        // Show cached user immediately for fast launch
         if (storedUser) {
           try {
             const parsed = JSON.parse(storedUser) as AuthUser;
@@ -203,29 +197,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               await secureSet(USER_KEY, JSON.stringify(fresh));
               setUserState(fresh);
               log.userRestored = true;
+
+              // Auto-set activeRole for single-role users
+              if (!storedRole) {
+                const roles = fresh.roles ?? [fresh.userType];
+                if (roles.length === 1) {
+                  setActiveRoleState(roles[0]);
+                  await AsyncStorage.setItem(ROLE_KEY, roles[0]).catch(() => {});
+                }
+              }
             } else if (res.status === 403) {
               await secureDelete(TOKEN_KEY);
               await secureDelete(USER_KEY);
+              await AsyncStorage.removeItem(ROLE_KEY).catch(() => {});
               setUserState(null);
+              setActiveRoleState(null);
               log.userRestored = false;
               Alert.alert("الحساب معطّل", "تم تعطيل حسابك، يرجى التواصل مع الإدارة", [{ text: "حسناً" }]);
             } else {
-              // 401 — token invalid (could be overwritten by another login)
               console.warn("[AuthContext] /auth/me returned", res.status, "— clearing stored token");
               await secureDelete(TOKEN_KEY);
               await secureDelete(USER_KEY);
+              await AsyncStorage.removeItem(ROLE_KEY).catch(() => {});
               setUserState(null);
+              setActiveRoleState(null);
               log.userRestored = false;
             }
           } catch (err) {
-            // Network error — keep the cached user so the app still works offline
             log.meStatus = "network-error";
             console.warn("[AuthContext] /auth/me network error:", err);
           }
         } else if (!storedToken) {
           console.log("[AuthContext] No stored token — clearing user cache");
           await secureDelete(USER_KEY);
+          await AsyncStorage.removeItem(ROLE_KEY).catch(() => {});
           setUserState(null);
+          setActiveRoleState(null);
         } else if (!BASE) {
           console.error("[AuthContext] EXPO_PUBLIC_DOMAIN is not set — cannot validate token");
         }
@@ -239,7 +246,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     })();
   }, []);
 
-  /** Save user + token after login. Returns storage write results for debug display. */
   const setSession = async (u: AuthUser, token: string): Promise<StorageResult | null> => {
     if (!token || !u) {
       console.error("[AuthContext] setSession: missing token or user");
@@ -251,15 +257,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const tokenResult = await secureSet(TOKEN_KEY, token);
     await secureSet(USER_KEY, JSON.stringify(u));
 
+    // Auto-set role for single-role users; leave null for multi-role (index.tsx handles selector)
+    const roles = u.roles ?? [u.userType];
+    if (roles.length === 1) {
+      setActiveRoleState(roles[0]);
+      await AsyncStorage.setItem(ROLE_KEY, roles[0]).catch(() => {});
+    } else {
+      setActiveRoleState(null);
+      await AsyncStorage.removeItem(ROLE_KEY).catch(() => {});
+    }
+
     console.log("[AuthContext] setSession complete:", JSON.stringify(tokenResult));
     setUserState(u);
     return tokenResult;
   };
 
-  /** Update user profile without touching the token. */
   const setUser = async (u: AuthUser) => {
     await secureSet(USER_KEY, JSON.stringify(u));
     setUserState(u);
+  };
+
+  const setActiveRole = async (role: string) => {
+    setActiveRoleState(role);
+    await AsyncStorage.setItem(ROLE_KEY, role).catch(() => {});
+    console.log("[AuthContext] activeRole set to:", role);
   };
 
   const logout = async () => {
@@ -275,11 +296,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch {}
     await secureDelete(TOKEN_KEY);
     await secureDelete(USER_KEY);
+    await AsyncStorage.removeItem(ROLE_KEY).catch(() => {});
     setUserState(null);
+    setActiveRoleState(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, startupLog, setSession, setUser, logout }}>
+    <AuthContext.Provider value={{ user, loading, startupLog, activeRole, setSession, setUser, setActiveRole, logout }}>
       {children}
     </AuthContext.Provider>
   );

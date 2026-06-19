@@ -27,9 +27,14 @@ export default function RegisterScreen() {
   const [userType, setUserType] = useState<UserType>("customer");
   const [otp, setOtp] = useState("");
   const [loading, setLoading] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
 
   async function handleRegister() {
     if (!name.trim() || !phone.trim()) return;
+    if (!termsAccepted) {
+      Alert.alert("الشروط والأحكام", "يرجى الموافقة على الشروط والأحكام أولاً");
+      return;
+    }
     setLoading(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     try {
@@ -72,6 +77,7 @@ export default function RegisterScreen() {
     );
   }
 
+  const canSubmit = !!name.trim() && !!phone.trim() && termsAccepted;
   const s = makeStyles(colors);
 
   return (
@@ -145,10 +151,35 @@ export default function RegisterScreen() {
                 onSubmitEditing={handleRegister}
               />
 
+              {/* Terms & Conditions checkbox */}
               <TouchableOpacity
-                style={[s.primaryBtn, (!name.trim() || !phone.trim()) && s.btnDisabled]}
+                style={s.termsRow}
+                onPress={() => setTermsAccepted(v => !v)}
+                activeOpacity={0.7}
+              >
+                <View style={[s.checkbox, termsAccepted && s.checkboxChecked]}>
+                  {termsAccepted && (
+                    <Ionicons name="checkmark" size={14} color={colors.primaryForeground} />
+                  )}
+                </View>
+                <Text style={s.termsTxt}>
+                  {"أوافق على "}
+                  <Text
+                    style={s.termsLink}
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      router.push("/(auth)/terms");
+                    }}
+                  >
+                    الشروط والأحكام وسياسة الخصوصية
+                  </Text>
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[s.primaryBtn, !canSubmit && s.btnDisabled]}
                 onPress={handleRegister}
-                disabled={loading || !name.trim() || !phone.trim()}
+                disabled={loading || !canSubmit}
                 activeOpacity={0.85}
               >
                 {loading
@@ -254,6 +285,22 @@ const makeStyles = (c: ReturnType<typeof useColors>) =>
     roleLabelActive: { color: c.primary },
     roleHint: { fontSize: 11, color: c.mutedForeground, textAlign: "center" },
     roleHintActive: { color: c.secondaryForeground },
+
+    // Terms checkbox
+    termsRow: {
+      flexDirection: "row-reverse", alignItems: "center", gap: 10,
+      marginBottom: 18, paddingVertical: 4,
+    },
+    checkbox: {
+      width: 22, height: 22, borderRadius: 6,
+      borderWidth: 2, borderColor: c.border,
+      backgroundColor: c.background,
+      alignItems: "center", justifyContent: "center",
+    },
+    checkboxChecked: { backgroundColor: c.primary, borderColor: c.primary },
+    termsTxt: { flex: 1, fontSize: 13, color: c.mutedForeground, textAlign: "right", lineHeight: 20 },
+    termsLink: { color: c.primary, fontWeight: "700", textDecorationLine: "underline" },
+
     primaryBtn: {
       backgroundColor: c.primary, borderRadius: 12, paddingVertical: 16,
       alignItems: "center", marginBottom: 12,

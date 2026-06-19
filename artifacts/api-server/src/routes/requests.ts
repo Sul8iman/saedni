@@ -17,7 +17,6 @@ import {
 
 const router: IRouter = Router();
 
-// Enrich a raw DB request row with customer/helper name and phone
 async function enrichRequest(req: typeof requestsTable.$inferSelect) {
   const ids = [req.customerId, req.helperId].filter(Boolean) as number[];
   const users =
@@ -33,6 +32,7 @@ async function enrichRequest(req: typeof requestsTable.$inferSelect) {
   return {
     ...req,
     createdAt: req.createdAt.toISOString(),
+    completedAt: req.completedAt?.toISOString() ?? null,
     customerName: userMap[req.customerId]?.name ?? null,
     customerPhone: userMap[req.customerId]?.phone ?? null,
     helperName: req.helperId ? (userMap[req.helperId]?.name ?? null) : null,
@@ -69,7 +69,6 @@ router.post("/requests", async (req, res): Promise<void> => {
     return;
   }
 
-  // Verify the customer account is not blocked before allowing request creation
   const [customer] = await db
     .select({ isBlocked: usersTable.isBlocked })
     .from(usersTable)
@@ -164,7 +163,7 @@ router.delete("/requests/:id", async (req, res): Promise<void> => {
   res.sendStatus(204);
 });
 
-// PATCH /requests/:id/status — helper advances status (in_progress → completed)
+// PATCH /requests/:id/status — helper advances status
 router.patch("/requests/:id/status", async (req, res): Promise<void> => {
   const params = UpdateRequestStatusParams.safeParse(req.params);
   if (!params.success) {
@@ -188,7 +187,6 @@ router.patch("/requests/:id/status", async (req, res): Promise<void> => {
     return;
   }
 
-  // Validate allowed status transitions
   const allowed: Record<string, string[]> = {
     accepted: ["in_progress", "cancelled"],
     in_progress: ["completed", "cancelled"],
@@ -245,7 +243,7 @@ router.patch("/requests/:id/accept", async (req, res): Promise<void> => {
   res.json(await enrichRequest(row));
 });
 
-// PATCH /requests/:id/complete — customer ends/completes a request
+// PATCH /requests/:id/complete — customer ends request, with optional help feedback
 router.patch("/requests/:id/complete", async (req, res): Promise<void> => {
   const params = CancelRequestParams.safeParse(req.params);
   if (!params.success) {
@@ -263,9 +261,18 @@ router.patch("/requests/:id/complete", async (req, res): Promise<void> => {
     return;
   }
 
+  // Accept optional helpCompleted boolean from request body
+  const rawBody = req.body as Record<string, unknown> | undefined;
+  const helpCompleted: boolean | null =
+    rawBody && typeof rawBody.helpCompleted === "boolean" ? rawBody.helpCompleted : null;
+
   const [row] = await db
     .update(requestsTable)
-    .set({ status: "completed" })
+    .set({
+      status: "completed",
+      completedAt: new Date(),
+      ...(helpCompleted !== null ? { helpCompleted } : {}),
+    })
     .where(eq(requestsTable.id, params.data.id))
     .returning();
 

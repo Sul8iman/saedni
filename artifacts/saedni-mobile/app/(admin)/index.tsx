@@ -17,6 +17,7 @@ const BASE = process.env.EXPO_PUBLIC_DOMAIN ? `https://${process.env.EXPO_PUBLIC
 interface Stats {
   totalUsers: number; totalHelpers: number; totalCustomers: number;
   totalRequests: number; activeRequests: number; completedRequests: number; cancelledRequests: number;
+  helpCompleted: number; helpNotCompleted: number; successRate: number;
 }
 interface HelpRequest {
   id: number; category: string; details: string; area: string;
@@ -56,15 +57,6 @@ function fmtCreatedAt(iso: string | null | undefined): string {
   h = h % 12 || 12;
   return `${dd}/${mm}/${yyyy} - ${h}:${min} ${period}`;
 }
-
-const STAT_DEFS = (stats: Stats | undefined, c: string) => [
-  { label: "المستخدمون", val: stats?.totalUsers ?? 0,      icon: "people-outline",           color: c },
-  { label: "العملاء",    val: stats?.totalCustomers ?? 0,  icon: "person-outline",           color: "#6366F1" },
-  { label: "المساعدون",  val: stats?.totalHelpers ?? 0,    icon: "hand-right-outline",       color: "#F59E0B" },
-  { label: "الطلبات",    val: stats?.totalRequests ?? 0,   icon: "document-text-outline",    color: "#10B981" },
-  { label: "النشطة",     val: stats?.activeRequests ?? 0,  icon: "flash-outline",            color: c },
-  { label: "المنتهية",   val: stats?.completedRequests ?? 0, icon: "checkmark-done-outline", color: "#6B7280" },
-];
 
 const USER_TYPE_LABEL: Record<string, string> = {
   customer: "عميل",
@@ -164,7 +156,22 @@ export default function AdminDashboard() {
 
   const catLabel = (v: string) => CATEGORIES.find(c => c.value === v)?.label ?? v;
   const s = makeStyles(colors, insets.bottom);
-  const statDefs = STAT_DEFS(stats, colors.primary);
+
+  // ── Stat definitions: main grid + feedback row ──
+  const mainStats = [
+    { label: "المستخدمون",  val: stats?.totalUsers ?? 0,       icon: "people-outline",           color: colors.primary },
+    { label: "العملاء",     val: stats?.totalCustomers ?? 0,   icon: "person-outline",           color: "#6366F1" },
+    { label: "المساعدون",   val: stats?.totalHelpers ?? 0,     icon: "hand-right-outline",       color: "#F59E0B" },
+    { label: "الطلبات",     val: stats?.totalRequests ?? 0,    icon: "document-text-outline",    color: "#10B981" },
+    { label: "النشطة",      val: stats?.activeRequests ?? 0,   icon: "flash-outline",            color: colors.primary },
+    { label: "المنتهية",    val: stats?.completedRequests ?? 0, icon: "checkmark-done-outline",  color: "#6B7280" },
+  ];
+
+  const feedbackStats = [
+    { label: "تمت المساعدة",      val: stats?.helpCompleted ?? 0,    icon: "checkmark-circle-outline", color: "#059669", bg: "#D1FAE5" },
+    { label: "لم تتم المساعدة",   val: stats?.helpNotCompleted ?? 0, icon: "close-circle-outline",     color: "#DC2626", bg: "#FEE2E2" },
+    { label: "نسبة النجاح",       val: `${stats?.successRate ?? 0}%`, icon: "stats-chart-outline",     color: "#6366F1", bg: "#EEF2FF" },
+  ];
 
   const renderRequest = ({ item }: { item: HelpRequest }) => {
     const st = STATUS_INFO[item.status] ?? { label: item.status, color: "#6B7280", bg: "#F3F4F6" };
@@ -318,7 +325,6 @@ export default function AdminDashboard() {
           </TouchableOpacity>
         </View>
 
-        {/* Tab switcher */}
         <View style={s.tabs}>
           <TouchableOpacity
             style={[s.tab, activeTab === "notifications" && s.tabActive]}
@@ -378,8 +384,9 @@ export default function AdminDashboard() {
           }
           ListHeaderComponent={
             <View>
+              {/* Main stats grid */}
               <View style={s.statsGrid}>
-                {statDefs.map((st, i) => (
+                {mainStats.map((st, i) => (
                   <View key={i} style={s.statCard}>
                     <View style={[s.statIcon, { backgroundColor: st.color + "18" }]}>
                       <Ionicons name={st.icon as any} size={20} color={st.color} />
@@ -389,6 +396,21 @@ export default function AdminDashboard() {
                   </View>
                 ))}
               </View>
+
+              {/* Feedback stats row */}
+              <Text style={s.feedbackTitle}>إحصائيات المساعدة</Text>
+              <View style={s.feedbackRow}>
+                {feedbackStats.map((fs, i) => (
+                  <View key={i} style={[s.feedbackCard, { borderColor: fs.color + "30" }]}>
+                    <View style={[s.feedbackIcon, { backgroundColor: fs.bg }]}>
+                      <Ionicons name={fs.icon as any} size={18} color={fs.color} />
+                    </View>
+                    <Text style={[s.feedbackVal, { color: fs.color }]}>{fs.val}</Text>
+                    <Text style={s.feedbackLabel}>{fs.label}</Text>
+                  </View>
+                ))}
+              </View>
+
               <Text style={s.sectionTitle}>جميع الطلبات</Text>
             </View>
           }
@@ -446,8 +468,6 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
     },
     headerTitle: { fontSize: 20, fontWeight: "800", color: c.foreground },
     headerAction: { padding: 4 },
-
-    // Tabs
     tabs: {
       flexDirection: "row-reverse",
       borderTopWidth: StyleSheet.hairlineWidth,
@@ -467,11 +487,10 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
       paddingHorizontal: 5,
     },
     badgeTxt: { fontSize: 11, fontWeight: "800", color: "#fff" },
-
     listContent: { padding: 16, paddingBottom: bottomInset + 24 },
 
-    // Stats
-    statsGrid: { flexDirection: "row-reverse", flexWrap: "wrap", gap: 10, marginBottom: 20 },
+    // Main stats grid
+    statsGrid: { flexDirection: "row-reverse", flexWrap: "wrap", gap: 10, marginBottom: 16 },
     statCard: {
       width: "31%", backgroundColor: c.card, borderRadius: 14, borderWidth: 1,
       borderColor: c.border, padding: 14, alignItems: "flex-end",
@@ -481,6 +500,23 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
     statIcon: { width: 38, height: 38, borderRadius: 10, alignItems: "center", justifyContent: "center", marginBottom: 8 },
     statVal: { fontSize: 24, fontWeight: "800", color: c.foreground },
     statLabel: { fontSize: 11, color: c.mutedForeground, textAlign: "right", marginTop: 2 },
+
+    // Feedback stats
+    feedbackTitle: { fontSize: 15, fontWeight: "700", color: c.foreground, textAlign: "right", marginBottom: 10 },
+    feedbackRow: { flexDirection: "row-reverse", gap: 8, marginBottom: 20 },
+    feedbackCard: {
+      flex: 1, backgroundColor: c.card, borderRadius: 14, borderWidth: 1.5,
+      padding: 12, alignItems: "flex-end",
+      shadowColor: "#000", shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.04, shadowRadius: 3, elevation: 1,
+    },
+    feedbackIcon: {
+      width: 34, height: 34, borderRadius: 10,
+      alignItems: "center", justifyContent: "center", marginBottom: 6,
+    },
+    feedbackVal: { fontSize: 20, fontWeight: "800", marginBottom: 2 },
+    feedbackLabel: { fontSize: 10, color: c.mutedForeground, textAlign: "right" },
+
     sectionTitle: { fontSize: 17, fontWeight: "700", color: c.foreground, textAlign: "right", marginBottom: 12 },
 
     // Request cards
@@ -513,15 +549,13 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
     publishTxt: { fontSize: 11, color: c.mutedForeground },
     publishVal: { fontSize: 11, color: c.foreground, fontWeight: "600" },
 
-    // Notification header
+    // Notification cards
     notifHeader: {
       flexDirection: "row-reverse", alignItems: "center", gap: 8,
       marginBottom: 12, backgroundColor: c.primary + "12",
       borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8,
     },
     notifHeaderTxt: { fontSize: 13, color: c.primary, fontWeight: "700" },
-
-    // Notification cards
     notifCard: {
       backgroundColor: c.card, borderRadius: 14, borderWidth: 1, borderColor: c.border,
       padding: 14, marginBottom: 10,
@@ -552,10 +586,9 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
       marginTop: 10, flexDirection: "row-reverse", alignItems: "center", gap: 6,
       alignSelf: "flex-end", backgroundColor: c.secondary,
       borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6,
-      borderWidth: 1, borderColor: c.border,
     },
     viewUserTxt: { fontSize: 12, color: c.primary, fontWeight: "700" },
 
-    empty: { alignItems: "center", justifyContent: "center", paddingTop: 60, gap: 10 },
-    emptyTxt: { fontSize: 16, color: c.mutedForeground },
+    empty: { alignItems: "center", paddingTop: 60, gap: 10 },
+    emptyTxt: { fontSize: 16, color: c.mutedForeground, fontWeight: "600" },
   });

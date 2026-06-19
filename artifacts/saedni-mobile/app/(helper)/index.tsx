@@ -9,6 +9,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/contexts/AuthContext";
 import { CATEGORIES, AREAS } from "@/constants/categories";
+import { useHelperPushRegistration } from "@/hooks/usePushNotifications";
 
 const BASE = process.env.EXPO_PUBLIC_DOMAIN ? `https://${process.env.EXPO_PUBLIC_DOMAIN}` : "";
 
@@ -79,6 +80,9 @@ export default function HelperRequestsScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const isBlocked = user?.isBlocked || user?.isActive === false;
+
+  // Register for push notifications once when the helper is active
+  useHelperPushRegistration(!isBlocked);
 
   const [catFilter, setCatFilter] = useState("all");
   const [areaFilter, setAreaFilter] = useState("all");

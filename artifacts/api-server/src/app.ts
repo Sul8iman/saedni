@@ -2,10 +2,20 @@ import express, { type Express } from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import pinoHttp from "pino-http";
-import { eq } from "drizzle-orm";
+import { eq, sql as drizzleSql } from "drizzle-orm";
 import { db, usersTable } from "@workspace/db";
 import router from "./routes";
 import { logger } from "./lib/logger";
+
+// ── Startup schema migration — idempotent, safe to run on every boot ──────────
+(async () => {
+  try {
+    await db.execute(drizzleSql`ALTER TABLE users ADD COLUMN IF NOT EXISTS expo_push_token text`);
+    logger.info("Schema migration: expo_push_token column ensured");
+  } catch (err) {
+    logger.warn({ err }, "Schema migration check failed (non-fatal)");
+  }
+})();
 
 const app: Express = express();
 

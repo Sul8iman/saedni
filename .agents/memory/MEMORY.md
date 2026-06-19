@@ -2,3 +2,5 @@
 - [Dev vs prod DBs](dev-prod-db-separation.md) — dev and production have separate PostgreSQL databases; executeSql(production) is read-only; seed production via API calls not executeSql inserts.
 - [EAS build domain fix](eas-domain-fix.md) — EXPO_PUBLIC_DOMAIN must be in eas.json production env block; missing it causes native fetch to use relative URLs which fail on device.
 - [Expo SecureStore+AsyncStorage dual-write](expo-securestore-dual-write.md) — three bugs that together caused persistent logout on every launch; secureGet/secureSet must dual-write and dual-check both stores.
+- [Production schema migrations](prod-schema-migration.md) — executeSql(production) is read-only so DDL must run via an idempotent startup IIFE in app.ts using drizzle sql template literal.
+- [expo-notifications permission API](expo-notifications-permission.md) — NotificationPermissionsStatus.granted doesn't type-check; use ios?.status === IosAuthorizationStatus.AUTHORIZED/PROVISIONAL instead.

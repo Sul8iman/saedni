@@ -1,0 +1,145 @@
+Create Build 18 for the "ساعدني" iOS app from this Replit repository only.
+
+IMPORTANT
+
+* Do not use Codespaces.
+* Build only from the current Replit repository.
+* Do not modify authentication.
+* Do not modify login persistence.
+* Do not modify SecureStore.
+* Do not modify tokens.
+* Do not modify role selection.
+* Do not modify Terms & Conditions.
+* Do not modify existing request flow.
+* Keep all existing Build 17 functionality working exactly as it is.
+
+Build 18 scope:
+
+====================================================
+
+1. REAL PUSH NOTIFICATIONS FOR HELPERS
+   ====================================================
+
+Implement full Expo Push Notifications.
+
+When a helper logs in:
+
+* Ask notification permission.
+* Register Expo Push Token.
+* Save/update the push token in database.
+
+When a customer creates a new request:
+
+Send push notification ONLY to helpers that:
+
+* are active
+* helper role enabled
+* notification permission granted
+* have valid Expo Push Token
+* selected the request category in helper interests
+* selected the request area/location
+
+Notification:
+
+Title:
+طلب جديد متاح
+
+Body example:
+طلب جديد في بوشر - نقل وتحميل
+
+When notification is pressed:
+
+Open the app directly to:
+Available Requests page.
+
+Do not notify:
+
+* disabled helpers
+* customer-only accounts
+* helpers outside selected areas
+* helpers without matching interests
+
+====================================================
+2. ADMIN OTP NOTIFICATIONS
+==========================
+
+Whenever any user requests a new OTP:
+
+Create an admin notification.
+
+Notification must contain:
+
+* user name (if exists)
+* phone number
+* account roles
+* request time
+* unread status
+
+Admin dashboard:
+
+Unread badge must update immediately.
+
+Admin notifications page:
+
+OTP notification card must display:
+
+* طلب رمز تحقق جديد
+* الاسم
+* الهاتف
+* الأدوار
+* وقت الطلب
+
+When admin presses notification:
+
+If user exists:
+
+Open user profile directly.
+
+If user not yet registered:
+
+Open fallback page showing:
+
+* الهاتف
+* وقت الطلب
+* نوع الطلب
+* لم يكتمل إنشاء الحساب بعد
+
+Notification becomes read automatically.
+
+====================================================
+3. TESTING
+==========
+
+Verify:
+
+✓ Existing login still works.
+✓ Persistent login still works.
+✓ Logout still works.
+✓ Terms & Conditions still works.
+✓ Dual-role still works.
+✓ Help completed statistics still works.
+✓ Admin request filters still work.
+✓ Helper receives push notification.
+✓ Notification opens Available Requests.
+✓ OTP notification reaches admin.
+✓ Admin notification opens correct user.
+
+====================================================
+4. BUILD
+========
+
+Increment iOS buildNumber to 18.
+
+Create EAS Production iOS build.
+
+Auto-submit to TestFlight.
+
+Report:
+
+* Build ID
+* Build Number
+* Git Commit Hash
+* Submission ID
+* Final Status
+
+Confirm explicitly that the build was created from the current Replit repository.

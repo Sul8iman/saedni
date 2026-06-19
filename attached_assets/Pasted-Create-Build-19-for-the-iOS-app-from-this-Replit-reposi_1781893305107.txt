@@ -1,0 +1,137 @@
+Create Build 19 for the "ساعدني" iOS app from this Replit repository only.
+
+IMPORTANT
+
+* Build ONLY from this Replit repository.
+* Do NOT use Codespaces.
+* Do NOT change authentication.
+* Do NOT change login persistence.
+* Do NOT change SecureStore.
+* Do NOT change tokens.
+* Do NOT change Terms & Conditions.
+* Do NOT change role selection.
+* Do NOT change request creation.
+* Do NOT change admin statistics.
+* Do NOT modify any existing working functionality.
+
+The ONLY purpose of Build 19 is implementing and testing notifications.
+
+====================================================
+
+1. HELPER PUSH NOTIFICATIONS
+   ====================================================
+
+Implement full Expo Push Notifications.
+
+When a helper signs in:
+
+* Request notification permission.
+* Register Expo Push Token.
+* Save/update Expo Push Token in the production database.
+
+Each helper can enable notifications only once.
+
+====================================================
+2. SEND NOTIFICATION WHEN A NEW REQUEST IS CREATED
+==================================================
+
+Whenever a customer publishes a new request:
+
+Send a push notification only to helpers that:
+
+* are active
+* helper role enabled
+* notification permission granted
+* have a valid Expo Push Token
+* selected the request category
+* selected the request location
+
+Notification title:
+
+طلب جديد متاح
+
+Notification body example:
+
+طلب جديد في بوشر
+نقل وتحميل
+
+Notification should include:
+
+* Request ID
+* Category
+* Area
+
+====================================================
+3. NOTIFICATION ACTION
+======================
+
+When helper taps the notification:
+
+Open the app directly.
+
+If already logged in:
+
+Navigate directly to:
+
+الطلبات المتاحة
+
+If not logged in:
+
+Open login first, then continue to the available requests page.
+
+====================================================
+4. ADMIN OTP PUSH NOTIFICATIONS
+===============================
+
+Whenever any user requests a new OTP:
+
+Create an Admin Notification immediately.
+
+Requirements:
+
+* unread counter updates
+* notification appears instantly
+* clicking notification opens the correct user profile
+* if user does not yet exist, open fallback OTP details page
+
+====================================================
+5. TESTING
+==========
+
+Test all notification scenarios:
+
+✓ Helper grants notification permission.
+✓ Expo Push Token saved.
+✓ New request sends notification.
+✓ Only matching helpers receive notification.
+✓ Wrong category receives nothing.
+✓ Wrong location receives nothing.
+✓ Disabled helper receives nothing.
+✓ Notification tap opens Available Requests.
+✓ OTP notification appears for Admin.
+✓ OTP notification opens user profile.
+✓ Existing Build 18 features continue working.
+
+====================================================
+6. BUILD
+========
+
+Increment iOS buildNumber to 19.
+
+Create EAS Production iOS build.
+
+Auto-submit to TestFlight.
+
+Report:
+
+* Build ID
+* Build Number
+* Git Commit Hash
+* Submission ID
+* Final Status
+
+Confirm explicitly:
+
+* Built from current Replit repository.
+* No authentication logic changed.
+* No existing functionality regressed.

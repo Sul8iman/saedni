@@ -249,6 +249,22 @@ router.get("/auth/me", async (req, res): Promise<void> => {
   res.json(safeUser(user));
 });
 
+// PATCH /auth/push-token — save Expo push token for the logged-in helper
+router.patch("/auth/push-token", async (req, res): Promise<void> => {
+  const userId = (req as any).session?.userId;
+  if (!userId) { res.status(401).json({ error: "غير مصرح" }); return; }
+
+  const body = req.body as Record<string, unknown>;
+  const expoPushToken = body?.expoPushToken;
+  if (!expoPushToken || typeof expoPushToken !== "string") {
+    res.status(400).json({ error: "رمز الإشعار مطلوب" });
+    return;
+  }
+
+  await db.update(usersTable).set({ expoPushToken }).where(eq(usersTable.id, userId));
+  res.json({ success: true });
+});
+
 // POST /auth/logout — clears persistent token and session
 router.post("/auth/logout", async (req, res): Promise<void> => {
   const userId = (req as any).session?.userId;

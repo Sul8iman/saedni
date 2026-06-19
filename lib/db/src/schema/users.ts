@@ -20,6 +20,7 @@ export const usersTable = pgTable("users", {
   helperInterests: text("helper_interests"),
   preferredAreas:  text("preferred_areas"),
   authToken: text("auth_token").unique(),
+  expoPushToken: text("expo_push_token"),
 });
 
 export const insertUserSchema = createInsertSchema(usersTable).omit({

@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, and, inArray } from "drizzle-orm";
+import { eq, and, inArray, isNotNull } from "drizzle-orm";
 import { db, requestsTable, usersTable } from "@workspace/db";
 import {
   CreateRequestBody,
@@ -16,6 +16,89 @@ import {
 } from "@workspace/api-zod";
 
 const router: IRouter = Router();
+
+// ── Arabic category labels for push notification body ────────────────────────
+const CATEGORY_AR: Record<string, string> = {
+  transport:     "نقل وتحميل",
+  delivery:      "مشاوير وتوصيل",
+  government:    "معاملات ومراجعات",
+  shopping:      "شراء أغراض",
+  home_services: "خدمات منزلية",
+  labor:         "أخرى",
+};
+
+// ── Send push notifications to matching active helpers ───────────────────────
+async function sendNewRequestNotifications(
+  requestId: number,
+  category: string,
+  area: string,
+): Promise<void> {
+  try {
+    const helpers = await db
+      .select({
+        userType: usersTable.userType,
+        roles: usersTable.roles,
+        expoPushToken: usersTable.expoPushToken,
+        helperInterests: usersTable.helperInterests,
+        preferredAreas: usersTable.preferredAreas,
+      })
+      .from(usersTable)
+      .where(and(eq(usersTable.isBlocked, false), isNotNull(usersTable.expoPushToken)));
+
+    const catLabel = CATEGORY_AR[category] ?? category;
+    const tokens: string[] = [];
+
+    for (const h of helpers) {
+      // Must carry the helper role
+      let roles: string[];
+      try { roles = h.roles ? JSON.parse(h.roles) : [h.userType]; } catch { roles = [h.userType]; }
+      if (!roles.includes("helper")) continue;
+
+      // Category filter (only if helper has stored interests)
+      if (h.helperInterests) {
+        try {
+          const interests: string[] = JSON.parse(h.helperInterests);
+          if (interests.length > 0 && !interests.includes(category)) continue;
+        } catch {}
+      }
+
+      // Area filter (only if helper has stored preferred areas)
+      if (h.preferredAreas) {
+        try {
+          const areas: string[] = JSON.parse(h.preferredAreas);
+          if (areas.length > 0 && !areas.includes(area)) continue;
+        } catch {}
+      }
+
+      if (h.expoPushToken) tokens.push(h.expoPushToken);
+    }
+
+    if (tokens.length === 0) return;
+
+    const messages = tokens.map(to => ({
+      to,
+      title: "طلب جديد متاح",
+      body:  `طلب جديد في ${area}\n${catLabel}`,
+      data:  { type: "new_request", requestId, category, area },
+      sound: "default",
+    }));
+
+    // Expo push API allows max 100 messages per batch
+    for (let i = 0; i < messages.length; i += 100) {
+      await fetch("https://exp.host/--/api/v2/push/send", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+          "Accept-Encoding": "gzip, deflate",
+        },
+        body: JSON.stringify(messages.slice(i, i + 100)),
+      });
+    }
+  } catch {
+    // Never block the main request flow on notification failures
+  }
+}
 
 async function enrichRequest(req: typeof requestsTable.$inferSelect) {
   const ids = [req.customerId, req.helperId].filter(Boolean) as number[];
@@ -91,6 +174,9 @@ router.post("/requests", async (req, res): Promise<void> => {
 
   const enriched = await enrichRequest(row);
   res.status(201).json(enriched);
+
+  // Fire push notifications asynchronously — never block the response
+  sendNewRequestNotifications(row.id, row.category, row.area).catch(() => {});
 });
 
 // GET /requests/:id

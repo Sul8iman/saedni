@@ -58,7 +58,7 @@
   },
   "dependencies": {
     "@react-native-community/datetimepicker": "^8.4.4",
-    "expo-notifications": "^56.0.18",
+    "expo-notifications": "~0.29.14",
     "expo-secure-store": "^15.0.8"
   }
 }

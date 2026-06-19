@@ -8,7 +8,6 @@ import {
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack, useRouter } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import * as Notifications from "expo-notifications";
 import React, { useEffect, useRef } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
@@ -33,26 +32,56 @@ const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
 });
 
-// ── Notification tap handler (must be inside AuthProvider) ───────────────────
+// ── Notification tap handler ────────────────────────────────────────────────
+// Everything is inside useEffect so expo-notifications is never touched at
+// module-load time. The Subscription type is imported lazily to avoid any
+// native-module side effects before the bridge is ready.
 function NotificationHandler() {
   const router = useRouter();
   const { user, loading } = useAuth();
-  const responseListener = useRef<Notifications.Subscription | null>(null);
+  const listenerRef = useRef<{ remove: () => void } | null>(null);
 
   useEffect(() => {
-    responseListener.current = Notifications.addNotificationResponseReceivedListener(
-      (response) => {
-        const data = response.notification.request.content.data as Record<string, unknown>;
-        if (data?.type === "new_request") {
-          if (user) {
-            router.replace("/(helper)");
-          } else {
-            router.replace("/(auth)/login");
-          }
-        }
+    let cancelled = false;
+
+    (async () => {
+      try {
+        // Dynamic import: native module only touched after React Native bridge
+        const Notifications = await import("expo-notifications");
+
+        // Configure foreground display behaviour (safe inside useEffect)
+        Notifications.setNotificationHandler({
+          handleNotification: async () => ({
+            shouldShowAlert: true,
+            shouldPlaySound: true,
+            shouldSetBadge: false,
+          }),
+        });
+
+        if (cancelled) return;
+
+        listenerRef.current = Notifications.addNotificationResponseReceivedListener(
+          (response) => {
+            const data = response.notification.request.content.data as Record<string, unknown>;
+            if (data?.type === "new_request") {
+              if (user) {
+                router.replace("/(helper)");
+              } else {
+                router.replace("/(auth)/login");
+              }
+            }
+          },
+        );
+      } catch {
+        // If expo-notifications is unavailable (e.g. on web) — silently ignore
       }
-    );
-    return () => { responseListener.current?.remove(); };
+    })();
+
+    return () => {
+      cancelled = true;
+      listenerRef.current?.remove();
+      listenerRef.current = null;
+    };
   }, [user, loading]);
 
   return null;

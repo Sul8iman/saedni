@@ -1,0 +1,92 @@
+Implement Build 17 for the “ساعدني” Expo / React Native app.
+
+Important:
+Do not change:
+
+* login persistence
+* auth tokens
+* SecureStore / AsyncStorage logic
+* API domain
+* logout logic
+* EAS config
+* existing working flows
+
+Build 17 scope only:
+
+1. Terms & Conditions before registration
+
+* Add checkbox:
+  "أوافق على الشروط والأحكام وسياسة الخصوصية"
+* User cannot create account until checked.
+* Add clickable link:
+  "الشروط والأحكام"
+
+2. Terms & Conditions screen
+   Add Arabic terms including:
+
+* ساعدني منصة لربط طالب المساعدة بالمساعد فقط.
+* يتحمل المستخدم كامل المسؤولية عن أي تواصل أو اتفاق يتم خارج التطبيق.
+* ساعدني لا يتحمل مسؤولية عمليات النصب أو الاحتيال أو الخلافات أو المدفوعات التي تتم خارج التطبيق.
+* على المستخدم الحذر قبل تحويل أي مبالغ مالية أو مشاركة معلومات شخصية.
+* الإدارة لها الحق في تعطيل أو حذف أي حساب مخالف.
+
+3. Same phone can be both customer and helper
+
+* Allow one phone number to have both roles.
+* Store roles as an array if needed:
+  customer, helper
+* If user has both roles after login, show role selection:
+  "كيف تريد الدخول؟"
+  Buttons:
+  "أحتاج مساعدة"
+  "أريد أساعد"
+* If user has one role, enter directly.
+* Admin enters Admin Dashboard directly.
+* Save last selected role for next launch.
+
+4. End request feedback
+   When customer presses:
+   "إنهاء الطلب"
+   Show popup:
+   "هل تمت المساعدة؟"
+   Options:
+   "نعم"
+   "لا"
+   Save:
+   helpCompleted: true / false
+   completedAt
+
+5. Admin statistics
+   Add to Admin Dashboard:
+
+* عدد الطلبات التي تمت فيها المساعدة
+* عدد الطلبات التي لم تتم فيها المساعدة
+* نسبة نجاح المساعدة
+
+6. Notifications
+   Do not implement push notifications yet.
+   Only leave the existing in-app notification structure unchanged.
+   Do not add external push notification complexity in Build 17.
+
+7. Quality checks
+
+* Test registration with terms checkbox.
+* Test login for one-role user.
+* Test login for dual-role user.
+* Test admin login.
+* Test end request feedback.
+* Test admin statistics.
+* Confirm persistent login still works.
+* Confirm logout still works.
+
+8. Build
+
+* Increment iOS buildNumber to 17.
+* Create EAS iOS production build from this Replit repo only.
+* Auto-submit to TestFlight.
+* Report:
+
+  * commit hash
+  * build number
+  * confirmation build was created from Replit repo
+  * confirmation auth logic was not changed

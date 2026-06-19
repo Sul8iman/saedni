@@ -1,0 +1,126 @@
+Before Build 18, implement these admin improvements only.
+
+Important:
+Do not change authentication, tokens, login persistence, role selection, terms, or push notifications.
+Do not start external push notifications yet.
+
+Scope:
+
+1. Admin request feedback visibility
+
+Goal:
+Admin should know exactly which requests were completed with help and which were not.
+
+Admin Requests List:
+For every request card, show help result status:
+
+* If helpCompleted === true:
+  Badge: "تمت المساعدة"
+  Color: green
+
+* If helpCompleted === false:
+  Badge: "لم تتم المساعدة"
+  Color: red
+
+* If helpCompleted is null / undefined:
+  Badge: "لم يتم التقييم"
+  Color: gray
+
+Request Details:
+Show:
+
+* حالة المساعدة: تمت المساعدة / لم تتم المساعدة / لم يتم التقييم
+* تاريخ إنهاء الطلب completedAt if available
+
+Filters:
+Add filter buttons:
+
+* الكل
+* تمت المساعدة
+* لم تتم المساعدة
+* لم يتم التقييم
+
+Keep existing stats:
+
+* عدد الطلبات التي تمت فيها المساعدة
+* عدد الطلبات التي لم تتم فيها المساعدة
+* نسبة نجاح المساعدة
+
+Use existing fields:
+
+* helpCompleted
+* completedAt
+
+2. Admin OTP notifications
+
+Goal:
+When any user requests a new OTP code, admin should receive an in-app notification.
+
+When OTP is requested:
+Create admin notification:
+
+* type: otp_request
+* title: "طلب رمز تحقق جديد"
+* userId
+* userName if available
+* phone
+* userType / roles if available
+* createdAt
+* isRead: false
+
+Admin Dashboard:
+Show notification badge/count for unread OTP requests.
+
+Notifications section:
+Show OTP notifications in the admin notifications list.
+
+Each OTP notification card should show:
+
+* "طلب رمز تحقق جديد"
+* الاسم إن وجد
+* رقم الهاتف
+* نوع الحساب / الأدوار إن وجدت
+* وقت الطلب
+
+3. Notification click behavior
+
+When admin clicks an OTP notification:
+
+* Mark notification as read.
+* Navigate directly to that user's profile/details page.
+* If user profile exists, open it.
+* If user does not exist yet, open a fallback page/card showing:
+
+  * رقم الهاتف
+  * وقت طلب الرمز
+  * نوع الطلب: OTP
+  * رسالة: "لم يكتمل إنشاء حساب لهذا الرقم بعد"
+
+Also:
+In the Admin Notifications tab, clicking any OTP notification must do the same:
+
+* mark as read
+* go directly to user profile/details page
+
+4. Testing
+
+Confirm:
+
+* Requesting OTP creates admin notification.
+* Admin unread badge increases.
+* Clicking notification opens the correct user profile.
+* Notification becomes read after click.
+* If the user is not fully created yet, fallback details are shown.
+* Request feedback badges appear correctly.
+* Feedback filters work correctly.
+* Existing login, logout, roles, terms, and request creation still work.
+
+5. Build preparation
+
+Do not create Build 18 yet until all above is tested.
+After testing, report:
+
+* files changed
+* whether API republish is required
+* whether mobile TestFlight build is required
+* next recommended build number

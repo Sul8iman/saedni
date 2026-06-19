@@ -24,7 +24,11 @@ interface HelpRequest {
   timeType: string; scheduledDateTime?: string | null;
   offeredAmount: number; status: string; customerName?: string | null;
   createdAt: string;
+  helpCompleted?: boolean | null;
+  completedAt?: string | null;
 }
+
+type FeedbackFilter = "all" | "completed" | "not_completed" | "no_rating";
 interface AdminNotification {
   id: number; type: string; title: string;
   userId?: number | null; userName?: string | null;
@@ -66,6 +70,12 @@ const USER_TYPE_LABEL: Record<string, string> = {
 
 type Tab = "requests" | "notifications";
 
+function helpBadgeInfo(helpCompleted: boolean | null | undefined): { label: string; color: string; bg: string } {
+  if (helpCompleted === true)  return { label: "تمت المساعدة",    color: "#059669", bg: "#D1FAE5" };
+  if (helpCompleted === false) return { label: "لم تتم المساعدة", color: "#DC2626", bg: "#FEE2E2" };
+  return { label: "لم يتم التقييم", color: "#6B7280", bg: "#F3F4F6" };
+}
+
 export default function AdminDashboard() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -73,6 +83,7 @@ export default function AdminDashboard() {
   const { logout } = useAuth();
   const qc = useQueryClient();
   const [activeTab, setActiveTab] = useState<Tab>("requests");
+  const [feedbackFilter, setFeedbackFilter] = useState<FeedbackFilter>("all");
 
   const { data: stats, refetch: refetchStats } = useQuery({
     queryKey: ["admin-stats"],
@@ -99,6 +110,14 @@ export default function AdminDashboard() {
   });
 
   const unreadCount = notifications?.filter(n => !n.isRead).length ?? 0;
+
+  const filteredRequests = (requests ?? []).filter(req => {
+    if (feedbackFilter === "all") return true;
+    if (feedbackFilter === "completed") return req.helpCompleted === true;
+    if (feedbackFilter === "not_completed") return req.helpCompleted === false;
+    if (feedbackFilter === "no_rating") return req.helpCompleted == null;
+    return true;
+  });
 
   const deleteReqMutation = useMutation({
     mutationFn: async (id: number) => {
@@ -150,7 +169,10 @@ export default function AdminDashboard() {
   function handleNotifPress(notif: AdminNotification) {
     if (!notif.isRead) markReadMutation.mutate(notif.id);
     if (notif.userId) {
-      router.push("/(admin)/users");
+      router.push(`/(admin)/user-detail?id=${notif.userId}`);
+    } else {
+      const q = new URLSearchParams({ id: "0", fallbackPhone: notif.phone, fallbackTime: notif.createdAt });
+      router.push(`/(admin)/user-detail?${q.toString()}`);
     }
   }
 
@@ -186,6 +208,11 @@ export default function AdminDashboard() {
           </View>
           <Text style={s.reqCat}>{catLabel(item.category)}</Text>
         </View>
+        {(() => { const hb = helpBadgeInfo(item.helpCompleted); return (
+          <View style={[s.helpBadge, { backgroundColor: hb.bg }]}>
+            <Text style={[s.helpBadgeTxt, { color: hb.color }]}>{hb.label}</Text>
+          </View>
+        ); })()}
         <Text style={s.reqDetails} numberOfLines={1}>{item.details}</Text>
         <View style={s.reqActions}>
           {item.status !== "completed" && (
@@ -300,10 +327,10 @@ export default function AdminDashboard() {
           </View>
         )}
       </View>
-      {item.userId && (
+      {item.type === "otp_request" && (
         <View style={s.viewUserBtn}>
           <Ionicons name="person-outline" size={13} color={colors.primary} />
-          <Text style={s.viewUserTxt}>عرض المستخدم</Text>
+          <Text style={s.viewUserTxt}>{item.userId ? "عرض المستخدم" : "عرض التفاصيل"}</Text>
         </View>
       )}
     </TouchableOpacity>
@@ -370,7 +397,7 @@ export default function AdminDashboard() {
         </View>
       ) : activeTab === "requests" ? (
         <FlatList
-          data={requests ?? []}
+          data={filteredRequests}
           keyExtractor={i => String(i.id)}
           renderItem={renderRequest}
           contentContainerStyle={s.listContent}
@@ -411,7 +438,22 @@ export default function AdminDashboard() {
                 ))}
               </View>
 
-              <Text style={s.sectionTitle}>جميع الطلبات</Text>
+              <Text style={s.filterTitle}>تصفية حسب نتيجة المساعدة</Text>
+              <View style={s.filterRow}>
+                {([ ["all","الكل"], ["completed","تمت المساعدة"], ["not_completed","لم تتم"], ["no_rating","لم يتم التقييم"] ] as [FeedbackFilter, string][]).map(([key, label]) => (
+                  <TouchableOpacity
+                    key={key}
+                    style={[s.filterBtn, feedbackFilter === key && s.filterBtnActive]}
+                    onPress={() => { Haptics.selectionAsync(); setFeedbackFilter(key); }}
+                  >
+                    <Text style={[s.filterBtnTxt, feedbackFilter === key && s.filterBtnTxtActive]}>{label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <Text style={s.sectionTitle}>
+                {feedbackFilter === "all" ? "جميع الطلبات" : `الطلبات (${filteredRequests.length})`}
+              </Text>
             </View>
           }
           ListEmptyComponent={
@@ -518,6 +560,21 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
     feedbackLabel: { fontSize: 10, color: c.mutedForeground, textAlign: "right" },
 
     sectionTitle: { fontSize: 17, fontWeight: "700", color: c.foreground, textAlign: "right", marginBottom: 12 },
+
+    // Help badge on request cards
+    helpBadge: { alignSelf: "flex-end", borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3, marginBottom: 6 },
+    helpBadgeTxt: { fontSize: 11, fontWeight: "700" },
+
+    // Feedback filter buttons
+    filterTitle: { fontSize: 13, fontWeight: "600", color: c.mutedForeground, textAlign: "right", marginBottom: 8 },
+    filterRow: { flexDirection: "row-reverse", flexWrap: "wrap", gap: 6, marginBottom: 14 },
+    filterBtn: {
+      borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6,
+      backgroundColor: c.muted, borderWidth: 1, borderColor: c.border,
+    },
+    filterBtnActive: { backgroundColor: c.primary, borderColor: c.primary },
+    filterBtnTxt: { fontSize: 12, fontWeight: "600", color: c.mutedForeground },
+    filterBtnTxtActive: { color: c.primaryForeground },
 
     // Request cards
     reqCard: {

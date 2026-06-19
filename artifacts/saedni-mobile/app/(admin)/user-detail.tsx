@@ -100,7 +100,11 @@ export default function UserDetailScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const qc = useQueryClient();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, fallbackPhone, fallbackTime } = useLocalSearchParams<{
+    id: string;
+    fallbackPhone?: string;
+    fallbackTime?: string;
+  }>();
   const userId = Number(id);
 
   const { data: user, isLoading: userLoading } = useQuery<UserDetail>({
@@ -174,6 +178,49 @@ export default function UserDetailScreen() {
   }
 
   if (!user) {
+    if (fallbackPhone) {
+      return (
+        <View style={s.container}>
+          <SafeAreaView edges={["top"]} style={s.headerSafe}>
+            <View style={s.headerInner}>
+              <Text style={s.headerTitle}>تفاصيل الطلب</Text>
+              <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
+                <Ionicons name="arrow-forward" size={22} color={colors.foreground} />
+                <Text style={s.backTxt}>رجوع</Text>
+              </TouchableOpacity>
+            </View>
+          </SafeAreaView>
+          <ScrollView contentContainerStyle={[s.content, { paddingBottom: 48 }]}>
+            <View style={s.profileCard}>
+              <View style={[s.avatar, { backgroundColor: "#FEF3C7" }]}>
+                <Ionicons name="key-outline" size={32} color="#92400E" />
+              </View>
+              <Text style={s.profileName}>{fallbackPhone}</Text>
+              <Text style={s.profilePhone}>طلب رمز تحقق</Text>
+              <View style={s.badgeRow}>
+                <View style={[s.badge, { backgroundColor: "#FEF3C7" }]}>
+                  <Text style={[s.badgeTxt, { color: "#92400E" }]}>OTP</Text>
+                </View>
+              </View>
+            </View>
+            <View style={s.section}>
+              <Text style={s.sectionTitle}>تفاصيل الطلب</Text>
+              <View style={s.infoCard}>
+                <InfoRow icon="call-outline" label="رقم الهاتف" value={fallbackPhone} />
+                {fallbackTime && (
+                  <InfoRow icon="time-outline" label="وقت الطلب" value={fmtDate(fallbackTime)} />
+                )}
+                <InfoRow icon="information-circle-outline" label="نوع الطلب" value="طلب رمز تحقق (OTP)" />
+              </View>
+            </View>
+            <View style={[s.section, { alignItems: "center", paddingVertical: 16 }]}>
+              <Ionicons name="person-add-outline" size={40} color={colors.border} />
+              <Text style={[s.emptyTxt, { marginTop: 8 }]}>لم يكتمل إنشاء حساب لهذا الرقم بعد</Text>
+            </View>
+          </ScrollView>
+        </View>
+      );
+    }
     return (
       <View style={[s.container, s.centered]}>
         <Ionicons name="person-remove-outline" size={56} color={colors.border} />

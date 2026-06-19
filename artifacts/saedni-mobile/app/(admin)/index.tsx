@@ -107,6 +107,7 @@ export default function AdminDashboard() {
       const r = await fetch(`${BASE}/api/admin/notifications`, { credentials: "include" });
       return r.json() as Promise<AdminNotification[]>;
     },
+    refetchInterval: 30_000,
   });
 
   const unreadCount = notifications?.filter(n => !n.isRead).length ?? 0;

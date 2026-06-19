@@ -4,6 +4,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { BASE } from "@/contexts/AuthContext";
 
 const PUSH_REGISTERED_KEY = "@saedni/pushRegistered";
+const TOKEN_KEY = "@saedni/authToken"; // same key AuthContext uses
 
 // ── Register device and get Expo push token ──────────────────────────────────
 export async function registerForPushNotificationsAsync(): Promise<string | null> {
@@ -21,7 +22,6 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
     }
 
     const existing = await Notifications.getPermissionsAsync();
-    // Use ios?.status for type-safe check (iOS-only app)
     const { IosAuthorizationStatus } = Notifications;
     const isGranted = (p: typeof existing) =>
       p.ios?.status === IosAuthorizationStatus.AUTHORIZED ||
@@ -44,20 +44,47 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
 }
 
 // ── Save token to API ────────────────────────────────────────────────────────
+// Must send Authorization: Bearer to survive server restarts (in-memory sessions
+// are wiped on restart; Bearer token is looked up from the DB every request).
 export async function savePushTokenToServer(token: string): Promise<void> {
   if (!BASE) return;
+
+  // Read the same auth token AuthContext stores
+  let authToken: string | null = null;
   try {
-    await fetch(`${BASE}/api/auth/push-token`, {
+    authToken = await AsyncStorage.getItem(TOKEN_KEY);
+  } catch {}
+
+  if (!authToken) {
+    console.warn("[push] savePushTokenToServer: no auth token in storage — skipping PATCH");
+    return;
+  }
+
+  try {
+    const res = await fetch(`${BASE}/api/auth/push-token`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${authToken}`,
+      },
       credentials: "include",
       body: JSON.stringify({ expoPushToken: token }),
     });
-  } catch {}
+
+    if (res.status === 401) {
+      const body = await res.text();
+      console.warn("[push] savePushTokenToServer: 401 Unauthorized —", body);
+      return;
+    }
+    if (!res.ok) {
+      console.warn("[push] savePushTokenToServer: unexpected status", res.status);
+    }
+  } catch (err) {
+    console.warn("[push] savePushTokenToServer: network error —", err);
+  }
 }
 
 // ── Hook: register once after helper login ───────────────────────────────────
-// isHelper must be true (user is logged in as a helper) before anything runs
 export function useHelperPushRegistration(isHelper: boolean) {
   const didRun = useRef(false);
 

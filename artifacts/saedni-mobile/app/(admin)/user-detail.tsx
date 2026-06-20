@@ -1,9 +1,8 @@
-import React, { useState } from "react";
+import React from "react";
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
   ActivityIndicator, Alert,
 } from "react-native";
-import * as Clipboard from "expo-clipboard";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -107,7 +106,6 @@ export default function UserDetailScreen() {
     fallbackTime?: string;
   }>();
   const userId = Number(id);
-  const [otpCopied, setOtpCopied] = useState(false);
 
   const { data: user, isLoading: userLoading } = useQuery<UserDetail>({
     queryKey: ["admin-user-detail", userId],
@@ -322,34 +320,7 @@ export default function UserDetailScreen() {
             <Text style={s.sectionTitle}>رمز OTP</Text>
             <View style={s.infoCard}>
               {user.otpCode && (
-                <View style={s.otpRow}>
-                  <TouchableOpacity
-                    style={[s.otpCopyBtn, otpCopied && s.otpCopyBtnDone]}
-                    onPress={async () => {
-                      await Clipboard.setStringAsync(user.otpCode!);
-                      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                      setOtpCopied(true);
-                      setTimeout(() => setOtpCopied(false), 2000);
-                    }}
-                    activeOpacity={0.75}
-                  >
-                    <Ionicons
-                      name={otpCopied ? "checkmark-circle-outline" : "copy-outline"}
-                      size={18}
-                      color={otpCopied ? "#16A34A" : colors.primary}
-                    />
-                    <Text style={[s.otpCopyTxt, otpCopied && s.otpCopyTxtDone]}>
-                      {otpCopied ? "تم نسخ رمز التحقق" : "نسخ"}
-                    </Text>
-                  </TouchableOpacity>
-                  <View style={s.otpCodeGroup}>
-                    <Text style={s.otpCode}>{user.otpCode}</Text>
-                    <View style={s.otpLabelGroup}>
-                      <Ionicons name="key-outline" size={15} color={colors.mutedForeground} />
-                      <Text style={s.otpLabel}>الرمز الحالي</Text>
-                    </View>
-                  </View>
-                </View>
+                <InfoRow icon="key-outline" label="الرمز الحالي" value={user.otpCode} valueColor={colors.primary} />
               )}
               {user.otpCreatedAt && (
                 <InfoRow icon="time-outline" label="وقت الإنشاء" value={fmtDate(user.otpCreatedAt)} />
@@ -604,30 +575,6 @@ const makeStyles = (c: ReturnType<typeof useColors>, _bottomInset: number) =>
     badgeTxtVerified: { color: c.primary },
     badgePending: { backgroundColor: "#FEF3C7" },
     badgeTxtPending: { color: "#92400E" },
-
-    // OTP copy row
-    otpRow: {
-      flexDirection: "row-reverse",
-      justifyContent: "space-between",
-      alignItems: "center",
-      paddingVertical: 11,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: c.border,
-    },
-    otpCodeGroup: { flexDirection: "row-reverse", alignItems: "center", gap: 8 },
-    otpLabelGroup: { flexDirection: "row-reverse", alignItems: "center", gap: 6 },
-    otpCode: { fontSize: 22, fontWeight: "800", color: c.primary, letterSpacing: 4, textAlign: "left" },
-    otpLabel: { fontSize: 14, color: c.mutedForeground, fontWeight: "500" },
-    otpCopyBtn: {
-      flexDirection: "row-reverse", alignItems: "center", gap: 5,
-      backgroundColor: c.secondary, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6,
-      borderWidth: 1, borderColor: c.primary + "30",
-    },
-    otpCopyBtnDone: {
-      backgroundColor: "#F0FDF4", borderColor: "#BBF7D0",
-    },
-    otpCopyTxt: { fontSize: 13, fontWeight: "600", color: c.primary },
-    otpCopyTxtDone: { color: "#16A34A" },
 
     // Sections
     section: { marginBottom: 16 },

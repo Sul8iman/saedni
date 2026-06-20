@@ -67,15 +67,7 @@ function NotificationHandler() {
 
             if (data?.type === "new_request") {
               if (user) {
-                // Only route to helper if the logged-in user actually has the helper role.
-                // Admin users share a device token with helpers but must never be
-                // redirected to the helper screen.
-                const roles: string[] = user.roles ?? [user.userType];
-                const isAdmin = user.userType === "admin" || roles.includes("admin");
-                if (!isAdmin && roles.includes("helper")) {
-                  router.replace("/(helper)");
-                }
-                // Admin or customer-only: ignore the helper push, stay on current screen.
+                router.replace("/(helper)");
               } else {
                 router.replace("/(auth)/login");
               }

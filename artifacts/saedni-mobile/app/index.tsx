@@ -20,12 +20,9 @@ export default function Index() {
   }
 
   if (!user) return <Redirect href="/(auth)/welcome" />;
+  if (user.userType === "admin") return <Redirect href="/(admin)" />;
 
-  // Absolute admin guard — checked before any role/activeRole logic.
-  // Covers both the userType field and the roles array so admin can never
-  // accidentally land on helper or customer screens.
   const roles = user.roles ?? [user.userType];
-  if (user.userType === "admin" || roles.includes("admin")) return <Redirect href="/(admin)" />;
   const isDualRole = roles.includes("customer") && roles.includes("helper");
 
   // Dual-role user with no active role selected yet → show picker

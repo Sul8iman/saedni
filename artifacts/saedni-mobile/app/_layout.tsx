@@ -14,7 +14,8 @@ import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { setBaseUrl } from "@workspace/api-client-react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { AuthProvider, useAuth, BASE } from "@/contexts/AuthContext";
+import { readAuthToken } from "@/hooks/usePushNotifications";
 
 // Patch global fetch to include session cookies on every request
 const _origFetch = global.fetch;
@@ -63,12 +64,44 @@ function NotificationHandler() {
         listenerRef.current = Notifications.addNotificationResponseReceivedListener(
           (response) => {
             const data = response.notification.request.content.data as Record<string, unknown>;
+
             if (data?.type === "new_request") {
               if (user) {
                 router.replace("/(helper)");
               } else {
                 router.replace("/(auth)/login");
               }
+              return;
+            }
+
+            if (data?.notificationType === "otp_request") {
+              // Mark notification as read (fire-and-forget)
+              const nId = data.notificationId as number | undefined;
+              if (nId && BASE) {
+                void (async () => {
+                  try {
+                    const authToken = await readAuthToken();
+                    await fetch(`${BASE}/api/admin/notifications/${nId}/read`, {
+                      method: "PATCH",
+                      headers: authToken ? { "Authorization": `Bearer ${authToken}` } : {},
+                    });
+                  } catch {}
+                })();
+              }
+              // Navigate to admin user detail
+              if (user) {
+                const userId = data.userId as number | null | undefined;
+                if (userId) {
+                  router.push(`/(admin)/user-detail?id=${userId}`);
+                } else {
+                  const phone = encodeURIComponent(String(data.phone ?? ""));
+                  const requestTime = encodeURIComponent(String(data.requestTime ?? ""));
+                  router.push(`/(admin)/user-detail?id=0&fallbackPhone=${phone}&fallbackTime=${requestTime}`);
+                }
+              } else {
+                router.replace("/(auth)/login");
+              }
+              return;
             }
           },
         );

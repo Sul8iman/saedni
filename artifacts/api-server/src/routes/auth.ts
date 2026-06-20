@@ -4,6 +4,7 @@ import { randomUUID } from "crypto";
 import { db, usersTable, adminNotificationsTable } from "@workspace/db";
 import { RegisterBody, LoginBody, VerifyOtpBody, AdminLoginBody } from "@workspace/api-zod";
 import { logger } from "../lib/logger";
+import { sendAdminOtpPush } from "../lib/push";
 
 const router: IRouter = Router();
 
@@ -40,9 +41,9 @@ async function createOtpNotification(opts: {
   userName?: string;
   phone: string;
   userType?: string;
-}) {
+}): Promise<number | null> {
   try {
-    await db.insert(adminNotificationsTable).values({
+    const [row] = await db.insert(adminNotificationsTable).values({
       type: "otp_request",
       title: "طلب رمز تحقق جديد",
       userId: opts.userId ?? null,
@@ -50,9 +51,11 @@ async function createOtpNotification(opts: {
       phone: opts.phone,
       userType: opts.userType ?? null,
       isRead: false,
-    });
+    }).returning({ id: adminNotificationsTable.id });
+    return row?.id ?? null;
   } catch (err) {
     logger.error({ err }, "Failed to create OTP notification");
+    return null;
   }
 }
 
@@ -83,7 +86,8 @@ router.post("/auth/register", async (req, res): Promise<void> => {
       .where(eq(usersTable.id, existing.id));
 
     req.log.info({ userId: existing.id, newRole: userType, roles: updatedRoles }, "Dual role added");
-    await createOtpNotification({ userId: existing.id, userName: existing.name, phone, userType });
+    const notifId = await createOtpNotification({ userId: existing.id, userName: existing.name, phone, userType });
+    if (notifId != null) void sendAdminOtpPush(notifId, existing.id, phone, new Date().toISOString());
 
     res.status(201).json({
       message: "تم إضافة الدور الجديد لحسابك. يرجى التواصل مع الإدارة للحصول على رمز التحقق",
@@ -106,7 +110,8 @@ router.post("/auth/register", async (req, res): Promise<void> => {
     .returning();
 
   req.log.info({ userId: user.id, userType }, "User registered (unverified)");
-  await createOtpNotification({ userId: user.id, userName: name, phone, userType });
+  const notifId = await createOtpNotification({ userId: user.id, userName: name, phone, userType });
+  if (notifId != null) void sendAdminOtpPush(notifId, user.id, phone, new Date().toISOString());
 
   res.status(201).json({
     message: "تم إنشاء الحساب. يرجى التواصل مع الإدارة للحصول على رمز التحقق",
@@ -138,7 +143,8 @@ router.post("/auth/login", async (req, res): Promise<void> => {
   const otp = generate4DigitOtp();
   await db.update(usersTable).set({ otpCode: otp, otpCreatedAt: new Date() }).where(eq(usersTable.id, user.id));
   req.log.info({ userId: user.id, isVerified: user.isVerified }, "OTP generated");
-  await createOtpNotification({ userId: user.id, userName: user.name, phone, userType: user.userType });
+  const notifId = await createOtpNotification({ userId: user.id, userName: user.name, phone, userType: user.userType });
+  if (notifId != null) void sendAdminOtpPush(notifId, user.id, phone, new Date().toISOString());
 
   res.json({
     message: user.isVerified

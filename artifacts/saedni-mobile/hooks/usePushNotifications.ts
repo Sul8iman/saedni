@@ -10,7 +10,7 @@ const TOKEN_KEY = "@saedni/authToken"; // same key AuthContext uses
 // Read auth token exactly like AuthContext's secureGet:
 //   1. Try SecureStore first (primary store)
 //   2. Fall through to AsyncStorage if SecureStore returns null
-async function readAuthToken(): Promise<string | null> {
+export async function readAuthToken(): Promise<string | null> {
   let token: string | null = null;
   try {
     token = await SecureStore.getItemAsync(TOKEN_KEY);
@@ -115,4 +115,23 @@ export function useHelperPushRegistration(isHelper: boolean) {
       } catch {}
     })();
   }, [isHelper]);
+}
+
+// ── Hook: register once per admin session ────────────────────────────────────
+export function useAdminPushRegistration(isAdmin: boolean) {
+  const didRun = useRef(false);
+
+  useEffect(() => {
+    if (!isAdmin || didRun.current) return;
+    didRun.current = true;
+
+    (async () => {
+      try {
+        const expoToken = await registerForPushNotificationsAsync();
+        if (!expoToken) return;
+        await savePushTokenToServer(expoToken);
+        await AsyncStorage.setItem(PUSH_REGISTERED_KEY, expoToken).catch(() => {});
+      } catch {}
+    })();
+  }, [isAdmin]);
 }

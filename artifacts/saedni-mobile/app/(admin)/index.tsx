@@ -10,6 +10,7 @@ import { useRouter } from "expo-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/contexts/AuthContext";
+import { useAdminPushRegistration } from "@/hooks/usePushNotifications";
 import { CATEGORIES, STATUS_INFO } from "@/constants/categories";
 
 const BASE = process.env.EXPO_PUBLIC_DOMAIN ? `https://${process.env.EXPO_PUBLIC_DOMAIN}` : "";
@@ -82,6 +83,7 @@ export default function AdminDashboard() {
   const router = useRouter();
   const { logout } = useAuth();
   const qc = useQueryClient();
+  useAdminPushRegistration(true);
   const [activeTab, setActiveTab] = useState<Tab>("requests");
   const [feedbackFilter, setFeedbackFilter] = useState<FeedbackFilter>("all");
 

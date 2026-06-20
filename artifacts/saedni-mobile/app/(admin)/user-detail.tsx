@@ -1,7 +1,7 @@
-import React from "react";
+import React, { useState, useRef } from "react";
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  ActivityIndicator, Alert,
+  ActivityIndicator, Alert, Modal, TextInput,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -106,6 +106,8 @@ export default function UserDetailScreen() {
     fallbackTime?: string;
   }>();
   const userId = Number(id);
+  const [otpModalVisible, setOtpModalVisible] = useState(false);
+  const otpInputRef = useRef<TextInput>(null);
 
   const { data: user, isLoading: userLoading } = useQuery<UserDetail>({
     queryKey: ["admin-user-detail", userId],
@@ -320,7 +322,26 @@ export default function UserDetailScreen() {
             <Text style={s.sectionTitle}>رمز OTP</Text>
             <View style={s.infoCard}>
               {user.otpCode && (
-                <InfoRow icon="key-outline" label="الرمز الحالي" value={user.otpCode} valueColor={colors.primary} />
+                <View style={s.otpRow}>
+                  <TouchableOpacity
+                    style={s.otpCopyBtn}
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      setOtpModalVisible(true);
+                    }}
+                    activeOpacity={0.75}
+                  >
+                    <Ionicons name="copy-outline" size={15} color={colors.primary} />
+                    <Text style={s.otpCopyTxt}>نسخ</Text>
+                  </TouchableOpacity>
+                  <View style={s.otpCodeGroup}>
+                    <Text style={s.otpCode}>{user.otpCode}</Text>
+                    <View style={s.otpLabelGroup}>
+                      <Ionicons name="key-outline" size={15} color={colors.mutedForeground} />
+                      <Text style={s.otpLabel}>الرمز الحالي</Text>
+                    </View>
+                  </View>
+                </View>
               )}
               {user.otpCreatedAt && (
                 <InfoRow icon="time-outline" label="وقت الإنشاء" value={fmtDate(user.otpCreatedAt)} />
@@ -435,6 +456,38 @@ export default function UserDetailScreen() {
           </View>
         )}
       </ScrollView>
+
+      {/* OTP Copy Modal */}
+      <Modal
+        visible={otpModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setOtpModalVisible(false)}
+      >
+        <View style={s.modalOverlay}>
+          <View style={s.modalCard}>
+            <Text style={s.modalTitle}>رمز التحقق</Text>
+            <Text style={s.modalHint}>اضغط مطولاً على الرمز لنسخه</Text>
+            <TextInput
+              ref={otpInputRef}
+              style={s.modalOtpInput}
+              value={user?.otpCode ?? ""}
+              selectTextOnFocus
+              contextMenuHidden={false}
+              editable
+              caretHidden
+              onChangeText={() => {}}
+            />
+            <TouchableOpacity
+              style={s.modalCloseBtn}
+              onPress={() => setOtpModalVisible(false)}
+              activeOpacity={0.8}
+            >
+              <Text style={s.modalCloseTxt}>إغلاق</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -575,6 +628,52 @@ const makeStyles = (c: ReturnType<typeof useColors>, _bottomInset: number) =>
     badgeTxtVerified: { color: c.primary },
     badgePending: { backgroundColor: "#FEF3C7" },
     badgeTxtPending: { color: "#92400E" },
+
+    // OTP copy row
+    otpRow: {
+      flexDirection: "row-reverse",
+      justifyContent: "space-between",
+      alignItems: "center",
+      paddingVertical: 11,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: c.border,
+    },
+    otpCodeGroup: { flexDirection: "row-reverse", alignItems: "center", gap: 8 },
+    otpLabelGroup: { flexDirection: "row-reverse", alignItems: "center", gap: 6 },
+    otpCode: { fontSize: 22, fontWeight: "800", color: c.primary, letterSpacing: 4, textAlign: "left" },
+    otpLabel: { fontSize: 14, color: c.mutedForeground, fontWeight: "500" },
+    otpCopyBtn: {
+      flexDirection: "row-reverse", alignItems: "center", gap: 5,
+      backgroundColor: c.secondary, borderRadius: 8,
+      paddingHorizontal: 12, paddingVertical: 6,
+      borderWidth: 1, borderColor: c.primary + "30",
+    },
+    otpCopyTxt: { fontSize: 13, fontWeight: "600", color: c.primary },
+
+    // OTP modal
+    modalOverlay: {
+      flex: 1, backgroundColor: "rgba(0,0,0,0.55)",
+      justifyContent: "center", alignItems: "center",
+    },
+    modalCard: {
+      backgroundColor: c.card, borderRadius: 20, paddingHorizontal: 28,
+      paddingTop: 28, paddingBottom: 20, width: "80%", alignItems: "center",
+      shadowColor: "#000", shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.18, shadowRadius: 12, elevation: 8,
+    },
+    modalTitle: { fontSize: 18, fontWeight: "700", color: c.foreground, marginBottom: 6 },
+    modalHint: { fontSize: 13, color: c.mutedForeground, marginBottom: 18, textAlign: "center" },
+    modalOtpInput: {
+      fontSize: 32, fontWeight: "800", color: c.primary, letterSpacing: 6,
+      textAlign: "center", borderWidth: 1.5, borderColor: c.primary + "40",
+      borderRadius: 12, paddingHorizontal: 20, paddingVertical: 12,
+      backgroundColor: c.secondary, width: "100%", marginBottom: 20,
+    },
+    modalCloseBtn: {
+      backgroundColor: c.primary, borderRadius: 10,
+      paddingHorizontal: 32, paddingVertical: 10,
+    },
+    modalCloseTxt: { fontSize: 15, fontWeight: "700", color: "#fff" },
 
     // Sections
     section: { marginBottom: 16 },

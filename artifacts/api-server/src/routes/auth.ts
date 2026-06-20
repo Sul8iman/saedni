@@ -10,8 +10,8 @@ const router: IRouter = Router();
 
 const OTP_EXPIRY_MS = 10 * 60 * 1000;
 
-const ADMIN_PHONE = "98584898";
-const ADMIN_PIN   = "2724";
+const ADMIN_PHONE = process.env.ADMIN_PHONE ?? "98584898";
+const ADMIN_PIN   = process.env.ADMIN_PIN   ?? "2724";
 
 function generate4DigitOtp(): string {
   return Math.floor(1000 + Math.random() * 9000).toString();

@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { eq, and, inArray, isNotNull } from "drizzle-orm";
 import { db, requestsTable, usersTable } from "@workspace/db";
+import { logger } from "../lib/logger";
 import {
   CreateRequestBody,
   UpdateRequestBody,
@@ -27,28 +28,44 @@ const CATEGORY_AR: Record<string, string> = {
   labor:         "أخرى",
 };
 
+// ── Idempotency guard — prevents double-dispatch for the same requestId ───────
+// In-memory; intentionally resets on server restart (each request is new after restart).
+const notifiedRequestIds = new Set<number>();
+
 // ── Send push notifications to matching active helpers ───────────────────────
 async function sendNewRequestNotifications(
   requestId: number,
   category: string,
   area: string,
 ): Promise<void> {
+  // Idempotency: skip if already dispatched for this requestId
+  if (notifiedRequestIds.has(requestId)) {
+    logger.warn({ requestId }, "push: duplicate call suppressed by idempotency guard");
+    return;
+  }
+  notifiedRequestIds.add(requestId);
+
   try {
-    const helpers = await db
+    const rows = await db
       .select({
-        userType: usersTable.userType,
-        roles: usersTable.roles,
-        expoPushToken: usersTable.expoPushToken,
+        id:              usersTable.id,
+        userType:        usersTable.userType,
+        roles:           usersTable.roles,
+        expoPushToken:   usersTable.expoPushToken,
         helperInterests: usersTable.helperInterests,
-        preferredAreas: usersTable.preferredAreas,
+        preferredAreas:  usersTable.preferredAreas,
       })
       .from(usersTable)
       .where(and(eq(usersTable.isBlocked, false), isNotNull(usersTable.expoPushToken)));
 
     const catLabel = CATEGORY_AR[category] ?? category;
-    const tokens: string[] = [];
 
-    for (const h of helpers) {
+    // Deduplicate by expo_push_token — same physical device may be registered
+    // under multiple user accounts; only send one notification per unique token.
+    const seenTokens = new Set<string>();
+    let matchedHelpers = 0;
+
+    for (const h of rows) {
       // Must carry the helper role
       let roles: string[];
       try { roles = h.roles ? JSON.parse(h.roles) : [h.userType]; } catch { roles = [h.userType]; }
@@ -70,12 +87,20 @@ async function sendNewRequestNotifications(
         } catch {}
       }
 
-      if (h.expoPushToken) tokens.push(h.expoPushToken);
+      matchedHelpers++;
+      if (h.expoPushToken) seenTokens.add(h.expoPushToken);
     }
 
-    if (tokens.length === 0) return;
+    const uniqueTokens = [...seenTokens];
 
-    const messages = tokens.map(to => ({
+    logger.info(
+      { requestId, category, area, matchedHelpers, uniqueTokens: uniqueTokens.length },
+      "push: dispatching new-request notifications",
+    );
+
+    if (uniqueTokens.length === 0) return;
+
+    const messages = uniqueTokens.map(to => ({
       to,
       title: "طلب جديد متاح",
       body:  `طلب جديد في ${area}\n${catLabel}`,
@@ -84,19 +109,26 @@ async function sendNewRequestNotifications(
     }));
 
     // Expo push API allows max 100 messages per batch
+    let sentCount = 0;
     for (let i = 0; i < messages.length; i += 100) {
-      await fetch("https://exp.host/--/api/v2/push/send", {
+      const batch = messages.slice(i, i + 100);
+      const res = await fetch("https://exp.host/--/api/v2/push/send", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "Accept": "application/json",
           "Accept-Encoding": "gzip, deflate",
         },
-        body: JSON.stringify(messages.slice(i, i + 100)),
+        body: JSON.stringify(batch),
       });
+      const json = await res.json().catch(() => null);
+      sentCount += batch.length;
+      logger.info({ requestId, batchStart: i, batchSize: batch.length, status: res.status, response: json }, "push: expo batch sent");
     }
-  } catch {
-    // Never block the main request flow on notification failures
+
+    logger.info({ requestId, matchedHelpers, uniqueTokens: uniqueTokens.length, sentCount }, "push: dispatch complete");
+  } catch (err) {
+    logger.warn({ requestId, err }, "push: notification dispatch failed");
   }
 }
 

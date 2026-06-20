@@ -1,0 +1,122 @@
+Create Build 24 for the "ساعدني" iOS app from this Replit repository only.
+
+IMPORTANT
+
+* Build ONLY from the current Replit repository.
+* Do NOT use Codespaces.
+* Do NOT modify helper push notifications.
+* Do NOT modify admin OTP push notifications.
+* Do NOT modify authentication.
+* Do NOT modify login persistence.
+* Do NOT modify SecureStore.
+* Do NOT modify tokens.
+* Do NOT modify request creation.
+* Do NOT modify roles.
+* Do NOT modify Terms & Conditions.
+* Do NOT modify any existing working functionality.
+
+The ONLY purpose of Build 24 is fixing the admin routing regression and improving OTP usability in the Admin Dashboard.
+
+====================================================
+
+1. FIX ADMIN ROUTING
+   ====================================================
+
+Problem:
+
+When logging in with the admin account (98584898), the app may navigate to the helper page after tapping a helper notification.
+
+Fix:
+
+* If notification type is "new_request":
+
+  * Only users with the helper role may navigate to the Helper screen.
+  * Admin users must NEVER be redirected to the Helper screen.
+
+* If userType === "admin" OR roles includes "admin":
+
+  * Always open the Admin Dashboard.
+  * Ignore helper/customer routing.
+  * Ignore lastSelectedRole.
+  * Ignore any helper notification routing.
+
+Admin must never:
+
+* Open the helper page.
+* Open the customer page.
+* See the role selector.
+
+====================================================
+2. COPY OTP BUTTON
+==================
+
+In the Admin User Details page:
+
+At the current OTP code field:
+
+Add a copy button/icon.
+
+When pressed:
+
+* Copy the current OTP code to the clipboard.
+* Show a small confirmation message:
+
+"تم نسخ رمز التحقق"
+
+The copied value must be ONLY the OTP code.
+
+Example:
+
+OTP:
+482731
+
+Press Copy
+
+Clipboard contains:
+
+482731
+
+No extra text.
+
+====================================================
+3. TESTING
+==========
+
+Verify:
+
+✓ Admin login (98584898) always opens Admin Dashboard.
+✓ Tapping helper notifications never redirects admin to Helper.
+✓ Helper notifications continue working.
+✓ Admin OTP push notifications continue working.
+✓ OTP copy button copies the correct code.
+✓ Confirmation message appears after copy.
+✓ Existing login persistence still works.
+✓ Existing helper/customer routing still works.
+✓ No existing functionality regressed.
+
+====================================================
+4. BUILD
+========
+
+Increment iOS buildNumber to 24.
+
+Build from the current Replit repository only.
+
+Create EAS Production iOS build.
+
+Auto-submit to TestFlight.
+
+Report:
+
+* Build ID
+* Build Number
+* Git Commit Hash
+* Submission ID
+* Final Status
+
+Confirm explicitly:
+
+* Built from the current Replit repository.
+* Helper push notifications were not modified.
+* Admin OTP push notifications were not modified.
+* No existing functionality regressed.

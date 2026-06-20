@@ -45,7 +45,6 @@ export default function Register() {
       { data },
       {
         onSuccess: (_res) => {
-          console.log("OTP page phoneNumber:", data.phone);
           setPhone(data.phone);
           setStep("otp");
         },
@@ -64,12 +63,10 @@ export default function Register() {
       toast({ title: "خطأ", description: "الرمز يتكون من 4 أرقام", variant: "destructive" });
       return;
     }
-    console.log("OTP page phoneNumber:", phone);
     verifyMutation.mutate(
       { data: { phone, otp: otp.trim() } },
       {
         onSuccess: (response) => {
-          console.log("OTP valid, logging in user:", response.user.id, response.user.userType);
           setUser(response.user);
           const t = response.user.userType;
           const dest = t === "admin" ? "/admin" : t === "helper" ? "/helper-requests" : "/customer";

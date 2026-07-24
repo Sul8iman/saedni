@@ -9,7 +9,15 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack, useRouter } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect, useRef } from "react";
+import { I18nManager } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+
+// ── Force RTL for Arabic layout ─────────────────────────────────────────────
+// Must run before the first render. On Android a restart is required after
+// the very first install; subsequent launches apply RTL immediately.
+I18nManager.allowRTL(true);
+I18nManager.forceRTL(true);
+I18nManager.swapLeftAndRightInRTL(true);
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { setBaseUrl } from "@workspace/api-client-react";

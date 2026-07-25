@@ -263,8 +263,26 @@ router.post("/auth/admin-login", async (req, res): Promise<void> => {
   if (phone !== ADMIN_PHONE) { res.status(404).json({ error: "رقم الهاتف غير مسجل" }); return; }
   if (pin !== ADMIN_PIN) { res.status(403).json({ error: "رمز المدير غير صحيح" }); return; }
 
-  const [user] = await db.select().from(usersTable).where(eq(usersTable.phone, phone));
-  if (!user) { res.status(404).json({ error: "رقم الهاتف غير مسجل" }); return; }
+  // Credentials verified — fetch the admin DB record.
+  // If it doesn't exist (e.g. after a DB reset or fresh deployment), create it automatically.
+  // Identity is already proven by the phone+PIN check above; the DB row is only needed for
+  // session management (session.userId) and the auth token.
+  let [user] = await db.select().from(usersTable).where(eq(usersTable.phone, phone));
+  if (!user) {
+    req.log.warn({ maskedPhone: maskPhone(phone) }, "Admin DB record missing — creating on first successful PIN login");
+    [user] = await db
+      .insert(usersTable)
+      .values({
+        name: "المدير",
+        phone,
+        passwordHash: "",
+        userType: "admin",
+        roles: JSON.stringify(["admin"]),
+        isVerified: true,
+        isBlocked: false,
+      })
+      .returning();
+  }
 
   const authToken = user.authToken ?? randomUUID();
 

@@ -120,6 +120,11 @@ export default function RegisterScreen() {
           </Text>
         </View>
 
+        {/* ── Build stamp (temporary — remove after verifying install) ── */}
+        <View style={s.buildBanner}>
+          <Text style={s.buildLabel}>Android Build 9 – 4c9c6a7</Text>
+        </View>
+
         <View style={s.card}>
           {step === "form" && (
             <>
@@ -363,4 +368,6 @@ const makeStyles = (c: ReturnType<typeof useColors>) =>
       color: c.secondaryForeground, fontSize: 13, textAlign: "right",
       flex: 1, lineHeight: 20,
     },
+    buildBanner: { alignItems: "center", marginBottom: 10 },
+    buildLabel: { fontSize: 11, color: "#CC0000", fontWeight: "800", letterSpacing: 0.5 },
   });

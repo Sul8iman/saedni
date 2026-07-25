@@ -193,6 +193,11 @@ export default function LoginScreen() {
           <Text style={s.tagline}>منصة المساعدة اليومية في عُمان</Text>
         </View>
 
+        {/* ── Build stamp (temporary — remove after verifying install) ── */}
+        <View style={s.buildBanner}>
+          <Text style={s.buildLabel}>Android Build 9 – 4c9c6a7</Text>
+        </View>
+
         {/* Card */}
         <View style={s.card}>
 
@@ -411,4 +416,6 @@ const makeStyles = (c: ReturnType<typeof useColors>) =>
       alignSelf: "flex-end", marginBottom: 16,
     },
     adminBadgeTxt: { color: c.primary, fontWeight: "700", fontSize: 13 },
+    buildBanner: { alignItems: "center", marginBottom: 10 },
+    buildLabel: { fontSize: 11, color: "#CC0000", fontWeight: "800", letterSpacing: 0.5 },
   });

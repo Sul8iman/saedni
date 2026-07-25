@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq } from "drizzle-orm";
+import { eq, sql as drizzleSql } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { db, usersTable, adminNotificationsTable } from "@workspace/db";
 import { RegisterBody, LoginBody, VerifyOtpBody, AdminLoginBody } from "@workspace/api-zod";
@@ -31,6 +31,71 @@ function detectPlatform(req: import("express").Request): string {
   if (ua.includes("okhttp") || ua.includes("android")) return "android";
   if (ua.includes("cfnetwork") || ua.includes("darwin") || ua.includes("ios")) return "ios";
   return "unknown";
+}
+
+// ── Unicode / phone analysis helpers ────────────────────────────────────────
+
+/** JSON array of Unicode codepoints for every character in the string. */
+function phoneCodepoints(phone: string): string {
+  return JSON.stringify([...phone].map(c => c.codePointAt(0)));
+}
+
+/**
+ * Arabic-Indic digits: U+0660–U+0669 (Arabic) and U+06F0–U+06F9 (Extended Arabic-Indic / Persian).
+ * On some Android locales the phone-pad keyboard emits these instead of ASCII 0–9.
+ * They are visually indistinguishable from ASCII digits but produce a different byte sequence,
+ * causing Meta to address the message to a nonexistent WhatsApp number.
+ */
+function hasArabicIndicDigits(phone: string): boolean {
+  return /[\u0660-\u0669\u06F0-\u06F9]/.test(phone);
+}
+
+/** Convert Arabic-Indic / Extended Arabic-Indic digits to ASCII 0–9. */
+function toAsciiDigits(phone: string): string {
+  return phone
+    .replace(/[\u0660-\u0669]/g, c => String.fromCharCode(c.codePointAt(0)! - 0x0660 + 0x30))
+    .replace(/[\u06F0-\u06F9]/g, c => String.fromCharCode(c.codePointAt(0)! - 0x06F0 + 0x30));
+}
+
+// ── Diagnostic DB write ──────────────────────────────────────────────────────
+
+interface DiagData {
+  platform: string;
+  userAgent: string;
+  endpoint: string;
+  rawPhone: string;
+  userId?: number;
+  metaStatus?: number;
+  metaWamid?: string;
+  metaResponseBody?: string;
+  metaError?: string;
+}
+
+async function writeDiagnostic(data: DiagData): Promise<void> {
+  const codepoints   = phoneCodepoints(data.rawPhone);
+  const phoneLen     = data.rawPhone.length;
+  const hasPlus      = data.rawPhone.startsWith("+");
+  const hasAI        = hasArabicIndicDigits(data.rawPhone);
+  const asciiPhone   = toAsciiDigits(data.rawPhone);
+
+  try {
+    await db.execute(drizzleSql`
+      INSERT INTO otp_diagnostics (
+        platform, user_agent, endpoint,
+        raw_phone, phone_codepoints, phone_len, has_plus, has_arabic_indic, ascii_phone,
+        meta_status, meta_wamid, meta_response_body, meta_error,
+        user_id
+      ) VALUES (
+        ${data.platform}, ${data.userAgent}, ${data.endpoint},
+        ${data.rawPhone}, ${codepoints}, ${phoneLen}, ${hasPlus}, ${hasAI}, ${asciiPhone},
+        ${data.metaStatus ?? null}, ${data.metaWamid ?? null},
+        ${data.metaResponseBody ?? null}, ${data.metaError ?? null},
+        ${data.userId ?? null}
+      )
+    `);
+  } catch (err) {
+    logger.warn({ err }, "DIAG: failed to write otp_diagnostics row (non-fatal)");
+  }
 }
 
 function parseRoles(rolesJson: string | null, userType: string): string[] {
@@ -161,6 +226,17 @@ router.post("/auth/register", async (req, res): Promise<void> => {
         "DIAG: OTP requested — register dual-role",
       );
       const result = await sendWhatsAppOtp(phone, otp, userType, platform);
+      void writeDiagnostic({
+        platform,
+        userAgent: req.headers["user-agent"] ?? "",
+        endpoint: "register-dual-role",
+        rawPhone: phone,
+        userId: existing.id,
+        metaStatus: result.metaStatus,
+        metaWamid: result.messageId,
+        metaResponseBody: result.metaResponseBody,
+        metaError: result.error,
+      });
       if (!result.success) {
         await createWhatsAppFailureNotification({
           userId: existing.id,
@@ -224,6 +300,17 @@ router.post("/auth/register", async (req, res): Promise<void> => {
       "DIAG: OTP requested — register new user",
     );
     const result = await sendWhatsAppOtp(phone, otp, userType, platform);
+    void writeDiagnostic({
+      platform,
+      userAgent: req.headers["user-agent"] ?? "",
+      endpoint: "register-new",
+      rawPhone: phone,
+      userId: user.id,
+      metaStatus: result.metaStatus,
+      metaWamid: result.messageId,
+      metaResponseBody: result.metaResponseBody,
+      metaError: result.error,
+    });
     if (!result.success) {
       await createWhatsAppFailureNotification({ userId: user.id, userName: name, phone, userType, error: result.error });
     }
@@ -291,6 +378,17 @@ router.post("/auth/login", async (req, res): Promise<void> => {
       "DIAG: OTP requested — login",
     );
     const result = await sendWhatsAppOtp(phone, otp, user.userType, platform);
+    void writeDiagnostic({
+      platform,
+      userAgent: req.headers["user-agent"] ?? "",
+      endpoint: "login",
+      rawPhone: phone,
+      userId: user.id,
+      metaStatus: result.metaStatus,
+      metaWamid: result.messageId,
+      metaResponseBody: result.metaResponseBody,
+      metaError: result.error,
+    });
     if (!result.success) {
       await createWhatsAppFailureNotification({ userId: user.id, userName: user.name, phone, userType: user.userType, error: result.error });
     }

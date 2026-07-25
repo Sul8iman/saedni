@@ -15,6 +15,36 @@ import { logger } from "./lib/logger";
   } catch (err) {
     logger.warn({ err }, "Schema migration check failed (non-fatal)");
   }
+
+  // Diagnostic table for OTP delivery debugging — queryable from production DB
+  try {
+    await db.execute(drizzleSql`
+      CREATE TABLE IF NOT EXISTS otp_diagnostics (
+        id              serial PRIMARY KEY,
+        created_at      timestamptz NOT NULL DEFAULT now(),
+        platform        text,
+        user_agent      text,
+        endpoint        text,
+        raw_phone       text,
+        phone_codepoints text,
+        phone_len       integer,
+        has_plus        boolean,
+        has_arabic_indic boolean,
+        ascii_phone     text,
+        meta_status     integer,
+        meta_wamid      text,
+        meta_response_body text,
+        meta_error      text,
+        delivery_status text,
+        delivery_error_code integer,
+        delivery_error_msg  text,
+        user_id         integer
+      )
+    `);
+    logger.info("Schema migration: otp_diagnostics table ensured");
+  } catch (err) {
+    logger.warn({ err }, "Schema migration: otp_diagnostics creation failed (non-fatal)");
+  }
 })();
 
 const app: Express = express();

@@ -8,8 +8,15 @@ function maskPhone(phone: string): string {
   return phone.slice(0, 3) + "****" + phone.slice(-3);
 }
 
+/** Shows enough of the number to diagnose format issues without exposing it fully. */
+function phoneFormatHint(phone: string): string {
+  // e.g. "96891XXXXXX" → length=11, starts_with=968, ends_with=XXX
+  return `len=${phone.length} starts=${phone.slice(0, 3)} ends=${phone.slice(-3)} hasPlus=${phone.startsWith("+")}`;
+}
+
 export interface WhatsAppOtpResult {
   success: boolean;
+  messageId?: string;
   error?: string;
 }
 
@@ -21,13 +28,14 @@ export async function sendWhatsAppOtp(
   phone: string,
   otp: string,
   userType: string,
+  platform = "unknown",
 ): Promise<WhatsAppOtpResult> {
   const accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
   const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
 
   if (!accessToken || !phoneNumberId) {
     logger.warn(
-      { maskedPhone: maskPhone(phone), userType },
+      { platform, maskedPhone: maskPhone(phone), phoneFormat: phoneFormatHint(phone), userType },
       "whatsapp: env vars missing — WHATSAPP_ACCESS_TOKEN or WHATSAPP_PHONE_NUMBER_ID not set",
     );
     return { success: false, error: "WhatsApp configuration missing" };
@@ -57,6 +65,19 @@ export async function sendWhatsAppOtp(
     },
   };
 
+  // DIAGNOSTIC: log exactly what we send to Meta so iOS vs Android can be compared
+  logger.info(
+    {
+      platform,
+      maskedPhone: maskPhone(phone),
+      phoneFormat: phoneFormatHint(phone),
+      userType,
+      metaUrl: url,
+      metaTo: phone, // full value intentionally for one release — remove after diagnosis
+    },
+    "whatsapp: sending OTP to Meta API",
+  );
+
   try {
     const res = await fetch(url, {
       method: "POST",
@@ -67,29 +88,59 @@ export async function sendWhatsAppOtp(
       body: JSON.stringify(payload),
     });
 
+    // Always parse the full response body for diagnostics
+    const body: unknown = await res.json().catch(() => null);
+
     if (res.ok) {
+      // Extract message_id from Meta success response
+      const messageId =
+        typeof body === "object" && body !== null && "messages" in body
+          ? String(
+              (
+                (body as Record<string, unknown>).messages as
+                  | Array<Record<string, unknown>>
+                  | undefined
+              )?.[0]?.id ?? "no-id",
+            )
+          : "no-id";
+
       logger.info(
-        { maskedPhone: maskPhone(phone), userType, httpStatus: res.status },
+        {
+          platform,
+          maskedPhone: maskPhone(phone),
+          phoneFormat: phoneFormatHint(phone),
+          userType,
+          httpStatus: res.status,
+          messageId,
+          metaResponseBody: JSON.stringify(body),
+        },
         "whatsapp: OTP sent successfully",
       );
-      return { success: true };
+      return { success: true, messageId };
     }
 
-    // Parse error without logging sensitive data
-    const body: unknown = await res.json().catch(() => null);
-    const errMsg =
-      typeof body === "object" && body !== null && "error" in body
-        ? String((body as Record<string, unknown>).error)
-        : `HTTP ${res.status}`;
-
+    // Failure — log the FULL Meta error body
     logger.warn(
-      { maskedPhone: maskPhone(phone), userType, httpStatus: res.status, apiError: errMsg },
+      {
+        platform,
+        maskedPhone: maskPhone(phone),
+        phoneFormat: phoneFormatHint(phone),
+        userType,
+        httpStatus: res.status,
+        metaErrorBody: JSON.stringify(body),
+      },
       "whatsapp: OTP delivery failed",
     );
+
+    const errMsg =
+      typeof body === "object" && body !== null && "error" in body
+        ? JSON.stringify((body as Record<string, unknown>).error)
+        : `HTTP ${res.status}`;
+
     return { success: false, error: errMsg };
   } catch (err) {
     logger.warn(
-      { maskedPhone: maskPhone(phone), userType, err },
+      { platform, maskedPhone: maskPhone(phone), phoneFormat: phoneFormatHint(phone), userType, err },
       "whatsapp: network error sending OTP",
     );
     return { success: false, error: "Network error" };

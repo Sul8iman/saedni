@@ -23,6 +23,16 @@ function maskPhone(phone: string): string {
   return phone.slice(0, 3) + "****" + phone.slice(-3);
 }
 
+/** Detect client platform from the User-Agent header.
+ *  Android RN/Expo uses okhttp; iOS uses CFNetwork/Darwin.
+ */
+function detectPlatform(req: import("express").Request): string {
+  const ua = (req.headers["user-agent"] ?? "").toLowerCase();
+  if (ua.includes("okhttp") || ua.includes("android")) return "android";
+  if (ua.includes("cfnetwork") || ua.includes("darwin") || ua.includes("ios")) return "ios";
+  return "unknown";
+}
+
 function parseRoles(rolesJson: string | null, userType: string): string[] {
   if (rolesJson) {
     try { return JSON.parse(rolesJson); } catch {}
@@ -133,7 +143,24 @@ router.post("/auth/register", async (req, res): Promise<void> => {
 
     if (shouldSendWhatsApp(userType)) {
       // Customer: send WhatsApp OTP, no admin push needed
-      const result = await sendWhatsAppOtp(phone, otp, userType);
+      const platform = detectPlatform(req);
+      req.log.info(
+        {
+          platform,
+          userAgent: req.headers["user-agent"],
+          userId: existing.id,
+          userType,
+          otpDelivery: "whatsapp",
+          normalizedPhone: phone,
+          maskedPhone: maskPhone(phone),
+          phoneLen: phone.length,
+          hasPlus: phone.startsWith("+"),
+          endpoint: `${req.method} ${req.originalUrl}`,
+          baseUrl: `${req.protocol}://${req.get("host")}`,
+        },
+        "DIAG: OTP requested — register dual-role",
+      );
+      const result = await sendWhatsAppOtp(phone, otp, userType, platform);
       if (!result.success) {
         await createWhatsAppFailureNotification({
           userId: existing.id,
@@ -179,7 +206,24 @@ router.post("/auth/register", async (req, res): Promise<void> => {
 
   if (shouldSendWhatsApp(userType)) {
     // Customer: send WhatsApp OTP automatically
-    const result = await sendWhatsAppOtp(phone, otp, userType);
+    const platform = detectPlatform(req);
+    req.log.info(
+      {
+        platform,
+        userAgent: req.headers["user-agent"],
+        userId: user.id,
+        userType,
+        otpDelivery: "whatsapp",
+        normalizedPhone: phone,
+        maskedPhone: maskPhone(phone),
+        phoneLen: phone.length,
+        hasPlus: phone.startsWith("+"),
+        endpoint: `${req.method} ${req.originalUrl}`,
+        baseUrl: `${req.protocol}://${req.get("host")}`,
+      },
+      "DIAG: OTP requested — register new user",
+    );
+    const result = await sendWhatsAppOtp(phone, otp, userType, platform);
     if (!result.success) {
       await createWhatsAppFailureNotification({ userId: user.id, userName: name, phone, userType, error: result.error });
     }
@@ -228,7 +272,25 @@ router.post("/auth/login", async (req, res): Promise<void> => {
 
   if (shouldSendWhatsApp(user.userType)) {
     // Customer: send WhatsApp OTP, no admin intervention required
-    const result = await sendWhatsAppOtp(phone, otp, user.userType);
+    const platform = detectPlatform(req);
+    req.log.info(
+      {
+        platform,
+        userAgent: req.headers["user-agent"],
+        userId: user.id,
+        userType: user.userType,
+        otpDelivery: "whatsapp",
+        normalizedPhone: phone,
+        maskedPhone: maskPhone(phone),
+        phoneLen: phone.length,
+        hasPlus: phone.startsWith("+"),
+        endpoint: `${req.method} ${req.originalUrl}`,
+        baseUrl: `${req.protocol}://${req.get("host")}`,
+        isVerified: user.isVerified,
+      },
+      "DIAG: OTP requested — login",
+    );
+    const result = await sendWhatsAppOtp(phone, otp, user.userType, platform);
     if (!result.success) {
       await createWhatsAppFailureNotification({ userId: user.id, userName: user.name, phone, userType: user.userType, error: result.error });
     }
@@ -263,26 +325,8 @@ router.post("/auth/admin-login", async (req, res): Promise<void> => {
   if (phone !== ADMIN_PHONE) { res.status(404).json({ error: "رقم الهاتف غير مسجل" }); return; }
   if (pin !== ADMIN_PIN) { res.status(403).json({ error: "رمز المدير غير صحيح" }); return; }
 
-  // Credentials verified — fetch the admin DB record.
-  // If it doesn't exist (e.g. after a DB reset or fresh deployment), create it automatically.
-  // Identity is already proven by the phone+PIN check above; the DB row is only needed for
-  // session management (session.userId) and the auth token.
-  let [user] = await db.select().from(usersTable).where(eq(usersTable.phone, phone));
-  if (!user) {
-    req.log.warn({ maskedPhone: maskPhone(phone) }, "Admin DB record missing — creating on first successful PIN login");
-    [user] = await db
-      .insert(usersTable)
-      .values({
-        name: "المدير",
-        phone,
-        passwordHash: "",
-        userType: "admin",
-        roles: JSON.stringify(["admin"]),
-        isVerified: true,
-        isBlocked: false,
-      })
-      .returning();
-  }
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.phone, phone));
+  if (!user) { res.status(404).json({ error: "رقم الهاتف غير مسجل" }); return; }
 
   const authToken = user.authToken ?? randomUUID();
 

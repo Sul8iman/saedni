@@ -516,7 +516,7 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
       flexDirection: "row-reverse", alignItems: "center", justifyContent: "center", gap: 6,
     },
     segBtnActive: { backgroundColor: c.primary },
-    segTxt: { fontSize: 14, color: c.mutedForeground, fontWeight: "600" },
+    segTxt: { fontSize: 14, color: c.mutedForeground, fontWeight: "600", textAlign: "right" },
     segTxtActive: { color: c.primaryForeground, fontWeight: "700" },
 
     // ── Scheduled date/time card ──
@@ -540,7 +540,7 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
     dtPlaceholder: { color: c.mutedForeground, fontWeight: "400" },
 
     dtHint: { flexDirection: "row-reverse", alignItems: "center", gap: 5, paddingTop: 2 },
-    dtHintTxt: { fontSize: 12, color: c.mutedForeground },
+    dtHintTxt: { fontSize: 12, color: c.mutedForeground, textAlign: "right" },
 
     // ── iOS picker sheet ──
     dtSheet: {
@@ -559,9 +559,9 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
     },
     dtSheetTitle: { fontSize: 16, fontWeight: "700", color: c.foreground },
     dtConfirmBtn: { paddingHorizontal: 4, paddingVertical: 4 },
-    dtConfirmTxt: { fontSize: 16, fontWeight: "700", color: c.primary },
+    dtConfirmTxt: { fontSize: 16, fontWeight: "700", color: c.primary, textAlign: "right" },
     dtDismissBtn: { paddingHorizontal: 4, paddingVertical: 4 },
-    dtDismissTxt: { fontSize: 15, color: c.mutedForeground },
+    dtDismissTxt: { fontSize: 15, color: c.mutedForeground, textAlign: "right" },
     dtPicker: { width: "100%", height: 200 },
 
     // ── Area picker ──

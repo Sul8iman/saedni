@@ -325,7 +325,7 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
       paddingHorizontal: 20, paddingVertical: 14,
       flexDirection: "row-reverse", alignItems: "center", gap: 10,
     },
-    headerTitle: { fontSize: 22, fontWeight: "800", color: c.foreground },
+    headerTitle: { fontSize: 22, fontWeight: "800", color: c.foreground, textAlign: "right" },
     countBadge: {
       backgroundColor: c.secondary, borderRadius: 10,
       paddingHorizontal: 8, paddingVertical: 2,
@@ -363,7 +363,7 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
       borderWidth: 1.5, borderColor: c.border, backgroundColor: c.background,
     },
     chipActive: { backgroundColor: c.primary, borderColor: c.primary },
-    chipTxt: { fontSize: 13, color: c.mutedForeground, fontWeight: "600" },
+    chipTxt: { fontSize: 13, color: c.mutedForeground, fontWeight: "600", textAlign: "right" },
     chipTxtActive: { color: c.primaryForeground, fontWeight: "700" },
 
     // List
@@ -386,7 +386,7 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
       flexShrink: 1, maxWidth: "60%",
     },
     catTxt: { fontSize: 13, fontWeight: "700", color: c.primary, textAlign: "right", alignSelf: "stretch" },
-    amount: { fontSize: 22, fontWeight: "800", color: c.primary },
+    amount: { fontSize: 22, fontWeight: "800", color: c.primary, textAlign: "right" },
     amountCur: { fontSize: 14, fontWeight: "600" },
 
     details: {
@@ -403,7 +403,7 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
       flexDirection: "row-reverse", alignItems: "center", gap: 4,
       backgroundColor: c.muted, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5,
     },
-    metaTxt: { fontSize: 12, color: c.mutedForeground, fontWeight: "500" },
+    metaTxt: { fontSize: 12, color: c.mutedForeground, fontWeight: "500", textAlign: "right" },
 
     // Customer
     customerRow: {
@@ -413,7 +413,7 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
     },
     customerInfo: { flex: 1, alignItems: "flex-end", gap: 2 },
     customerName: { fontSize: 14, fontWeight: "700", color: c.foreground, textAlign: "right", alignSelf: "stretch", writingDirection: "rtl" },
-    customerPhone: { fontSize: 13, color: c.mutedForeground, fontWeight: "500" },
+    customerPhone: { fontSize: 13, color: c.mutedForeground, fontWeight: "500", textAlign: "right" },
 
     // Actions
     actions: { flexDirection: "row-reverse", gap: 10 },
@@ -421,17 +421,17 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
       flex: 1, backgroundColor: "#25D366", borderRadius: 10, paddingVertical: 11,
       flexDirection: "row-reverse", alignItems: "center", justifyContent: "center", gap: 6,
     },
-    waBtnTxt: { color: "#fff", fontSize: 14, fontWeight: "700" },
+    waBtnTxt: { color: "#fff", fontSize: 14, fontWeight: "700", textAlign: "right" },
     callBtn: {
       flex: 1, backgroundColor: c.secondary, borderRadius: 10, paddingVertical: 11,
       flexDirection: "row-reverse", alignItems: "center", justifyContent: "center", gap: 6,
       borderWidth: 1.5, borderColor: c.border,
     },
-    callBtnTxt: { color: c.primary, fontSize: 14, fontWeight: "700" },
+    callBtnTxt: { color: c.primary, fontSize: 14, fontWeight: "700", textAlign: "right" },
     btnDisabled: { opacity: 0.4 },
 
     // Empty
     empty: { alignItems: "center", justifyContent: "center", paddingTop: 80, gap: 10 },
-    emptyTitle: { fontSize: 18, fontWeight: "700", color: c.foreground },
+    emptyTitle: { fontSize: 18, fontWeight: "700", color: c.foreground, textAlign: "right" },
     emptyHint: { fontSize: 14, color: c.mutedForeground, textAlign: "center", lineHeight: 22 },
   });

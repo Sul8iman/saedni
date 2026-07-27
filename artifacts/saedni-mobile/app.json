@@ -28,7 +28,7 @@
     },
     "android": {
       "package": "com.saedni.app",
-      "versionCode": 12,
+      "versionCode": 13,
       "supportsRtl": true,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/icon.png",
@@ -50,6 +50,7 @@
       "expo-font",
       "expo-web-browser",
       "expo-secure-store",
+      "expo-localization",
       "@react-native-community/datetimepicker",
       [
         "expo-notifications",

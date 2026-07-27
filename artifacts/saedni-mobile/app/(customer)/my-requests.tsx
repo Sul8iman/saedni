@@ -246,7 +246,7 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
       paddingHorizontal: 20, paddingVertical: 14,
       flexDirection: "row-reverse", alignItems: "center", gap: 10,
     },
-    headerTitle: { fontSize: 22, fontWeight: "800", color: c.foreground },
+    headerTitle: { fontSize: 22, fontWeight: "800", color: c.foreground, textAlign: "right" },
     countBadge: {
       backgroundColor: c.secondary, borderRadius: 10,
       paddingHorizontal: 8, paddingVertical: 2,
@@ -266,8 +266,8 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
       justifyContent: "space-between", marginBottom: 10,
     },
     statusBadge: { borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
-    statusTxt: { fontSize: 12, fontWeight: "700" },
-    catLabel: { fontSize: 16, fontWeight: "800", color: c.foreground },
+    statusTxt: { fontSize: 12, fontWeight: "700", textAlign: "right" },
+    catLabel: { fontSize: 16, fontWeight: "800", color: c.foreground, textAlign: "right" },
     details: {
       fontSize: 14, color: c.mutedForeground, textAlign: "right",
       lineHeight: 22, marginBottom: 14,
@@ -294,16 +294,16 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
     },
     feedbackYes: { backgroundColor: "#D1FAE5" },
     feedbackNo:  { backgroundColor: "#FEE2E2" },
-    feedbackTxt: { fontSize: 12, fontWeight: "700" },
+    feedbackTxt: { fontSize: 12, fontWeight: "700", textAlign: "right" },
 
     endBtn: {
       borderWidth: 1.5, borderColor: c.border, borderRadius: 10,
       paddingVertical: 11, flexDirection: "row-reverse", alignItems: "center",
       justifyContent: "center", gap: 6, backgroundColor: c.secondary,
     },
-    endTxt: { color: c.primary, fontSize: 14, fontWeight: "700" },
+    endTxt: { color: c.primary, fontSize: 14, fontWeight: "700", textAlign: "right" },
 
     empty: { alignItems: "center", justifyContent: "center", paddingTop: 80, gap: 10 },
-    emptyTitle: { fontSize: 18, fontWeight: "700", color: c.foreground },
+    emptyTitle: { fontSize: 18, fontWeight: "700", color: c.foreground, textAlign: "right" },
     emptyHint: { fontSize: 14, color: c.mutedForeground, textAlign: "center" },
   });

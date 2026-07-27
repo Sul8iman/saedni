@@ -372,17 +372,17 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
       flexDirection: "row-reverse", alignItems: "center", gap: 4,
       backgroundColor: c.muted, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5,
     },
-    metaTxt: { fontSize: 12, color: c.mutedForeground, fontWeight: "500" },
+    metaTxt: { fontSize: 12, color: c.mutedForeground, fontWeight: "500", textAlign: "right" },
 
     lockedBtn: {
       flexDirection: "row-reverse", alignItems: "center", justifyContent: "center", gap: 8,
       backgroundColor: c.muted, borderRadius: 10, paddingVertical: 11,
       borderWidth: 1, borderColor: c.border,
     },
-    lockedBtnTxt: { fontSize: 13, color: c.mutedForeground, fontWeight: "600" },
+    lockedBtnTxt: { fontSize: 13, color: c.mutedForeground, fontWeight: "600", textAlign: "right" },
 
     empty: { alignItems: "center", justifyContent: "center", paddingTop: 80, gap: 10 },
-    emptyTitle: { fontSize: 18, fontWeight: "700", color: c.foreground },
+    emptyTitle: { fontSize: 18, fontWeight: "700", color: c.foreground, textAlign: "right" },
     emptyHint: { fontSize: 14, color: c.mutedForeground, textAlign: "center", lineHeight: 22 },
 
     footerCta: {
@@ -390,5 +390,5 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
       paddingVertical: 16, flexDirection: "row-reverse", alignItems: "center",
       justifyContent: "center", gap: 10,
     },
-    footerCtaTxt: { color: c.primaryForeground, fontSize: 15, fontWeight: "700" },
+    footerCtaTxt: { color: c.primaryForeground, fontSize: 15, fontWeight: "700", textAlign: "right" },
   });

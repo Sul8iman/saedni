@@ -340,7 +340,7 @@ const makeStyles = (c: ReturnType<typeof useColors>) =>
       alignItems: "center", marginBottom: 12,
     },
     btnDisabled: { opacity: 0.4 },
-    primaryBtnTxt: { color: c.primaryForeground, fontSize: 16, fontWeight: "700" },
+    primaryBtnTxt: { color: c.primaryForeground, fontSize: 16, fontWeight: "700", textAlign: "right" },
     ghostBtn: { alignItems: "center", paddingVertical: 10 },
     ghostTxt: { fontSize: 14, color: c.mutedForeground, textAlign: "center" },
     ghostLink: { color: c.primary, fontWeight: "700" },
@@ -349,7 +349,7 @@ const makeStyles = (c: ReturnType<typeof useColors>) =>
       flexDirection: "row-reverse", alignItems: "center", justifyContent: "center",
       gap: 10, marginBottom: 16,
     },
-    waBtnTxt: { color: "#fff", fontSize: 14, fontWeight: "700" },
+    waBtnTxt: { color: "#fff", fontSize: 14, fontWeight: "700", textAlign: "right" },
     waInfoBox: {
       flexDirection: "row-reverse", alignItems: "center", gap: 8,
       backgroundColor: "#F0FDF4", borderRadius: 10, padding: 12,

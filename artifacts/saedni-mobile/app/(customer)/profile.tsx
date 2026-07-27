@@ -100,14 +100,14 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
       shadowOpacity: 0.25, shadowRadius: 10, elevation: 6,
     },
     avatarTxt: { fontSize: 38, fontWeight: "800", color: c.primaryForeground },
-    name: { fontSize: 24, fontWeight: "800", color: c.foreground, marginBottom: 4 },
-    phone: { fontSize: 15, color: c.mutedForeground, marginBottom: 12 },
+    name: { fontSize: 24, fontWeight: "800", color: c.foreground, marginBottom: 4, textAlign: "right" },
+    phone: { fontSize: 15, color: c.mutedForeground, marginBottom: 12, textAlign: "right" },
     rolePill: {
       flexDirection: "row-reverse", alignItems: "center", gap: 6,
       backgroundColor: c.secondary, borderRadius: 20,
       paddingHorizontal: 16, paddingVertical: 7,
     },
-    roleTxt: { fontSize: 14, color: c.primary, fontWeight: "700" },
+    roleTxt: { fontSize: 14, color: c.primary, fontWeight: "700", textAlign: "right" },
     infoCard: {
       width: "100%", backgroundColor: c.card, borderRadius: 16,
       borderWidth: 1, borderColor: c.border, marginBottom: 20,
@@ -118,8 +118,8 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
       flexDirection: "row-reverse", justifyContent: "space-between", alignItems: "center",
       paddingHorizontal: 18, paddingVertical: 16,
     },
-    infoKey: { fontSize: 14, color: c.mutedForeground, fontWeight: "500" },
-    infoVal: { fontSize: 15, fontWeight: "600", color: c.foreground },
+    infoKey: { fontSize: 14, color: c.mutedForeground, fontWeight: "500", textAlign: "right" },
+    infoVal: { fontSize: 15, fontWeight: "600", color: c.foreground, textAlign: "right" },
     divider: { height: StyleSheet.hairlineWidth, backgroundColor: c.border, marginHorizontal: 18 },
     statusDot: { width: 8, height: 8, borderRadius: 4, marginStart: 6 },
     logoutBtn: {
@@ -127,5 +127,5 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
       backgroundColor: "#FEF2F2", borderRadius: 14, paddingVertical: 16, paddingHorizontal: 20,
       borderWidth: 1, borderColor: "#FECACA",
     },
-    logoutTxt: { fontSize: 16, color: "#DC2626", fontWeight: "700" },
+    logoutTxt: { fontSize: 16, color: "#DC2626", fontWeight: "700", textAlign: "right" },
   });

@@ -572,12 +572,12 @@ const reqCardStyles = (c: ReturnType<typeof useColors>) => StyleSheet.create({
     marginBottom: 8,
   },
   topRow: { flexDirection: "row-reverse", alignItems: "center", justifyContent: "space-between", marginBottom: 6 },
-  category: { fontSize: 14, fontWeight: "700", color: c.foreground },
+  category: { fontSize: 14, fontWeight: "700", color: c.foreground, textAlign: "right" },
   statusBadge: { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
   statusTxt: { fontSize: 11, fontWeight: "700" },
   details: { fontSize: 13, color: c.mutedForeground, textAlign: "right", marginBottom: 8, alignSelf: "stretch", writingDirection: "rtl" },
   metaRow: { flexDirection: "row-reverse", alignItems: "center", gap: 5, marginBottom: 4 },
-  metaTxt: { fontSize: 12, color: c.mutedForeground },
+  metaTxt: { fontSize: 12, color: c.mutedForeground, textAlign: "right" },
   dot: { width: 3, height: 3, borderRadius: 1.5, backgroundColor: c.mutedForeground },
 });
 
@@ -594,9 +594,9 @@ const makeStyles = (c: ReturnType<typeof useColors>, _bottomInset: number) =>
       paddingHorizontal: 16, paddingVertical: 12,
       flexDirection: "row-reverse", alignItems: "center", justifyContent: "space-between",
     },
-    headerTitle: { fontSize: 18, fontWeight: "800", color: c.foreground },
+    headerTitle: { fontSize: 18, fontWeight: "800", color: c.foreground, textAlign: "right" },
     backBtn: { flexDirection: "row-reverse", alignItems: "center", gap: 4, padding: 4 },
-    backTxt: { fontSize: 15, color: c.foreground, fontWeight: "600" },
+    backTxt: { fontSize: 15, color: c.foreground, fontWeight: "600", textAlign: "right" },
 
     // Profile card
     profileCard: {
@@ -612,8 +612,8 @@ const makeStyles = (c: ReturnType<typeof useColors>, _bottomInset: number) =>
     avatarHelper: { backgroundColor: c.primary },
     avatarAdmin: { backgroundColor: "#6366F1" },
     avatarTxt: { fontSize: 30, fontWeight: "800", color: c.primaryForeground },
-    profileName: { fontSize: 20, fontWeight: "800", color: c.foreground, marginBottom: 4 },
-    profilePhone: { fontSize: 14, color: c.mutedForeground, marginBottom: 12 },
+    profileName: { fontSize: 20, fontWeight: "800", color: c.foreground, marginBottom: 4, textAlign: "right" },
+    profilePhone: { fontSize: 14, color: c.mutedForeground, marginBottom: 12, textAlign: "right" },
     badgeRow: { flexDirection: "row-reverse", gap: 8, flexWrap: "wrap", justifyContent: "center" },
     badge: { borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
     badgeTxt: { fontSize: 12, fontWeight: "700" },
@@ -644,7 +644,7 @@ const makeStyles = (c: ReturnType<typeof useColors>, _bottomInset: number) =>
     otpCodeGroup: { flexDirection: "row-reverse", alignItems: "center", gap: 8 },
     otpLabelGroup: { flexDirection: "row-reverse", alignItems: "center", gap: 6 },
     otpCode: { fontSize: 22, fontWeight: "800", color: c.primary, letterSpacing: 4, textAlign: "center" },
-    otpLabel: { fontSize: 14, color: c.mutedForeground, fontWeight: "500" },
+    otpLabel: { fontSize: 14, color: c.mutedForeground, fontWeight: "500", textAlign: "right" },
     otpCopyBtn: {
       flexDirection: "row-reverse", alignItems: "center", gap: 5,
       backgroundColor: c.secondary, borderRadius: 8,
@@ -701,8 +701,8 @@ const makeStyles = (c: ReturnType<typeof useColors>, _bottomInset: number) =>
       borderRadius: 12, paddingVertical: 13, borderWidth: 1,
       backgroundColor: "#FEF2F2", borderColor: "#FECACA",
     },
-    actionBtnTxt: { fontSize: 15, fontWeight: "700" },
-    deleteTxt: { fontSize: 15, fontWeight: "700", color: "#DC2626" },
+    actionBtnTxt: { fontSize: 15, fontWeight: "700", textAlign: "right" },
+    deleteTxt: { fontSize: 15, fontWeight: "700", color: "#DC2626", textAlign: "right" },
 
     // Requests
     reqSectionHeader: { flexDirection: "row-reverse", alignItems: "center", gap: 8, marginBottom: 10 },
@@ -713,16 +713,16 @@ const makeStyles = (c: ReturnType<typeof useColors>, _bottomInset: number) =>
     reqCountTxt: { fontSize: 12, fontWeight: "800", color: c.primaryForeground },
     reqLoading: { alignItems: "center", paddingVertical: 20 },
     emptyRequests: { alignItems: "center", paddingVertical: 28, gap: 8 },
-    emptyReqTxt: { fontSize: 14, color: c.mutedForeground },
+    emptyReqTxt: { fontSize: 14, color: c.mutedForeground, textAlign: "right" },
     reqGroupHeader: { flexDirection: "row-reverse", alignItems: "center", gap: 8, marginBottom: 8 },
     reqGroupDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: c.primary },
     reqGroupTitle: { fontSize: 14, fontWeight: "600", color: c.primary },
 
     // Fallback
-    emptyTxt: { fontSize: 16, color: c.mutedForeground, marginTop: 12 },
+    emptyTxt: { fontSize: 16, color: c.mutedForeground, marginTop: 12, textAlign: "right" },
     backFallback: {
       marginTop: 16, backgroundColor: c.primary, borderRadius: 10,
       paddingHorizontal: 20, paddingVertical: 10,
     },
-    backFallbackTxt: { color: c.primaryForeground, fontWeight: "700", fontSize: 15 },
+    backFallbackTxt: { color: c.primaryForeground, fontWeight: "700", fontSize: 15, textAlign: "right" },
   });

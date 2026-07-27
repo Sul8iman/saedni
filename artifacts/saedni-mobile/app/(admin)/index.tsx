@@ -511,7 +511,7 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
       paddingHorizontal: 16, paddingVertical: 12,
       flexDirection: "row-reverse", alignItems: "center", justifyContent: "space-between",
     },
-    headerTitle: { fontSize: 20, fontWeight: "800", color: c.foreground, textAlign: "right" },
+    headerTitle: { fontSize: 20, fontWeight: "800", color: c.foreground, textAlign: "right", writingDirection: "rtl" },
     headerAction: { padding: 4 },
     tabs: {
       flexDirection: "row-reverse",
@@ -524,7 +524,7 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
     },
     tabActive: { borderBottomColor: c.primary },
     tabInner: { flexDirection: "row-reverse", alignItems: "center", gap: 6 },
-    tabTxt: { fontSize: 14, fontWeight: "600", color: c.mutedForeground, textAlign: "right" },
+    tabTxt: { fontSize: 14, fontWeight: "600", color: c.mutedForeground, textAlign: "right", writingDirection: "rtl" },
     tabTxtActive: { color: c.primary },
     badge: {
       backgroundColor: "#EF4444", borderRadius: 10,
@@ -566,7 +566,7 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
 
     // Help badge on request cards
     helpBadge: { alignSelf: "flex-end", borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3, marginBottom: 6 },
-    helpBadgeTxt: { fontSize: 11, fontWeight: "700", textAlign: "right" },
+    helpBadgeTxt: { fontSize: 11, fontWeight: "700", textAlign: "right", writingDirection: "rtl" },
 
     // Feedback filter buttons
     filterTitle: { fontSize: 13, fontWeight: "600", color: c.mutedForeground, textAlign: "right", marginBottom: 8, alignSelf: "stretch", writingDirection: "rtl" },
@@ -576,7 +576,7 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
       backgroundColor: c.muted, borderWidth: 1, borderColor: c.border,
     },
     filterBtnActive: { backgroundColor: c.primary, borderColor: c.primary },
-    filterBtnTxt: { fontSize: 12, fontWeight: "600", color: c.mutedForeground, textAlign: "right" },
+    filterBtnTxt: { fontSize: 12, fontWeight: "600", color: c.mutedForeground, textAlign: "right", writingDirection: "rtl" },
     filterBtnTxtActive: { color: c.primaryForeground },
 
     // Request cards
@@ -603,7 +603,7 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
     deleteBtn: { flexDirection: "row-reverse", alignItems: "center", gap: 4, backgroundColor: "#FEF2F2", borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 },
     deleteTxt: { fontSize: 12, color: "#DC2626", fontWeight: "600", textAlign: "right" },
     reqMeta: { flexDirection: "row-reverse", alignItems: "center", gap: 5, marginBottom: 6 },
-    metaTxt: { fontSize: 12, color: c.mutedForeground, textAlign: "right" },
+    metaTxt: { fontSize: 12, color: c.mutedForeground, textAlign: "right", writingDirection: "rtl" },
     dot: { width: 3, height: 3, borderRadius: 1.5, backgroundColor: c.mutedForeground },
     publishRow: { flexDirection: "row-reverse", alignItems: "center", gap: 5 },
     publishTxt: { fontSize: 11, color: c.mutedForeground, textAlign: "right" },
@@ -615,7 +615,7 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
       marginBottom: 12, backgroundColor: c.primary + "12",
       borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8,
     },
-    notifHeaderTxt: { fontSize: 13, color: c.primary, fontWeight: "700", textAlign: "right" },
+    notifHeaderTxt: { fontSize: 13, color: c.primary, fontWeight: "700", textAlign: "right", writingDirection: "rtl" },
     notifCard: {
       backgroundColor: c.card, borderRadius: 14, borderWidth: 1, borderColor: c.border,
       padding: 14, marginBottom: 10,
@@ -650,5 +650,5 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
     viewUserTxt: { fontSize: 12, color: c.primary, fontWeight: "700" },
 
     empty: { alignItems: "center", paddingTop: 60, gap: 10 },
-    emptyTxt: { fontSize: 16, color: c.mutedForeground, fontWeight: "600", textAlign: "right" },
+    emptyTxt: { fontSize: 16, color: c.mutedForeground, fontWeight: "600", textAlign: "right", writingDirection: "rtl" },
   });

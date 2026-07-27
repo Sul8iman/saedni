@@ -325,7 +325,7 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
       paddingHorizontal: 20, paddingVertical: 14,
       flexDirection: "row-reverse", alignItems: "center", gap: 10,
     },
-    headerTitle: { fontSize: 22, fontWeight: "800", color: c.foreground, textAlign: "right" },
+    headerTitle: { fontSize: 22, fontWeight: "800", color: c.foreground, textAlign: "right", writingDirection: "rtl" },
     countBadge: {
       backgroundColor: c.secondary, borderRadius: 10,
       paddingHorizontal: 8, paddingVertical: 2,
@@ -363,7 +363,7 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
       borderWidth: 1.5, borderColor: c.border, backgroundColor: c.background,
     },
     chipActive: { backgroundColor: c.primary, borderColor: c.primary },
-    chipTxt: { fontSize: 13, color: c.mutedForeground, fontWeight: "600", textAlign: "right" },
+    chipTxt: { fontSize: 13, color: c.mutedForeground, fontWeight: "600", textAlign: "right", writingDirection: "rtl" },
     chipTxtActive: { color: c.primaryForeground, fontWeight: "700" },
 
     // List
@@ -413,7 +413,7 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
     },
     customerInfo: { flex: 1, alignItems: "flex-end", gap: 2 },
     customerName: { fontSize: 14, fontWeight: "700", color: c.foreground, textAlign: "right", alignSelf: "stretch", writingDirection: "rtl" },
-    customerPhone: { fontSize: 13, color: c.mutedForeground, fontWeight: "500", textAlign: "right" },
+    customerPhone: { fontSize: 13, color: c.mutedForeground, fontWeight: "500", textAlign: "right", writingDirection: "rtl" },
 
     // Actions
     actions: { flexDirection: "row-reverse", gap: 10 },
@@ -432,6 +432,6 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
 
     // Empty
     empty: { alignItems: "center", justifyContent: "center", paddingTop: 80, gap: 10 },
-    emptyTitle: { fontSize: 18, fontWeight: "700", color: c.foreground, textAlign: "right" },
+    emptyTitle: { fontSize: 18, fontWeight: "700", color: c.foreground, textAlign: "right", writingDirection: "rtl" },
     emptyHint: { fontSize: 14, color: c.mutedForeground, textAlign: "center", lineHeight: 22 },
   });

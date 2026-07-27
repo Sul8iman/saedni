@@ -66,6 +66,8 @@
       "reactCompiler": true
     },
     "extra": {
+      "supportsRTL": true,
+      "forcesRTL": true,
       "eas": {
         "projectId": "41abb564-bfc1-4e71-94c3-49e2d4ea642d"
       }

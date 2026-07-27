@@ -239,14 +239,14 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
       position: "absolute", bottom: -2, right: -2,
       backgroundColor: c.card, borderRadius: 12,
     },
-    name: { fontSize: 24, fontWeight: "800", color: c.foreground, marginBottom: 4, textAlign: "right" },
-    phone: { fontSize: 15, color: c.mutedForeground, marginBottom: 12, textAlign: "right" },
+    name: { fontSize: 24, fontWeight: "800", color: c.foreground, marginBottom: 4, textAlign: "right", writingDirection: "rtl" },
+    phone: { fontSize: 15, color: c.mutedForeground, marginBottom: 12, textAlign: "right", writingDirection: "rtl" },
     rolePill: {
       flexDirection: "row-reverse", alignItems: "center", gap: 6,
       backgroundColor: c.secondary, borderRadius: 20,
       paddingHorizontal: 16, paddingVertical: 7,
     },
-    roleTxt: { fontSize: 14, color: c.primary, fontWeight: "700", textAlign: "right" },
+    roleTxt: { fontSize: 14, color: c.primary, fontWeight: "700", textAlign: "right", writingDirection: "rtl" },
 
     pendingBox: {
       width: "100%", backgroundColor: "#FEF3C7", borderRadius: 14, padding: 14,
@@ -267,8 +267,8 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
       flexDirection: "row-reverse", justifyContent: "space-between", alignItems: "center",
       paddingHorizontal: 18, paddingVertical: 16,
     },
-    infoKey: { fontSize: 14, color: c.mutedForeground, fontWeight: "500", textAlign: "right" },
-    infoVal: { fontSize: 15, fontWeight: "600", color: c.foreground, textAlign: "right" },
+    infoKey: { fontSize: 14, color: c.mutedForeground, fontWeight: "500", textAlign: "right", writingDirection: "rtl" },
+    infoVal: { fontSize: 15, fontWeight: "600", color: c.foreground, textAlign: "right", writingDirection: "rtl" },
     divider: { height: StyleSheet.hairlineWidth, backgroundColor: c.border, marginHorizontal: 18 },
     statusRow: { flexDirection: "row-reverse", alignItems: "center", gap: 6 },
     statusDot: { width: 8, height: 8, borderRadius: 4 },
@@ -285,7 +285,7 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
       flexDirection: "row-reverse", alignItems: "center",
       gap: 8, marginBottom: 8,
     },
-    interestsTitle: { fontSize: 18, fontWeight: "800", color: c.foreground, textAlign: "right" },
+    interestsTitle: { fontSize: 18, fontWeight: "800", color: c.foreground, textAlign: "right", writingDirection: "rtl" },
     interestsHint: {
       fontSize: 13, color: c.mutedForeground, textAlign: "right",
       lineHeight: 20, marginBottom: 18, alignSelf: "stretch",
@@ -309,7 +309,7 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
       backgroundColor: c.primary, borderColor: c.primary,
     },
     chipCheck: { marginStart: 4 },
-    chipTxt: { fontSize: 13, color: c.foreground, fontWeight: "600", textAlign: "right" },
+    chipTxt: { fontSize: 13, color: c.foreground, fontWeight: "600", textAlign: "right", writingDirection: "rtl" },
     chipTxtOn: { color: c.primaryForeground },
     saveBtn: {
       marginTop: 20, backgroundColor: c.primary, borderRadius: 12,
@@ -324,5 +324,5 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
       backgroundColor: "#FEF2F2", borderRadius: 14, paddingVertical: 16, paddingHorizontal: 20,
       borderWidth: 1, borderColor: "#FECACA",
     },
-    logoutTxt: { fontSize: 16, color: "#DC2626", fontWeight: "700", textAlign: "right" },
+    logoutTxt: { fontSize: 16, color: "#DC2626", fontWeight: "700", textAlign: "right", writingDirection: "rtl" },
   });

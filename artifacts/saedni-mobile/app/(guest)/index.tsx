@@ -379,10 +379,10 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
       backgroundColor: c.muted, borderRadius: 10, paddingVertical: 11,
       borderWidth: 1, borderColor: c.border,
     },
-    lockedBtnTxt: { fontSize: 13, color: c.mutedForeground, fontWeight: "600", textAlign: "right" },
+    lockedBtnTxt: { fontSize: 13, color: c.mutedForeground, fontWeight: "600", textAlign: "right", writingDirection: "rtl" },
 
     empty: { alignItems: "center", justifyContent: "center", paddingTop: 80, gap: 10 },
-    emptyTitle: { fontSize: 18, fontWeight: "700", color: c.foreground, textAlign: "right" },
+    emptyTitle: { fontSize: 18, fontWeight: "700", color: c.foreground, textAlign: "right", writingDirection: "rtl" },
     emptyHint: { fontSize: 14, color: c.mutedForeground, textAlign: "center", lineHeight: 22 },
 
     footerCta: {

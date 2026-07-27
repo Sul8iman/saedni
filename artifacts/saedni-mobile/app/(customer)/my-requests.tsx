@@ -246,7 +246,7 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
       paddingHorizontal: 20, paddingVertical: 14,
       flexDirection: "row-reverse", alignItems: "center", gap: 10,
     },
-    headerTitle: { fontSize: 22, fontWeight: "800", color: c.foreground, textAlign: "right" },
+    headerTitle: { fontSize: 22, fontWeight: "800", color: c.foreground, textAlign: "right", writingDirection: "rtl" },
     countBadge: {
       backgroundColor: c.secondary, borderRadius: 10,
       paddingHorizontal: 8, paddingVertical: 2,
@@ -267,7 +267,7 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
     },
     statusBadge: { borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
     statusTxt: { fontSize: 12, fontWeight: "700", textAlign: "right" },
-    catLabel: { fontSize: 16, fontWeight: "800", color: c.foreground, textAlign: "right" },
+    catLabel: { fontSize: 16, fontWeight: "800", color: c.foreground, textAlign: "right", writingDirection: "rtl" },
     details: {
       fontSize: 14, color: c.mutedForeground, textAlign: "right",
       lineHeight: 22, marginBottom: 14,
@@ -304,6 +304,6 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
     endTxt: { color: c.primary, fontSize: 14, fontWeight: "700", textAlign: "right" },
 
     empty: { alignItems: "center", justifyContent: "center", paddingTop: 80, gap: 10 },
-    emptyTitle: { fontSize: 18, fontWeight: "700", color: c.foreground, textAlign: "right" },
+    emptyTitle: { fontSize: 18, fontWeight: "700", color: c.foreground, textAlign: "right", writingDirection: "rtl" },
     emptyHint: { fontSize: 14, color: c.mutedForeground, textAlign: "center" },
   });

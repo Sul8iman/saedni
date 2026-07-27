@@ -210,7 +210,7 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
       paddingHorizontal: 16, paddingVertical: 12,
       flexDirection: "row-reverse", alignItems: "center", justifyContent: "space-between",
     },
-    headerTitle: { fontSize: 20, fontWeight: "800", color: c.foreground, textAlign: "right" },
+    headerTitle: { fontSize: 20, fontWeight: "800", color: c.foreground, textAlign: "right", writingDirection: "rtl" },
     backBtn: { padding: 4 },
     filterRow: {
       flexDirection: "row-reverse", paddingHorizontal: 16, paddingVertical: 10, gap: 8,
@@ -220,7 +220,7 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
       backgroundColor: c.muted,
     },
     filterTabActive: { backgroundColor: c.primary },
-    filterTxt: { fontSize: 13, color: c.mutedForeground, fontWeight: "600", textAlign: "right" },
+    filterTxt: { fontSize: 13, color: c.mutedForeground, fontWeight: "600", textAlign: "right", writingDirection: "rtl" },
     filterTxtActive: { color: c.primaryForeground, fontWeight: "700" },
     listContent: { padding: 16, paddingBottom: bottomInset + 24 },
     card: {
@@ -267,5 +267,5 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
     tagTxtPending: { color: "#92400E" },
     tagTxtBlocked: { color: "#DC2626" },
     empty: { alignItems: "center", justifyContent: "center", paddingTop: 80, gap: 10 },
-    emptyTxt: { fontSize: 16, color: c.mutedForeground, textAlign: "right" },
+    emptyTxt: { fontSize: 16, color: c.mutedForeground, textAlign: "right", writingDirection: "rtl" },
   });

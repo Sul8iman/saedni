@@ -572,7 +572,7 @@ const reqCardStyles = (c: ReturnType<typeof useColors>) => StyleSheet.create({
     marginBottom: 8,
   },
   topRow: { flexDirection: "row-reverse", alignItems: "center", justifyContent: "space-between", marginBottom: 6 },
-  category: { fontSize: 14, fontWeight: "700", color: c.foreground, textAlign: "right" },
+  category: { fontSize: 14, fontWeight: "700", color: c.foreground, textAlign: "right", writingDirection: "rtl" },
   statusBadge: { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
   statusTxt: { fontSize: 11, fontWeight: "700" },
   details: { fontSize: 13, color: c.mutedForeground, textAlign: "right", marginBottom: 8, alignSelf: "stretch", writingDirection: "rtl" },
@@ -594,7 +594,7 @@ const makeStyles = (c: ReturnType<typeof useColors>, _bottomInset: number) =>
       paddingHorizontal: 16, paddingVertical: 12,
       flexDirection: "row-reverse", alignItems: "center", justifyContent: "space-between",
     },
-    headerTitle: { fontSize: 18, fontWeight: "800", color: c.foreground, textAlign: "right" },
+    headerTitle: { fontSize: 18, fontWeight: "800", color: c.foreground, textAlign: "right", writingDirection: "rtl" },
     backBtn: { flexDirection: "row-reverse", alignItems: "center", gap: 4, padding: 4 },
     backTxt: { fontSize: 15, color: c.foreground, fontWeight: "600", textAlign: "right" },
 
@@ -612,8 +612,8 @@ const makeStyles = (c: ReturnType<typeof useColors>, _bottomInset: number) =>
     avatarHelper: { backgroundColor: c.primary },
     avatarAdmin: { backgroundColor: "#6366F1" },
     avatarTxt: { fontSize: 30, fontWeight: "800", color: c.primaryForeground },
-    profileName: { fontSize: 20, fontWeight: "800", color: c.foreground, marginBottom: 4, textAlign: "right" },
-    profilePhone: { fontSize: 14, color: c.mutedForeground, marginBottom: 12, textAlign: "right" },
+    profileName: { fontSize: 20, fontWeight: "800", color: c.foreground, marginBottom: 4, textAlign: "right", writingDirection: "rtl" },
+    profilePhone: { fontSize: 14, color: c.mutedForeground, marginBottom: 12, textAlign: "right", writingDirection: "rtl" },
     badgeRow: { flexDirection: "row-reverse", gap: 8, flexWrap: "wrap", justifyContent: "center" },
     badge: { borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
     badgeTxt: { fontSize: 12, fontWeight: "700" },
@@ -644,7 +644,7 @@ const makeStyles = (c: ReturnType<typeof useColors>, _bottomInset: number) =>
     otpCodeGroup: { flexDirection: "row-reverse", alignItems: "center", gap: 8 },
     otpLabelGroup: { flexDirection: "row-reverse", alignItems: "center", gap: 6 },
     otpCode: { fontSize: 22, fontWeight: "800", color: c.primary, letterSpacing: 4, textAlign: "center" },
-    otpLabel: { fontSize: 14, color: c.mutedForeground, fontWeight: "500", textAlign: "right" },
+    otpLabel: { fontSize: 14, color: c.mutedForeground, fontWeight: "500", textAlign: "right", writingDirection: "rtl" },
     otpCopyBtn: {
       flexDirection: "row-reverse", alignItems: "center", gap: 5,
       backgroundColor: c.secondary, borderRadius: 8,
@@ -713,13 +713,13 @@ const makeStyles = (c: ReturnType<typeof useColors>, _bottomInset: number) =>
     reqCountTxt: { fontSize: 12, fontWeight: "800", color: c.primaryForeground },
     reqLoading: { alignItems: "center", paddingVertical: 20 },
     emptyRequests: { alignItems: "center", paddingVertical: 28, gap: 8 },
-    emptyReqTxt: { fontSize: 14, color: c.mutedForeground, textAlign: "right" },
+    emptyReqTxt: { fontSize: 14, color: c.mutedForeground, textAlign: "right", writingDirection: "rtl" },
     reqGroupHeader: { flexDirection: "row-reverse", alignItems: "center", gap: 8, marginBottom: 8 },
     reqGroupDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: c.primary },
     reqGroupTitle: { fontSize: 14, fontWeight: "600", color: c.primary },
 
     // Fallback
-    emptyTxt: { fontSize: 16, color: c.mutedForeground, marginTop: 12, textAlign: "right" },
+    emptyTxt: { fontSize: 16, color: c.mutedForeground, marginTop: 12, textAlign: "right", writingDirection: "rtl" },
     backFallback: {
       marginTop: 16, backgroundColor: c.primary, borderRadius: 10,
       paddingHorizontal: 20, paddingVertical: 10,

@@ -385,7 +385,7 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
       backgroundColor: c.secondary, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4,
       flexShrink: 1, maxWidth: "60%",
     },
-    catTxt: { fontSize: 13, fontWeight: "700", color: c.primary, textAlign: "right" },
+    catTxt: { fontSize: 13, fontWeight: "700", color: c.primary, textAlign: "right", alignSelf: "stretch" },
     amount: { fontSize: 22, fontWeight: "800", color: c.primary },
     amountCur: { fontSize: 14, fontWeight: "600" },
 
@@ -395,7 +395,7 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
     },
 
     publishRow: { flexDirection: "row-reverse", alignItems: "center", gap: 5, marginBottom: 10 },
-    publishTxt: { fontSize: 11, color: c.mutedForeground, textAlign: "right" },
+    publishTxt: { fontSize: 11, color: c.mutedForeground, textAlign: "right", alignSelf: "stretch" },
     publishVal: { fontSize: 11, color: c.foreground, fontWeight: "600" },
     metaRow: { flexDirection: "row-reverse", gap: 8, marginBottom: 12, flexWrap: "wrap" },
     metaChip: {
@@ -411,7 +411,7 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
       paddingHorizontal: 12, paddingVertical: 10, marginBottom: 12,
     },
     customerInfo: { flex: 1, alignItems: "flex-end", gap: 2 },
-    customerName: { fontSize: 14, fontWeight: "700", color: c.foreground, textAlign: "right" },
+    customerName: { fontSize: 14, fontWeight: "700", color: c.foreground, textAlign: "right", alignSelf: "stretch" },
     customerPhone: { fontSize: 13, color: c.mutedForeground, fontWeight: "500" },
 
     // Actions

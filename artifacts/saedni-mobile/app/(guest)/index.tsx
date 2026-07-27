@@ -356,7 +356,7 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
       backgroundColor: c.secondary, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4,
       flexShrink: 1, maxWidth: "60%",
     },
-    catTxt: { fontSize: 13, fontWeight: "700", color: c.primary, textAlign: "right" },
+    catTxt: { fontSize: 13, fontWeight: "700", color: c.primary, textAlign: "right", alignSelf: "stretch" },
     amount: { fontSize: 22, fontWeight: "800", color: c.primary },
     amountCur: { fontSize: 14, fontWeight: "600" },
     details: {
@@ -364,7 +364,7 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
       lineHeight: 21, marginBottom: 12, alignSelf: "stretch",
     },
     publishRow: { flexDirection: "row-reverse", alignItems: "center", gap: 5, marginBottom: 12 },
-    publishTxt: { fontSize: 11, color: c.mutedForeground, textAlign: "right" },
+    publishTxt: { fontSize: 11, color: c.mutedForeground, textAlign: "right", alignSelf: "stretch" },
     publishVal: { fontSize: 11, color: c.foreground, fontWeight: "600" },
     metaRow: { flexDirection: "row-reverse", gap: 8, marginBottom: 12, flexWrap: "wrap" },
     metaChip: {

@@ -575,7 +575,7 @@ const reqCardStyles = (c: ReturnType<typeof useColors>) => StyleSheet.create({
   category: { fontSize: 14, fontWeight: "700", color: c.foreground },
   statusBadge: { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
   statusTxt: { fontSize: 11, fontWeight: "700" },
-  details: { fontSize: 13, color: c.mutedForeground, textAlign: "right", marginBottom: 8 },
+  details: { fontSize: 13, color: c.mutedForeground, textAlign: "right", marginBottom: 8, alignSelf: "stretch" },
   metaRow: { flexDirection: "row-reverse", alignItems: "center", gap: 5, marginBottom: 4 },
   metaTxt: { fontSize: 12, color: c.mutedForeground },
   dot: { width: 3, height: 3, borderRadius: 1.5, backgroundColor: c.mutedForeground },

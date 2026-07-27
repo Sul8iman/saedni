@@ -544,7 +544,7 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
     },
     statIcon: { width: 38, height: 38, borderRadius: 10, alignItems: "center", justifyContent: "center", marginBottom: 8 },
     statVal: { fontSize: 24, fontWeight: "800", color: c.foreground },
-    statLabel: { fontSize: 11, color: c.mutedForeground, textAlign: "right", marginTop: 2 },
+    statLabel: { fontSize: 11, color: c.mutedForeground, textAlign: "right", marginTop: 2, alignSelf: "stretch" },
 
     // Feedback stats
     feedbackTitle: { fontSize: 15, fontWeight: "700", color: c.foreground, textAlign: "right", marginBottom: 10, alignSelf: "stretch" },
@@ -560,7 +560,7 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
       alignItems: "center", justifyContent: "center", marginBottom: 6,
     },
     feedbackVal: { fontSize: 20, fontWeight: "800", marginBottom: 2 },
-    feedbackLabel: { fontSize: 10, color: c.mutedForeground, textAlign: "right" },
+    feedbackLabel: { fontSize: 10, color: c.mutedForeground, textAlign: "right", alignSelf: "stretch" },
 
     sectionTitle: { fontSize: 17, fontWeight: "700", color: c.foreground, textAlign: "right", marginBottom: 12, alignSelf: "stretch" },
 
@@ -636,11 +636,11 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
     notifText: { flex: 1 },
     notifTitleRow: { flexDirection: "row-reverse", alignItems: "center", gap: 6, marginBottom: 4 },
     unreadDot: { width: 7, height: 7, borderRadius: 3.5, backgroundColor: c.primary },
-    notifTitle: { fontSize: 14, fontWeight: "700", color: c.foreground, textAlign: "right" },
+    notifTitle: { fontSize: 14, fontWeight: "700", color: c.foreground, textAlign: "right", alignSelf: "stretch" },
     notifTitleUnread: { color: c.primary },
-    notifMeta: { fontSize: 13, color: c.mutedForeground, textAlign: "right", marginBottom: 2 },
+    notifMeta: { fontSize: 13, color: c.mutedForeground, textAlign: "right", marginBottom: 2, alignSelf: "stretch" },
     notifMetaKey: { fontWeight: "600", color: c.foreground },
-    notifTime: { fontSize: 11, color: c.mutedForeground, textAlign: "right", marginTop: 4 },
+    notifTime: { fontSize: 11, color: c.mutedForeground, textAlign: "right", marginTop: 4, alignSelf: "stretch" },
     notifAction: { paddingTop: 2 },
     viewUserBtn: {
       marginTop: 10, flexDirection: "row-reverse", alignItems: "center", gap: 6,

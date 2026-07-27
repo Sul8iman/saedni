@@ -530,7 +530,7 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
       flexDirection: "row-reverse", alignItems: "center", gap: 8,
       paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: c.border,
     },
-    scheduledHeaderTxt: { fontSize: 14, fontWeight: "700", color: c.foreground, textAlign: "right" },
+    scheduledHeaderTxt: { fontSize: 14, fontWeight: "700", color: c.foreground, textAlign: "right", alignSelf: "stretch" },
 
     dtBtn: {
       flexDirection: "row-reverse", alignItems: "center", gap: 10,

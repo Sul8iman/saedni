@@ -93,7 +93,7 @@ const infoStyles = (c: ReturnType<typeof useColors>) => StyleSheet.create({
   },
   labelGroup: { flexDirection: "row-reverse", alignItems: "center", gap: 6 },
   label: { fontSize: 14, color: c.mutedForeground, fontWeight: "500" },
-  value: { fontSize: 14, color: c.foreground, fontWeight: "600", textAlign: "left", flexShrink: 1, marginStart: 8 },
+  value: { fontSize: 14, color: c.foreground, fontWeight: "600", textAlign: "right", flexShrink: 1, marginStart: 8 },
 });
 
 export default function UserDetailScreen() {
@@ -575,7 +575,7 @@ const reqCardStyles = (c: ReturnType<typeof useColors>) => StyleSheet.create({
   category: { fontSize: 14, fontWeight: "700", color: c.foreground },
   statusBadge: { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
   statusTxt: { fontSize: 11, fontWeight: "700" },
-  details: { fontSize: 13, color: c.mutedForeground, textAlign: "right", marginBottom: 8, alignSelf: "stretch" },
+  details: { fontSize: 13, color: c.mutedForeground, textAlign: "right", marginBottom: 8, alignSelf: "stretch", writingDirection: "rtl" },
   metaRow: { flexDirection: "row-reverse", alignItems: "center", gap: 5, marginBottom: 4 },
   metaTxt: { fontSize: 12, color: c.mutedForeground },
   dot: { width: 3, height: 3, borderRadius: 1.5, backgroundColor: c.mutedForeground },
@@ -643,7 +643,7 @@ const makeStyles = (c: ReturnType<typeof useColors>, _bottomInset: number) =>
     },
     otpCodeGroup: { flexDirection: "row-reverse", alignItems: "center", gap: 8 },
     otpLabelGroup: { flexDirection: "row-reverse", alignItems: "center", gap: 6 },
-    otpCode: { fontSize: 22, fontWeight: "800", color: c.primary, letterSpacing: 4, textAlign: "left" },
+    otpCode: { fontSize: 22, fontWeight: "800", color: c.primary, letterSpacing: 4, textAlign: "center" },
     otpLabel: { fontSize: 14, color: c.mutedForeground, fontWeight: "500" },
     otpCopyBtn: {
       flexDirection: "row-reverse", alignItems: "center", gap: 5,
@@ -680,7 +680,7 @@ const makeStyles = (c: ReturnType<typeof useColors>, _bottomInset: number) =>
 
     // Sections
     section: { marginBottom: 16 },
-    sectionTitle: { fontSize: 16, fontWeight: "700", color: c.foreground, textAlign: "right", marginBottom: 10, alignSelf: "stretch" },
+    sectionTitle: { fontSize: 16, fontWeight: "700", color: c.foreground, textAlign: "right", marginBottom: 10, alignSelf: "stretch", writingDirection: "rtl" },
     infoCard: {
       backgroundColor: c.card, borderRadius: 14, borderWidth: 1, borderColor: c.border,
       paddingHorizontal: 16, paddingTop: 4, paddingBottom: 0,

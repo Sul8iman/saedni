@@ -4,6 +4,7 @@ import {
   ActivityIndicator, Alert, Modal, FlatList, Platform,
 } from "react-native";
 import ArabicTextInput from "@/components/ArabicTextInput";
+import SectionLabel from "@/components/SectionLabel";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -168,7 +169,7 @@ export default function CustomerHomeScreen() {
         )}
 
         {/* ── Categories: 2 rows × 3 columns, RTL ── */}
-        <Text style={s.sectionLabel}>ساعدني في:</Text>
+        <SectionLabel style={s.sectionLabel}>ساعدني في:</SectionLabel>
         <View style={s.catGrid}>
           {catRows.map((row, rowIdx) => (
             <View key={rowIdx} style={s.catRow}>
@@ -198,7 +199,7 @@ export default function CustomerHomeScreen() {
         </View>
 
         {/* Details */}
-        <Text style={s.sectionLabel}>تفاصيل الطلب</Text>
+        <SectionLabel style={s.sectionLabel}>تفاصيل الطلب</SectionLabel>
         <ArabicTextInput
           style={[s.textarea, isBlocked && s.disabled]}
           value={details}
@@ -212,7 +213,7 @@ export default function CustomerHomeScreen() {
         />
 
         {/* Time type toggle */}
-        <Text style={s.sectionLabel}>الوقت</Text>
+        <SectionLabel style={s.sectionLabel}>الوقت</SectionLabel>
         <View style={s.segmented}>
           {(["now", "scheduled"] as const).map((t) => (
             <TouchableOpacity
@@ -313,7 +314,7 @@ export default function CustomerHomeScreen() {
         )}
 
         {/* Area */}
-        <Text style={s.sectionLabel}>المنطقة</Text>
+        <SectionLabel style={s.sectionLabel}>المنطقة</SectionLabel>
         <TouchableOpacity
           style={[s.picker, isBlocked && s.disabled]}
           onPress={() => !isBlocked && setAreaPickerVisible(true)}
@@ -327,7 +328,7 @@ export default function CustomerHomeScreen() {
         </TouchableOpacity>
 
         {/* Amount */}
-        <Text style={s.sectionLabel}>المبلغ المدفوع</Text>
+        <SectionLabel style={s.sectionLabel}>المبلغ المدفوع</SectionLabel>
         <View style={[s.amountRow, isBlocked && s.disabled]}>
           <Text style={s.currencyLabel}>ر.ع.</Text>
           <ArabicTextInput
@@ -340,9 +341,6 @@ export default function CustomerHomeScreen() {
             editable={!isBlocked}
           />
         </View>
-
-        {/* RTL verification marker — confirms this bundle is live */}
-        <Text style={s.rtlMarker}>RTL FIX VERIFIED – BUILD 11</Text>
 
         {/* Submit */}
         <TouchableOpacity
@@ -481,7 +479,7 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
     sectionLabel: {
       fontSize: 14, fontWeight: "700", color: c.foreground,
       textAlign: "right", marginBottom: 10, marginTop: 4,
-      alignSelf: "stretch",
+      alignSelf: "stretch", writingDirection: "rtl",
     },
 
     // ── Category grid ──
@@ -588,10 +586,6 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
       textAlign: "right", paddingVertical: 14,
     },
 
-    rtlMarker: {
-      textAlign: "center", fontSize: 11, color: "#CC0000",
-      fontWeight: "800", marginBottom: 12, alignSelf: "stretch",
-    },
     submitBtn: {
       backgroundColor: c.primary, borderRadius: 14, paddingVertical: 17, alignItems: "center",
       shadowColor: c.primary, shadowOffset: { width: 0, height: 4 },

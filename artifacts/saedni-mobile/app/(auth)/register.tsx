@@ -9,6 +9,7 @@ import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
+import SectionLabel from "@/components/SectionLabel";
 import { useColors } from "@/hooks/useColors";
 import { useAuth, type AuthUser } from "@/contexts/AuthContext";
 
@@ -121,16 +122,11 @@ export default function RegisterScreen() {
           </Text>
         </View>
 
-        {/* ── Build stamp (temporary — remove after verifying install) ── */}
-        <View style={s.buildBanner}>
-          <Text style={s.buildLabel}>Android Build 10 – f299b68</Text>
-        </View>
-
         <View style={s.card}>
           {step === "form" && (
             <>
               {/* Role selector */}
-              <Text style={s.fieldLabel}>نوع الحساب</Text>
+              <SectionLabel style={s.fieldLabel}>نوع الحساب</SectionLabel>
               <View style={s.roleRow}>
                 {(["customer", "helper"] as const).map((v) => (
                   <TouchableOpacity
@@ -154,7 +150,7 @@ export default function RegisterScreen() {
                 ))}
               </View>
 
-              <Text style={s.fieldLabel}>الاسم الكامل</Text>
+              <SectionLabel style={s.fieldLabel}>الاسم الكامل</SectionLabel>
               <ArabicTextInput
                 style={s.input}
                 value={name}
@@ -164,7 +160,7 @@ export default function RegisterScreen() {
                 returnKeyType="next"
               />
 
-              <Text style={s.fieldLabel}>رقم الهاتف</Text>
+              <SectionLabel style={s.fieldLabel}>رقم الهاتف</SectionLabel>
               <ArabicTextInput
                 style={s.input}
                 value={phone}
@@ -301,6 +297,7 @@ const makeStyles = (c: ReturnType<typeof useColors>) =>
     fieldLabel: {
       fontSize: 14, fontWeight: "600", color: c.foreground,
       textAlign: "right", marginBottom: 10, alignSelf: "stretch",
+      writingDirection: "rtl",
     },
     input: {
       borderWidth: 1.5, borderColor: c.border, borderRadius: 12,
@@ -368,6 +365,5 @@ const makeStyles = (c: ReturnType<typeof useColors>) =>
       color: c.secondaryForeground, fontSize: 13, textAlign: "right",
       flex: 1, lineHeight: 20,
     },
-    buildBanner: { alignItems: "center", marginBottom: 10 },
-    buildLabel: { fontSize: 11, color: "#CC0000", fontWeight: "800", letterSpacing: 0.5 },
+
   });

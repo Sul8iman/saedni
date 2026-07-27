@@ -328,7 +328,7 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
     filterLabel: {
       fontSize: 12, fontWeight: "700", color: c.mutedForeground,
       textAlign: "right", paddingHorizontal: 16, marginBottom: 6,
-      alignSelf: "stretch",
+      alignSelf: "stretch", writingDirection: "rtl",
     },
     chipsRow: { paddingHorizontal: 16, flexDirection: "row-reverse", gap: 8 },
     chip: {
@@ -362,6 +362,7 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
     details: {
       fontSize: 14, color: c.mutedForeground, textAlign: "right",
       lineHeight: 21, marginBottom: 12, alignSelf: "stretch",
+      writingDirection: "rtl",
     },
     publishRow: { flexDirection: "row-reverse", alignItems: "center", gap: 5, marginBottom: 12 },
     publishTxt: { fontSize: 11, color: c.mutedForeground, textAlign: "right", alignSelf: "stretch" },

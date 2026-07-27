@@ -9,6 +9,7 @@ import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { useMutation } from "@tanstack/react-query";
 import { useColors } from "@/hooks/useColors";
+import SectionLabel from "@/components/SectionLabel";
 import { useAuth } from "@/contexts/AuthContext";
 import { CATEGORIES, AREAS } from "@/constants/categories";
 
@@ -150,7 +151,7 @@ export default function HelperProfileScreen() {
           </Text>
 
           {/* Category interests */}
-          <Text style={s.subTitle}>نوع الطلب</Text>
+          <SectionLabel style={s.subTitle}>نوع الطلب</SectionLabel>
           <View style={s.chipsWrap}>
             {CATEGORIES.map(cat => {
               const on = selCats.includes(cat.value);
@@ -169,7 +170,7 @@ export default function HelperProfileScreen() {
           </View>
 
           {/* Area preferences */}
-          <Text style={[s.subTitle, { marginTop: 16 }]}>المناطق المفضلة</Text>
+          <SectionLabel style={[s.subTitle, { marginTop: 16 }]}>المناطق المفضلة</SectionLabel>
           <View style={s.chipsWrap}>
             {AREAS.map(area => {
               const on = selAreas.includes(area);
@@ -220,7 +221,7 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
     headerInner: { paddingHorizontal: 20, paddingVertical: 14 },
     headerTitle: { fontSize: 22, fontWeight: "800", color: c.foreground, textAlign: "right", alignSelf: "stretch" },
     scroll: { flex: 1 },
-    content: { padding: 20, paddingBottom: bottomInset + 100, alignItems: "center" },
+    content: { padding: 20, paddingBottom: bottomInset + 100 },
 
     avatarSection: { alignItems: "center", paddingVertical: 28 },
     avatar: {
@@ -253,8 +254,8 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
       borderWidth: 1, borderColor: "#FDE68A",
     },
     pendingText: { flex: 1 },
-    pendingTitle: { fontSize: 14, fontWeight: "700", color: "#92400E", textAlign: "right", marginBottom: 2, alignSelf: "stretch" },
-    pendingHint: { fontSize: 13, color: "#92400E", textAlign: "right", lineHeight: 18, alignSelf: "stretch" },
+    pendingTitle: { fontSize: 14, fontWeight: "700", color: "#92400E", textAlign: "right", marginBottom: 2, alignSelf: "stretch", writingDirection: "rtl" },
+    pendingHint: { fontSize: 13, color: "#92400E", textAlign: "right", lineHeight: 18, alignSelf: "stretch", writingDirection: "rtl" },
 
     infoCard: {
       width: "100%", backgroundColor: c.card, borderRadius: 16,
@@ -288,10 +289,12 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
     interestsHint: {
       fontSize: 13, color: c.mutedForeground, textAlign: "right",
       lineHeight: 20, marginBottom: 18, alignSelf: "stretch",
+      writingDirection: "rtl",
     },
     subTitle: {
       fontSize: 14, fontWeight: "700", color: c.foreground,
       textAlign: "right", marginBottom: 10, alignSelf: "stretch",
+      writingDirection: "rtl",
     },
     chipsWrap: {
       flexDirection: "row-reverse", flexWrap: "wrap", gap: 8,

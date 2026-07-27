@@ -9,6 +9,7 @@ import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
+import SectionLabel from "@/components/SectionLabel";
 import { useColors } from "@/hooks/useColors";
 import { useAuth, type AuthUser } from "@/contexts/AuthContext";
 
@@ -194,19 +195,14 @@ export default function LoginScreen() {
           <Text style={s.tagline}>منصة المساعدة اليومية في عُمان</Text>
         </View>
 
-        {/* ── Build stamp (temporary — remove after verifying install) ── */}
-        <View style={s.buildBanner}>
-          <Text style={s.buildLabel}>Android Build 10 – f299b68</Text>
-        </View>
-
         {/* Card */}
         <View style={s.card}>
 
           {/* ── Phone step ── */}
           {step === "phone" && (
             <>
-              <Text style={s.cardTitle}>تسجيل الدخول</Text>
-              <Text style={s.fieldLabel}>رقم الهاتف</Text>
+              <SectionLabel style={s.cardTitle}>تسجيل الدخول</SectionLabel>
+              <SectionLabel style={s.fieldLabel}>رقم الهاتف</SectionLabel>
               <ArabicTextInput
                 style={s.input}
                 value={phone}
@@ -240,7 +236,7 @@ export default function LoginScreen() {
           {/* ── OTP step ── */}
           {step === "otp" && (
             <>
-              <Text style={s.cardTitle}>رمز التحقق</Text>
+              <SectionLabel style={s.cardTitle}>رمز التحقق</SectionLabel>
 
               {isUnverified && (
                 <View style={s.warnBox}>
@@ -305,7 +301,7 @@ export default function LoginScreen() {
                 <Ionicons name="shield-checkmark" size={16} color={colors.primary} />
                 <Text style={s.adminBadgeTxt}>دخول المدير</Text>
               </View>
-              <Text style={s.fieldLabel}>رمز PIN</Text>
+              <SectionLabel style={s.fieldLabel}>رمز PIN</SectionLabel>
               <TextInput
                 style={[s.input, s.otpInput]}
                 value={pin}
@@ -363,10 +359,12 @@ const makeStyles = (c: ReturnType<typeof useColors>) =>
     cardTitle: {
       fontSize: 20, fontWeight: "700", color: c.foreground,
       textAlign: "right", marginBottom: 20, alignSelf: "stretch",
+      writingDirection: "rtl",
     },
     fieldLabel: {
       fontSize: 14, fontWeight: "600", color: c.foreground,
       textAlign: "right", marginBottom: 8, alignSelf: "stretch",
+      writingDirection: "rtl",
     },
     subLabel: { fontSize: 13, color: c.mutedForeground, textAlign: "right", marginBottom: 12, alignSelf: "stretch" },
     subLabelBold: { fontWeight: "700", color: c.foreground },
@@ -417,6 +415,5 @@ const makeStyles = (c: ReturnType<typeof useColors>) =>
       alignSelf: "flex-end", marginBottom: 16,
     },
     adminBadgeTxt: { color: c.primary, fontWeight: "700", fontSize: 13 },
-    buildBanner: { alignItems: "center", marginBottom: 10 },
-    buildLabel: { fontSize: 11, color: "#CC0000", fontWeight: "800", letterSpacing: 0.5 },
+
   });

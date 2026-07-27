@@ -547,7 +547,7 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
     statLabel: { fontSize: 11, color: c.mutedForeground, textAlign: "right", marginTop: 2, alignSelf: "stretch" },
 
     // Feedback stats
-    feedbackTitle: { fontSize: 15, fontWeight: "700", color: c.foreground, textAlign: "right", marginBottom: 10, alignSelf: "stretch" },
+    feedbackTitle: { fontSize: 15, fontWeight: "700", color: c.foreground, textAlign: "right", marginBottom: 10, alignSelf: "stretch", writingDirection: "rtl" },
     feedbackRow: { flexDirection: "row-reverse", gap: 8, marginBottom: 20 },
     feedbackCard: {
       flex: 1, backgroundColor: c.card, borderRadius: 14, borderWidth: 1.5,
@@ -562,14 +562,14 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
     feedbackVal: { fontSize: 20, fontWeight: "800", marginBottom: 2 },
     feedbackLabel: { fontSize: 10, color: c.mutedForeground, textAlign: "right", alignSelf: "stretch" },
 
-    sectionTitle: { fontSize: 17, fontWeight: "700", color: c.foreground, textAlign: "right", marginBottom: 12, alignSelf: "stretch" },
+    sectionTitle: { fontSize: 17, fontWeight: "700", color: c.foreground, textAlign: "right", marginBottom: 12, alignSelf: "stretch", writingDirection: "rtl" },
 
     // Help badge on request cards
     helpBadge: { alignSelf: "flex-end", borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3, marginBottom: 6 },
     helpBadgeTxt: { fontSize: 11, fontWeight: "700" },
 
     // Feedback filter buttons
-    filterTitle: { fontSize: 13, fontWeight: "600", color: c.mutedForeground, textAlign: "right", marginBottom: 8, alignSelf: "stretch" },
+    filterTitle: { fontSize: 13, fontWeight: "600", color: c.mutedForeground, textAlign: "right", marginBottom: 8, alignSelf: "stretch", writingDirection: "rtl" },
     filterRow: { flexDirection: "row-reverse", flexWrap: "wrap", gap: 6, marginBottom: 14 },
     filterBtn: {
       borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6,
@@ -592,7 +592,7 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
     reqAmount: { fontSize: 14, fontWeight: "700", color: c.primary },
     statusBadge: { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
     statusTxt: { fontSize: 11, fontWeight: "700" },
-    reqDetails: { fontSize: 13, color: c.mutedForeground, textAlign: "right", marginBottom: 8, alignSelf: "stretch" },
+    reqDetails: { fontSize: 13, color: c.mutedForeground, textAlign: "right", marginBottom: 8, alignSelf: "stretch", writingDirection: "rtl" },
     reqActions: { flexDirection: "row-reverse", gap: 8, marginBottom: 10 },
     endBtn: {
       flex: 1, flexDirection: "row-reverse", alignItems: "center", justifyContent: "center",
@@ -636,11 +636,11 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
     notifText: { flex: 1 },
     notifTitleRow: { flexDirection: "row-reverse", alignItems: "center", gap: 6, marginBottom: 4 },
     unreadDot: { width: 7, height: 7, borderRadius: 3.5, backgroundColor: c.primary },
-    notifTitle: { fontSize: 14, fontWeight: "700", color: c.foreground, textAlign: "right", alignSelf: "stretch" },
+    notifTitle: { fontSize: 14, fontWeight: "700", color: c.foreground, textAlign: "right", alignSelf: "stretch", writingDirection: "rtl" },
     notifTitleUnread: { color: c.primary },
-    notifMeta: { fontSize: 13, color: c.mutedForeground, textAlign: "right", marginBottom: 2, alignSelf: "stretch" },
+    notifMeta: { fontSize: 13, color: c.mutedForeground, textAlign: "right", marginBottom: 2, alignSelf: "stretch", writingDirection: "rtl" },
     notifMetaKey: { fontWeight: "600", color: c.foreground },
-    notifTime: { fontSize: 11, color: c.mutedForeground, textAlign: "right", marginTop: 4, alignSelf: "stretch" },
+    notifTime: { fontSize: 11, color: c.mutedForeground, textAlign: "right", marginTop: 4, alignSelf: "stretch", writingDirection: "rtl" },
     notifAction: { paddingTop: 2 },
     viewUserBtn: {
       marginTop: 10, flexDirection: "row-reverse", alignItems: "center", gap: 6,

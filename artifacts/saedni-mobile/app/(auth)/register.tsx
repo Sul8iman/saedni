@@ -1,8 +1,9 @@
 import React, { useState } from "react";
 import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet,
+  View, Text, TouchableOpacity, StyleSheet,
   ActivityIndicator, Alert, Linking,
 } from "react-native";
+import ArabicTextInput from "@/components/ArabicTextInput";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -122,7 +123,7 @@ export default function RegisterScreen() {
 
         {/* ── Build stamp (temporary — remove after verifying install) ── */}
         <View style={s.buildBanner}>
-          <Text style={s.buildLabel}>Android Build 9 – 4c9c6a7</Text>
+          <Text style={s.buildLabel}>Android Build 10 – f299b68</Text>
         </View>
 
         <View style={s.card}>
@@ -154,24 +155,22 @@ export default function RegisterScreen() {
               </View>
 
               <Text style={s.fieldLabel}>الاسم الكامل</Text>
-              <TextInput
+              <ArabicTextInput
                 style={s.input}
                 value={name}
                 onChangeText={setName}
                 placeholder="مثال: أحمد الريامي"
-                textAlign="right"
                 placeholderTextColor={colors.mutedForeground}
                 returnKeyType="next"
               />
 
               <Text style={s.fieldLabel}>رقم الهاتف</Text>
-              <TextInput
+              <ArabicTextInput
                 style={s.input}
                 value={phone}
                 onChangeText={setPhone}
                 placeholder="96891000001"
                 keyboardType="phone-pad"
-                textAlign="right"
                 placeholderTextColor={colors.mutedForeground}
                 returnKeyType="done"
                 onSubmitEditing={handleRegister}
@@ -245,7 +244,7 @@ export default function RegisterScreen() {
                 </>
               )}
               <Text style={s.fieldLabel}>رمز التحقق</Text>
-              <TextInput
+              <ArabicTextInput
                 style={[s.input, s.otpInput]}
                 value={otp}
                 onChangeText={t => setOtp(t.replace(/\D/g, "").slice(0, 6))}
@@ -253,6 +252,7 @@ export default function RegisterScreen() {
                 keyboardType="number-pad"
                 maxLength={6}
                 textAlign="center"
+                writingDirection="ltr"
                 placeholderTextColor={colors.mutedForeground}
                 autoFocus
               />

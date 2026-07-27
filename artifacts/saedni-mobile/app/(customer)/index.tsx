@@ -1,8 +1,9 @@
 import React, { useState } from "react";
 import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet,
+  View, Text, TouchableOpacity, StyleSheet,
   ActivityIndicator, Alert, Modal, FlatList, Platform,
 } from "react-native";
+import ArabicTextInput from "@/components/ArabicTextInput";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -198,7 +199,7 @@ export default function CustomerHomeScreen() {
 
         {/* Details */}
         <Text style={s.sectionLabel}>تفاصيل الطلب</Text>
-        <TextInput
+        <ArabicTextInput
           style={[s.textarea, isBlocked && s.disabled]}
           value={details}
           onChangeText={setDetails}
@@ -206,7 +207,6 @@ export default function CustomerHomeScreen() {
           multiline
           numberOfLines={4}
           textAlignVertical="top"
-          textAlign="right"
           placeholderTextColor={colors.mutedForeground}
           editable={!isBlocked}
         />
@@ -330,13 +330,12 @@ export default function CustomerHomeScreen() {
         <Text style={s.sectionLabel}>المبلغ المدفوع</Text>
         <View style={[s.amountRow, isBlocked && s.disabled]}>
           <Text style={s.currencyLabel}>ر.ع.</Text>
-          <TextInput
+          <ArabicTextInput
             style={s.amountInput}
             value={amount}
             onChangeText={t => setAmount(t.replace(/[^0-9.]/g, ""))}
             placeholder="0.000"
             keyboardType="decimal-pad"
-            textAlign="right"
             placeholderTextColor={colors.mutedForeground}
             editable={!isBlocked}
           />

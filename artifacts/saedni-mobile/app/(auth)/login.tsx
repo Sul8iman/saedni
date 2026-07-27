@@ -1,8 +1,9 @@
 import React, { useState } from "react";
 import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet,
+  View, Text, TouchableOpacity, StyleSheet,
   ActivityIndicator, Alert, Linking,
 } from "react-native";
+import ArabicTextInput from "@/components/ArabicTextInput";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -195,7 +196,7 @@ export default function LoginScreen() {
 
         {/* ── Build stamp (temporary — remove after verifying install) ── */}
         <View style={s.buildBanner}>
-          <Text style={s.buildLabel}>Android Build 9 – 4c9c6a7</Text>
+          <Text style={s.buildLabel}>Android Build 10 – f299b68</Text>
         </View>
 
         {/* Card */}
@@ -206,13 +207,12 @@ export default function LoginScreen() {
             <>
               <Text style={s.cardTitle}>تسجيل الدخول</Text>
               <Text style={s.fieldLabel}>رقم الهاتف</Text>
-              <TextInput
+              <ArabicTextInput
                 style={s.input}
                 value={phone}
                 onChangeText={setPhone}
                 placeholder="96891000001"
                 keyboardType="phone-pad"
-                textAlign="right"
                 placeholderTextColor={colors.mutedForeground}
                 autoFocus
                 returnKeyType="done"
@@ -270,7 +270,7 @@ export default function LoginScreen() {
                 </>
               )}
 
-              <TextInput
+              <ArabicTextInput
                 style={[s.input, s.otpInput]}
                 value={otp}
                 onChangeText={t => setOtp(t.replace(/\D/g, "").slice(0, 6))}
@@ -278,6 +278,7 @@ export default function LoginScreen() {
                 keyboardType="number-pad"
                 maxLength={6}
                 textAlign="center"
+                writingDirection="ltr"
                 placeholderTextColor={colors.mutedForeground}
                 autoFocus
               />

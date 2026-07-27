@@ -3,6 +3,7 @@ import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
   ActivityIndicator, Alert, Modal, TextInput,
 } from "react-native";
+import ArabicTextInput from "@/components/ArabicTextInput";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -468,7 +469,7 @@ export default function UserDetailScreen() {
           <View style={s.modalCard}>
             <Text style={s.modalTitle}>رمز التحقق</Text>
             <Text style={s.modalHint}>اضغط مطولاً على الرمز لنسخه</Text>
-            <TextInput
+            <ArabicTextInput
               ref={otpInputRef}
               style={s.modalOtpInput}
               value={user?.otpCode ?? ""}
@@ -476,6 +477,8 @@ export default function UserDetailScreen() {
               contextMenuHidden={false}
               editable
               caretHidden
+              textAlign="center"
+              writingDirection="ltr"
               onChangeText={() => {}}
             />
             <TouchableOpacity

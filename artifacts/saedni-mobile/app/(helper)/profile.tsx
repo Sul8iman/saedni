@@ -218,7 +218,7 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
     container: { flex: 1, backgroundColor: c.background },
     headerSafe: { backgroundColor: c.card, borderBottomWidth: 1, borderBottomColor: c.border },
     headerInner: { paddingHorizontal: 20, paddingVertical: 14 },
-    headerTitle: { fontSize: 22, fontWeight: "800", color: c.foreground, textAlign: "right" },
+    headerTitle: { fontSize: 22, fontWeight: "800", color: c.foreground, textAlign: "right", alignSelf: "stretch" },
     scroll: { flex: 1 },
     content: { padding: 20, paddingBottom: bottomInset + 100, alignItems: "center" },
 
@@ -253,8 +253,8 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
       borderWidth: 1, borderColor: "#FDE68A",
     },
     pendingText: { flex: 1 },
-    pendingTitle: { fontSize: 14, fontWeight: "700", color: "#92400E", textAlign: "right", marginBottom: 2 },
-    pendingHint: { fontSize: 13, color: "#92400E", textAlign: "right", lineHeight: 18 },
+    pendingTitle: { fontSize: 14, fontWeight: "700", color: "#92400E", textAlign: "right", marginBottom: 2, alignSelf: "stretch" },
+    pendingHint: { fontSize: 13, color: "#92400E", textAlign: "right", lineHeight: 18, alignSelf: "stretch" },
 
     infoCard: {
       width: "100%", backgroundColor: c.card, borderRadius: 16,
@@ -287,11 +287,11 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
     interestsTitle: { fontSize: 18, fontWeight: "800", color: c.foreground },
     interestsHint: {
       fontSize: 13, color: c.mutedForeground, textAlign: "right",
-      lineHeight: 20, marginBottom: 18,
+      lineHeight: 20, marginBottom: 18, alignSelf: "stretch",
     },
     subTitle: {
       fontSize: 14, fontWeight: "700", color: c.foreground,
-      textAlign: "right", marginBottom: 10,
+      textAlign: "right", marginBottom: 10, alignSelf: "stretch",
     },
     chipsWrap: {
       flexDirection: "row-reverse", flexWrap: "wrap", gap: 8,

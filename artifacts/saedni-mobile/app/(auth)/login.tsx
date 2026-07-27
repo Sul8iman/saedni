@@ -362,13 +362,13 @@ const makeStyles = (c: ReturnType<typeof useColors>) =>
     },
     cardTitle: {
       fontSize: 20, fontWeight: "700", color: c.foreground,
-      textAlign: "right", marginBottom: 20,
+      textAlign: "right", marginBottom: 20, alignSelf: "stretch",
     },
     fieldLabel: {
       fontSize: 14, fontWeight: "600", color: c.foreground,
-      textAlign: "right", marginBottom: 8,
+      textAlign: "right", marginBottom: 8, alignSelf: "stretch",
     },
-    subLabel: { fontSize: 13, color: c.mutedForeground, textAlign: "right", marginBottom: 12 },
+    subLabel: { fontSize: 13, color: c.mutedForeground, textAlign: "right", marginBottom: 12, alignSelf: "stretch" },
     subLabelBold: { fontWeight: "700", color: c.foreground },
     input: {
       borderWidth: 1.5, borderColor: c.border, borderRadius: 12,

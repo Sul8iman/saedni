@@ -300,7 +300,7 @@ const makeStyles = (c: ReturnType<typeof useColors>) =>
     },
     fieldLabel: {
       fontSize: 14, fontWeight: "600", color: c.foreground,
-      textAlign: "right", marginBottom: 10,
+      textAlign: "right", marginBottom: 10, alignSelf: "stretch",
     },
     input: {
       borderWidth: 1.5, borderColor: c.border, borderRadius: 12,

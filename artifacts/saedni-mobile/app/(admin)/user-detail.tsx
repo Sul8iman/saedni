@@ -680,7 +680,7 @@ const makeStyles = (c: ReturnType<typeof useColors>, _bottomInset: number) =>
 
     // Sections
     section: { marginBottom: 16 },
-    sectionTitle: { fontSize: 16, fontWeight: "700", color: c.foreground, textAlign: "right", marginBottom: 10 },
+    sectionTitle: { fontSize: 16, fontWeight: "700", color: c.foreground, textAlign: "right", marginBottom: 10, alignSelf: "stretch" },
     infoCard: {
       backgroundColor: c.card, borderRadius: 14, borderWidth: 1, borderColor: c.border,
       paddingHorizontal: 16, paddingTop: 4, paddingBottom: 0,

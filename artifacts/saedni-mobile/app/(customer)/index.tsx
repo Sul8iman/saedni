@@ -341,6 +341,9 @@ export default function CustomerHomeScreen() {
           />
         </View>
 
+        {/* RTL verification marker — confirms this bundle is live */}
+        <Text style={s.rtlMarker}>RTL FIX VERIFIED – BUILD 11</Text>
+
         {/* Submit */}
         <TouchableOpacity
           style={[s.submitBtn, (loading || !!isBlocked) && s.submitDisabled]}
@@ -457,8 +460,8 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
     container: { flex: 1, backgroundColor: c.background },
     headerSafe: { backgroundColor: c.card, borderBottomWidth: 1, borderBottomColor: c.border },
     headerInner: { paddingHorizontal: 20, paddingVertical: 14 },
-    headerTitle: { fontSize: 26, fontWeight: "800", color: c.primary, textAlign: "right" },
-    headerSub: { fontSize: 13, color: c.mutedForeground, textAlign: "right" },
+    headerTitle: { fontSize: 26, fontWeight: "800", color: c.primary, textAlign: "right", alignSelf: "stretch" },
+    headerSub: { fontSize: 13, color: c.mutedForeground, textAlign: "right", alignSelf: "stretch" },
     scroll: { flex: 1 },
     content: { padding: 16, paddingBottom: bottomInset + 100 },
 
@@ -478,6 +481,7 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
     sectionLabel: {
       fontSize: 14, fontWeight: "700", color: c.foreground,
       textAlign: "right", marginBottom: 10, marginTop: 4,
+      alignSelf: "stretch",
     },
 
     // ── Category grid ──
@@ -577,13 +581,17 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
     },
     currencyLabel: {
       paddingHorizontal: 16, fontSize: 14, color: c.mutedForeground, fontWeight: "700",
-      borderRightWidth: 1.5, borderRightColor: c.border, paddingVertical: 14, backgroundColor: c.muted,
+      borderEndWidth: 1.5, borderEndColor: c.border, paddingVertical: 14, backgroundColor: c.muted,
     },
     amountInput: {
       flex: 1, fontSize: 17, color: c.foreground, paddingHorizontal: 16,
       textAlign: "right", paddingVertical: 14,
     },
 
+    rtlMarker: {
+      textAlign: "center", fontSize: 11, color: "#CC0000",
+      fontWeight: "800", marginBottom: 12, alignSelf: "stretch",
+    },
     submitBtn: {
       backgroundColor: c.primary, borderRadius: 14, paddingVertical: 17, alignItems: "center",
       shadowColor: c.primary, shadowOffset: { width: 0, height: 4 },

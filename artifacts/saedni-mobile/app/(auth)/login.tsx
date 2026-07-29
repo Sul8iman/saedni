@@ -302,7 +302,7 @@ export default function LoginScreen() {
                 <Text style={s.adminBadgeTxt}>دخول المدير</Text>
               </View>
               <SectionLabel style={s.fieldLabel}>رمز PIN</SectionLabel>
-              <TextInput
+              <ArabicTextInput
                 style={[s.input, s.otpInput]}
                 value={pin}
                 onChangeText={t => setPin(t.replace(/\D/g, "").slice(0, 6))}

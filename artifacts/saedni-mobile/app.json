@@ -28,7 +28,7 @@
     },
     "android": {
       "package": "com.saedni.app",
-      "versionCode": 13,
+      "versionCode": 14,
       "supportsRtl": true,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/icon.png",

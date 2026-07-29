@@ -1,0 +1,196 @@
+We now have two separate production issues in the latest Android build. Do not create another build until both are reproduced, diagnosed, and verified.
+
+Issue 1 — App crashes before OTP when using the admin number
+
+Steps to reproduce:
+
+Open the Android app.
+Enter admin phone number: 98584898
+Tap تسجيل الدخول
+Before any OTP screen appears, the app shows:
+Something went wrong
+Please reload the app to continue
+Try Again
+
+This happens specifically in the admin login path.
+
+Required investigation
+
+Do not hide the error with another generic error screen. Find the exact runtime exception.
+
+Inspect:
+
+AuthContext
+Login screen submit handler
+Admin hardcoded authentication path
+Admin database record creation/check
+Navigation after admin authentication
+Any code that assumes an OTP response exists
+Any access to properties such as:
+response.otpDelivery
+response.user
+response.token
+response.message
+Any route that receives missing or undefined parameters
+
+The admin flow may bypass OTP, while the current login code still tries to process it as a normal OTP response.
+
+Add temporary diagnostic logging around the complete login operation:
+
+console.log("ADMIN LOGIN START", { phone });
+
+try {
+  const result = await loginOrRequestOtp(phone);
+  console.log("ADMIN LOGIN RESULT", JSON.stringify(result));
+
+  // Log which branch is selected:
+  console.log("LOGIN FLOW", {
+    isAdmin,
+    requiresOtp: result?.requiresOtp,
+    otpDelivery: result?.otpDelivery,
+    hasToken: Boolean(result?.token),
+    hasUser: Boolean(result?.user),
+  });
+} catch (error) {
+  console.error("ADMIN LOGIN ERROR", error);
+}
+
+The actual implementation must match the existing functions; do not invent a second authentication system.
+
+Expected admin behavior
+
+For phone number 98584898:
+
+The app must not crash.
+If the admin does not require OTP, authenticate the admin and navigate directly to the admin screen.
+If the admin requires OTP, navigate normally to the OTP screen.
+Never continue into OTP logic using undefined response data.
+Ensure the admin database record exists before loading admin profile data.
+Show a clear Arabic error message if the backend request genuinely fails.
+
+Also inspect Render backend logs for the request made when 98584898 is submitted and report:
+
+Endpoint called
+HTTP status code
+Response body
+Exact frontend exception and file/line
+Exact root cause
+
+Do not merely add optional chaining everywhere. Fix the incorrect authentication branch.
+
+Issue 2 — Arabic layout remains left-aligned on Android
+
+The Arabic text and section labels are still aligned to the left in the current Android build.
+
+Important: the first Android release displayed the Arabic layout correctly on the right.
+
+Therefore, do not continue adding random RTL fixes. Compare the current code against the first working Android release and find the regression.
+
+Required investigation
+
+Use Git history to locate the first Android commit/build where RTL worked correctly.
+
+Compare these files between the working version and the current version:
+
+app.json / app.config.*
+Root layout
+Expo Router layouts
+Login screen
+Register screen
+New Request screen
+Shared text/input components
+Theme files
+Global styles
+Any I18nManager code
+
+Run commands such as:
+
+git log --oneline --all
+git diff <FIRST_WORKING_RTL_COMMIT>..HEAD -- artifacts/saedni-mobile
+git grep -n "I18nManager"
+git grep -n "allowRTL"
+git grep -n "forceRTL"
+git grep -n "swapLeftAndRightInRTL"
+git grep -n "textAlign.*left"
+git grep -n "alignSelf.*flex-start"
+git grep -n "alignItems.*flex-start"
+
+Check whether a later commit:
+
+Disabled I18nManager
+Removed RTL configuration
+Changed a root container to LTR
+Replaced row-reverse with row
+Added explicit left alignment
+Changed physical left/right styling
+Broke RTL when adding Expo localization or removing it
+Changed Android-specific behavior
+Required RTL result
+
+The app is Arabic-only. On Android, including when the device language is English:
+
+Screen titles must align right.
+Section labels must align right.
+Placeholders must begin from the right.
+Typed Arabic text must start from the right.
+Login and registration labels must align right.
+New Request labels such as:
+الوقت
+المنطقة
+المبلغ المدفوع
+تفاصيل الطلب
+must align right.
+Dropdown rows, icons, and text must follow the intended RTL order.
+Bottom navigation must retain the correct existing order.
+
+Do not assume that this is only a TextInput problem. Inspect both the text styles and their parent layout containers.
+
+Prefer restoring the RTL implementation from the first working Android version rather than layering more conflicting fixes onto the current code.
+
+Remove all temporary build/debug text
+
+Remove every temporary marker from the production UI, including:
+
+RTL FIX VERIFIED – BUILD 11
+Android Build 10 – f299b68
+Build 10
+Build 11
+
+Also search for and remove any visible:
+
+Build number
+Commit hash
+RTL verification text
+Debug labels
+
+These must not appear in the released application.
+
+Verification required before building
+
+Do not trigger EAS Build immediately.
+
+First provide:
+
+Exact root cause of the admin crash.
+Exact file and line that caused it.
+Backend response for admin login.
+Commit comparison showing what broke RTL after the first Android version.
+List of files changed.
+A local Android screenshot or emulator screenshot proving:
+Admin number no longer crashes.
+Correct admin login flow occurs.
+Login labels are aligned right.
+New Request section labels are aligned right.
+No Build/debug labels remain.
+
+Then commit and push the fixes.
+
+Use the next unused Android version code. Check the current Play Console/EAS version first; do not assume that version code 12 is still unused.
+
+Report:
+
+Version name
+Version code
+Git commit hash
+EAS Build ID
+Exact verification results

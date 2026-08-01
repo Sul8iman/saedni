@@ -1,12 +1,11 @@
 import React from "react";
 import {
-  Modal, View, Text, TouchableOpacity, StyleSheet,
-  TouchableWithoutFeedback,
+  Modal, View, Text, TouchableOpacity, StyleSheet, TouchableWithoutFeedback,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useColors } from "@/hooks/useColors";
+import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/contexts/AuthContext";
+import { useColors } from "@/hooks/useColors";
 
 interface Props {
   visible: boolean;
@@ -20,62 +19,47 @@ export default function GuestWall({ visible, onClose, message }: Props) {
   const { exitGuestMode } = useAuth();
   const s = makeStyles(colors);
 
-  function handleLogin() {
+  function goLogin() {
     onClose();
     exitGuestMode();
     router.replace("/(auth)/login");
   }
 
-  function handleRegister() {
+  function goRegister() {
     onClose();
     exitGuestMode();
     router.replace("/(auth)/register");
   }
 
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="fade"
-      statusBarTranslucent
-      onRequestClose={onClose}
-    >
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <TouchableWithoutFeedback onPress={onClose}>
-        <View style={s.overlay} />
-      </TouchableWithoutFeedback>
+        <View style={s.overlay}>
+          <TouchableWithoutFeedback>
+            <View style={s.sheet}>
+              <View style={s.iconWrap}>
+                <Ionicons name="lock-closed" size={32} color={colors.primary} />
+              </View>
+              <Text style={s.title}>هذه الميزة للأعضاء فقط</Text>
+              <Text style={s.sub}>
+                {message ?? "سجّل الدخول أو أنشئ حساباً للاستفادة من جميع ميزات ساعدني"}
+              </Text>
 
-      <View style={s.sheetWrapper} pointerEvents="box-none">
-        <View style={s.sheet}>
-          {/* Handle */}
-          <View style={s.handle} />
+              <TouchableOpacity style={s.primaryBtn} onPress={goLogin} activeOpacity={0.85}>
+                <Text style={s.primaryBtnTxt}>تسجيل الدخول</Text>
+              </TouchableOpacity>
 
-          {/* Icon */}
-          <View style={s.iconWrap}>
-            <Ionicons name="lock-closed" size={32} color={colors.primary} />
-          </View>
+              <TouchableOpacity style={s.secondaryBtn} onPress={goRegister} activeOpacity={0.85}>
+                <Text style={s.secondaryBtnTxt}>إنشاء حساب جديد</Text>
+              </TouchableOpacity>
 
-          {/* Title */}
-          <Text style={s.title}>تسجيل الدخول مطلوب</Text>
-
-          {/* Message */}
-          <Text style={s.message}>
-            {message ?? "سجّل الدخول أو أنشئ حساباً للتواصل مع أصحاب الطلبات وقبولها"}
-          </Text>
-
-          {/* Actions */}
-          <TouchableOpacity style={s.loginBtn} onPress={handleLogin} activeOpacity={0.85}>
-            <Text style={s.loginBtnTxt}>تسجيل الدخول</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={s.registerBtn} onPress={handleRegister} activeOpacity={0.85}>
-            <Text style={s.registerBtnTxt}>إنشاء حساب جديد</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={s.cancelBtn} onPress={onClose} activeOpacity={0.7}>
-            <Text style={s.cancelBtnTxt}>تصفح كضيف</Text>
-          </TouchableOpacity>
+              <TouchableOpacity onPress={onClose} style={s.cancelBtn} activeOpacity={0.7}>
+                <Text style={s.cancelTxt}>إغلاق</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableWithoutFeedback>
         </View>
-      </View>
+      </TouchableWithoutFeedback>
     </Modal>
   );
 }
@@ -83,61 +67,39 @@ export default function GuestWall({ visible, onClose, message }: Props) {
 const makeStyles = (c: ReturnType<typeof useColors>) =>
   StyleSheet.create({
     overlay: {
-      ...StyleSheet.absoluteFillObject,
-      backgroundColor: "rgba(0,0,0,0.5)",
-    },
-    sheetWrapper: {
-      ...StyleSheet.absoluteFillObject,
-      justifyContent: "flex-end",
+      flex: 1, backgroundColor: "rgba(0,0,0,0.45)",
+      alignItems: "center", justifyContent: "flex-end",
     },
     sheet: {
-      backgroundColor: c.card,
-      borderTopLeftRadius: 28,
-      borderTopRightRadius: 28,
-      paddingHorizontal: 24,
-      paddingTop: 12,
-      paddingBottom: 36,
-      alignItems: "center",
-    },
-    handle: {
-      width: 40, height: 4, borderRadius: 2,
-      backgroundColor: c.border, marginBottom: 24,
+      width: "100%", backgroundColor: c.background,
+      borderTopLeftRadius: 24, borderTopRightRadius: 24,
+      padding: 28, paddingBottom: 40, alignItems: "center",
     },
     iconWrap: {
-      width: 64, height: 64, borderRadius: 20,
+      width: 68, height: 68, borderRadius: 34,
       backgroundColor: c.secondary,
       alignItems: "center", justifyContent: "center",
-      marginBottom: 16,
+      marginBottom: 18,
     },
     title: {
       fontSize: 20, fontWeight: "800", color: c.foreground,
       textAlign: "center", marginBottom: 10,
     },
-    message: {
+    sub: {
       fontSize: 14, color: c.mutedForeground, textAlign: "center",
       lineHeight: 22, marginBottom: 28, paddingHorizontal: 8,
     },
-    loginBtn: {
-      backgroundColor: c.primary, borderRadius: 14,
-      paddingVertical: 15, alignItems: "center",
-      width: "100%", marginBottom: 10,
+    primaryBtn: {
+      width: "100%", backgroundColor: c.primary, borderRadius: 14,
+      paddingVertical: 16, alignItems: "center", marginBottom: 10,
     },
-    loginBtnTxt: {
-      color: c.primaryForeground, fontSize: 16, fontWeight: "700",
+    primaryBtnTxt: { color: c.primaryForeground, fontSize: 16, fontWeight: "700" },
+    secondaryBtn: {
+      width: "100%", backgroundColor: c.card, borderRadius: 14,
+      paddingVertical: 16, alignItems: "center",
+      borderWidth: 1.5, borderColor: c.border, marginBottom: 16,
     },
-    registerBtn: {
-      backgroundColor: c.secondary, borderRadius: 14,
-      paddingVertical: 15, alignItems: "center",
-      width: "100%", marginBottom: 10,
-      borderWidth: 1.5, borderColor: c.primary,
-    },
-    registerBtnTxt: {
-      color: c.primary, fontSize: 16, fontWeight: "700",
-    },
-    cancelBtn: {
-      paddingVertical: 10, alignItems: "center", width: "100%",
-    },
-    cancelBtnTxt: {
-      color: c.mutedForeground, fontSize: 14, fontWeight: "500",
-    },
+    secondaryBtnTxt: { color: c.foreground, fontSize: 16, fontWeight: "600" },
+    cancelBtn: { paddingVertical: 8 },
+    cancelTxt: { fontSize: 14, color: c.mutedForeground },
   });

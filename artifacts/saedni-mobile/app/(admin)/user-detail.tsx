@@ -1,9 +1,8 @@
-import React, { useState, useRef } from "react";
+import React, { useState } from "react";
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  ActivityIndicator, Alert, Modal, TextInput,
+  ActivityIndicator, Alert, Modal, Clipboard,
 } from "react-native";
-import ArabicTextInput from "@/components/ArabicTextInput";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -24,8 +23,10 @@ interface UserDetail {
   isVerified: boolean;
   isBlocked: boolean;
   isActive: boolean;
-  otpCode?: string | null;
-  otpCreatedAt?: string | null;
+  // Helper-specific activation code status (hash never returned)
+  helperActivationCodeActive?: boolean | null;
+  helperActivationCodeCreatedAt?: string | null;
+  helperActivationCodeUsedAt?: string | null;
   createdAt: string;
   lastLogin?: string | null;
 }
@@ -93,7 +94,7 @@ const infoStyles = (c: ReturnType<typeof useColors>) => StyleSheet.create({
   },
   labelGroup: { flexDirection: "row-reverse", alignItems: "center", gap: 6 },
   label: { fontSize: 14, color: c.mutedForeground, fontWeight: "500" },
-  value: { fontSize: 14, color: c.foreground, fontWeight: "600", textAlign: "right", flexShrink: 1, marginStart: 8 },
+  value: { fontSize: 14, color: c.foreground, fontWeight: "600", textAlign: "left", flexShrink: 1, marginStart: 8 },
 });
 
 export default function UserDetailScreen() {
@@ -107,8 +108,6 @@ export default function UserDetailScreen() {
     fallbackTime?: string;
   }>();
   const userId = Number(id);
-  const [otpModalVisible, setOtpModalVisible] = useState(false);
-  const otpInputRef = useRef<TextInput>(null);
 
   const { data: user, isLoading: userLoading } = useQuery<UserDetail>({
     queryKey: ["admin-user-detail", userId],
@@ -151,6 +150,29 @@ export default function UserDetailScreen() {
       qc.invalidateQueries({ queryKey: ["admin-users"] });
     },
     onError: () => Alert.alert("خطأ", "تعذر تحديث حالة المستخدم"),
+  });
+
+  const [newCode, setNewCode] = useState<string | null>(null);
+
+  const regenCodeMutation = useMutation({
+    mutationFn: async (): Promise<{ message: string; activationCode: string }> => {
+      const r = await fetch(`${BASE}/api/admin/helpers/${userId}/regenerate-code`, {
+        method: "POST",
+        credentials: "include",
+      });
+      if (!r.ok) {
+        const body = await r.json().catch(() => ({}));
+        throw new Error((body as any).error ?? "فشل إنشاء الرمز");
+      }
+      return r.json();
+    },
+    onSuccess: (data) => {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      qc.invalidateQueries({ queryKey: ["admin-user-detail", userId] });
+      qc.invalidateQueries({ queryKey: ["admin-users"] });
+      setNewCode(data.activationCode);
+    },
+    onError: (e: Error) => Alert.alert("خطأ", e.message),
   });
 
   const deleteMutation = useMutation({
@@ -317,37 +339,71 @@ export default function UserDetailScreen() {
           </View>
         </View>
 
-        {/* OTP Section (only if OTP present) */}
-        {(user.otpCode || user.otpCreatedAt) && (
+        {/* Helper Activation Code Section */}
+        {isHelper && (
           <View style={s.section}>
-            <Text style={s.sectionTitle}>رمز OTP</Text>
+            <Text style={s.sectionTitle}>رمز التفعيل</Text>
             <View style={s.infoCard}>
-              {user.otpCode && (
-                <View style={s.otpRow}>
-                  <TouchableOpacity
-                    style={s.otpCopyBtn}
-                    onPress={() => {
-                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                      setOtpModalVisible(true);
-                    }}
-                    activeOpacity={0.75}
-                  >
-                    <Ionicons name="copy-outline" size={15} color={colors.primary} />
-                    <Text style={s.otpCopyTxt}>نسخ</Text>
-                  </TouchableOpacity>
-                  <View style={s.otpCodeGroup}>
-                    <Text style={s.otpCode}>{user.otpCode}</Text>
-                    <View style={s.otpLabelGroup}>
-                      <Ionicons name="key-outline" size={15} color={colors.mutedForeground} />
-                      <Text style={s.otpLabel}>الرمز الحالي</Text>
-                    </View>
-                  </View>
-                </View>
+              <InfoRow
+                icon="key-outline"
+                label="حالة الرمز"
+                value={
+                  user.helperActivationCodeUsedAt
+                    ? "مستخدم"
+                    : user.helperActivationCodeActive
+                    ? "نشط (لم يُستخدم بعد)"
+                    : "لا يوجد رمز نشط"
+                }
+                valueColor={
+                  user.helperActivationCodeUsedAt
+                    ? colors.mutedForeground
+                    : user.helperActivationCodeActive
+                    ? colors.primary
+                    : "#F59E0B"
+                }
+              />
+              {user.helperActivationCodeCreatedAt && (
+                <InfoRow
+                  icon="time-outline"
+                  label="تاريخ الإنشاء"
+                  value={fmtDate(user.helperActivationCodeCreatedAt)}
+                />
               )}
-              {user.otpCreatedAt && (
-                <InfoRow icon="time-outline" label="وقت الإنشاء" value={fmtDate(user.otpCreatedAt)} />
+              {user.helperActivationCodeUsedAt && (
+                <InfoRow
+                  icon="checkmark-circle-outline"
+                  label="تاريخ الاستخدام"
+                  value={fmtDate(user.helperActivationCodeUsedAt)}
+                />
               )}
             </View>
+
+            {/* Regenerate code button — only for unverified, non-blocked helpers */}
+            {!user.isVerified && !user.isBlocked && (
+              <TouchableOpacity
+                style={[s.regenBtn, regenCodeMutation.isPending && { opacity: 0.6 }]}
+                disabled={regenCodeMutation.isPending}
+                onPress={() =>
+                  Alert.alert(
+                    "إنشاء رمز جديد",
+                    user.helperActivationCodeActive
+                      ? "سيتم إلغاء الرمز الحالي وإنشاء رمز جديد. هل تريد المتابعة؟"
+                      : "هل تريد إنشاء رمز تفعيل جديد لهذا المساعد؟",
+                    [
+                      { text: "إلغاء", style: "cancel" },
+                      {
+                        text: "إنشاء",
+                        onPress: () => regenCodeMutation.mutate(),
+                      },
+                    ]
+                  )
+                }
+                activeOpacity={0.8}
+              >
+                <Ionicons name="refresh-circle-outline" size={18} color={colors.primary} />
+                <Text style={s.regenBtnTxt}>إنشاء رمز جديد</Text>
+              </TouchableOpacity>
+            )}
           </View>
         )}
 
@@ -458,33 +514,37 @@ export default function UserDetailScreen() {
         )}
       </ScrollView>
 
-      {/* OTP Copy Modal */}
+      {/* ── One-time activation code modal ── */}
       <Modal
-        visible={otpModalVisible}
+        visible={newCode !== null}
         transparent
         animationType="fade"
-        onRequestClose={() => setOtpModalVisible(false)}
+        onRequestClose={() => setNewCode(null)}
       >
         <View style={s.modalOverlay}>
           <View style={s.modalCard}>
-            <Text style={s.modalTitle}>رمز التحقق</Text>
-            <Text style={s.modalHint}>اضغط مطولاً على الرمز لنسخه</Text>
-            <ArabicTextInput
-              ref={otpInputRef}
-              style={s.modalOtpInput}
-              value={user?.otpCode ?? ""}
-              selectTextOnFocus
-              contextMenuHidden={false}
-              editable
-              caretHidden
-              textAlign="center"
-              writingDirection="ltr"
-              onChangeText={() => {}}
-            />
+            <Ionicons name="key-outline" size={32} color={colors.primary} style={{ marginBottom: 8 }} />
+            <Text style={s.modalTitle}>رمز التفعيل الجديد</Text>
+            <Text style={s.modalWarn}>احفظ الرمز الآن، لن يظهر مرة أخرى.</Text>
+            <View style={s.modalCodeBox}>
+              <Text style={s.modalCode}>{newCode}</Text>
+            </View>
+            <TouchableOpacity
+              style={s.modalCopyBtn}
+              activeOpacity={0.8}
+              onPress={() => {
+                Clipboard.setString(newCode ?? "");
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                Alert.alert("تم النسخ", "تم نسخ رمز التفعيل");
+              }}
+            >
+              <Ionicons name="copy-outline" size={16} color={colors.primaryForeground} />
+              <Text style={s.modalCopyTxt}>نسخ الرمز</Text>
+            </TouchableOpacity>
             <TouchableOpacity
               style={s.modalCloseBtn}
-              onPress={() => setOtpModalVisible(false)}
               activeOpacity={0.8}
+              onPress={() => setNewCode(null)}
             >
               <Text style={s.modalCloseTxt}>إغلاق</Text>
             </TouchableOpacity>
@@ -572,12 +632,12 @@ const reqCardStyles = (c: ReturnType<typeof useColors>) => StyleSheet.create({
     marginBottom: 8,
   },
   topRow: { flexDirection: "row-reverse", alignItems: "center", justifyContent: "space-between", marginBottom: 6 },
-  category: { fontSize: 14, fontWeight: "700", color: c.foreground, textAlign: "right", writingDirection: "rtl" },
+  category: { fontSize: 14, fontWeight: "700", color: c.foreground },
   statusBadge: { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
   statusTxt: { fontSize: 11, fontWeight: "700" },
-  details: { fontSize: 13, color: c.mutedForeground, textAlign: "right", marginBottom: 8, alignSelf: "stretch", writingDirection: "rtl" },
+  details: { fontSize: 13, color: c.mutedForeground, textAlign: "right", marginBottom: 8 },
   metaRow: { flexDirection: "row-reverse", alignItems: "center", gap: 5, marginBottom: 4 },
-  metaTxt: { fontSize: 12, color: c.mutedForeground, textAlign: "right" },
+  metaTxt: { fontSize: 12, color: c.mutedForeground },
   dot: { width: 3, height: 3, borderRadius: 1.5, backgroundColor: c.mutedForeground },
 });
 
@@ -594,9 +654,9 @@ const makeStyles = (c: ReturnType<typeof useColors>, _bottomInset: number) =>
       paddingHorizontal: 16, paddingVertical: 12,
       flexDirection: "row-reverse", alignItems: "center", justifyContent: "space-between",
     },
-    headerTitle: { fontSize: 18, fontWeight: "800", color: c.foreground, textAlign: "right", writingDirection: "rtl" },
+    headerTitle: { fontSize: 18, fontWeight: "800", color: c.foreground },
     backBtn: { flexDirection: "row-reverse", alignItems: "center", gap: 4, padding: 4 },
-    backTxt: { fontSize: 15, color: c.foreground, fontWeight: "600", textAlign: "right" },
+    backTxt: { fontSize: 15, color: c.foreground, fontWeight: "600" },
 
     // Profile card
     profileCard: {
@@ -612,8 +672,8 @@ const makeStyles = (c: ReturnType<typeof useColors>, _bottomInset: number) =>
     avatarHelper: { backgroundColor: c.primary },
     avatarAdmin: { backgroundColor: "#6366F1" },
     avatarTxt: { fontSize: 30, fontWeight: "800", color: c.primaryForeground },
-    profileName: { fontSize: 20, fontWeight: "800", color: c.foreground, marginBottom: 4, textAlign: "right", writingDirection: "rtl" },
-    profilePhone: { fontSize: 14, color: c.mutedForeground, marginBottom: 12, textAlign: "right", writingDirection: "rtl" },
+    profileName: { fontSize: 20, fontWeight: "800", color: c.foreground, marginBottom: 4 },
+    profilePhone: { fontSize: 14, color: c.mutedForeground, marginBottom: 12 },
     badgeRow: { flexDirection: "row-reverse", gap: 8, flexWrap: "wrap", justifyContent: "center" },
     badge: { borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
     badgeTxt: { fontSize: 12, fontWeight: "700" },
@@ -643,8 +703,8 @@ const makeStyles = (c: ReturnType<typeof useColors>, _bottomInset: number) =>
     },
     otpCodeGroup: { flexDirection: "row-reverse", alignItems: "center", gap: 8 },
     otpLabelGroup: { flexDirection: "row-reverse", alignItems: "center", gap: 6 },
-    otpCode: { fontSize: 22, fontWeight: "800", color: c.primary, letterSpacing: 4, textAlign: "center" },
-    otpLabel: { fontSize: 14, color: c.mutedForeground, fontWeight: "500", textAlign: "right", writingDirection: "rtl" },
+    otpCode: { fontSize: 22, fontWeight: "800", color: c.primary, letterSpacing: 4, textAlign: "left" },
+    otpLabel: { fontSize: 14, color: c.mutedForeground, fontWeight: "500" },
     otpCopyBtn: {
       flexDirection: "row-reverse", alignItems: "center", gap: 5,
       backgroundColor: c.secondary, borderRadius: 8,
@@ -653,40 +713,63 @@ const makeStyles = (c: ReturnType<typeof useColors>, _bottomInset: number) =>
     },
     otpCopyTxt: { fontSize: 13, fontWeight: "600", color: c.primary },
 
-    // OTP modal
-    modalOverlay: {
-      flex: 1, backgroundColor: "rgba(0,0,0,0.55)",
-      justifyContent: "center", alignItems: "center",
-    },
-    modalCard: {
-      backgroundColor: c.card, borderRadius: 20, paddingHorizontal: 28,
-      paddingTop: 28, paddingBottom: 20, width: "80%", alignItems: "center",
-      shadowColor: "#000", shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.18, shadowRadius: 12, elevation: 8,
-    },
-    modalTitle: { fontSize: 18, fontWeight: "700", color: c.foreground, marginBottom: 6 },
-    modalHint: { fontSize: 13, color: c.mutedForeground, marginBottom: 18, textAlign: "center" },
-    modalOtpInput: {
-      fontSize: 32, fontWeight: "800", color: c.primary, letterSpacing: 6,
-      textAlign: "center", borderWidth: 1.5, borderColor: c.primary + "40",
-      borderRadius: 12, paddingHorizontal: 20, paddingVertical: 12,
-      backgroundColor: c.secondary, width: "100%", marginBottom: 20,
-    },
-    modalCloseBtn: {
-      backgroundColor: c.primary, borderRadius: 10,
-      paddingHorizontal: 32, paddingVertical: 10,
-    },
-    modalCloseTxt: { fontSize: 15, fontWeight: "700", color: "#fff" },
 
     // Sections
     section: { marginBottom: 16 },
-    sectionTitle: { fontSize: 16, fontWeight: "700", color: c.foreground, textAlign: "right", marginBottom: 10, alignSelf: "stretch", writingDirection: "rtl" },
+    sectionTitle: { fontSize: 16, fontWeight: "700", color: c.foreground, textAlign: "right", marginBottom: 10 },
     infoCard: {
       backgroundColor: c.card, borderRadius: 14, borderWidth: 1, borderColor: c.border,
       paddingHorizontal: 16, paddingTop: 4, paddingBottom: 0,
       shadowColor: "#000", shadowOffset: { width: 0, height: 1 },
       shadowOpacity: 0.04, shadowRadius: 3, elevation: 1,
     },
+
+    // One-time code modal
+    modalOverlay: {
+      flex: 1, backgroundColor: "rgba(0,0,0,0.55)",
+      justifyContent: "center", alignItems: "center",
+    },
+    modalCard: {
+      backgroundColor: c.card, borderRadius: 20, paddingHorizontal: 28,
+      paddingTop: 28, paddingBottom: 24, width: "82%", alignItems: "center",
+      shadowColor: "#000", shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.18, shadowRadius: 12, elevation: 8,
+    },
+    modalTitle: { fontSize: 18, fontWeight: "800", color: c.foreground, marginBottom: 6 },
+    modalWarn: {
+      fontSize: 12, color: "#DC2626", fontWeight: "600",
+      textAlign: "center", marginBottom: 18,
+    },
+    modalCodeBox: {
+      borderWidth: 1.5, borderColor: c.primary + "50",
+      borderRadius: 12, paddingHorizontal: 24, paddingVertical: 14,
+      backgroundColor: c.secondary, marginBottom: 18, width: "100%",
+      alignItems: "center",
+    },
+    modalCode: {
+      fontSize: 34, fontWeight: "800", color: c.primary,
+      letterSpacing: 8, textAlign: "center",
+    },
+    modalCopyBtn: {
+      flexDirection: "row-reverse", alignItems: "center", gap: 8,
+      backgroundColor: c.primary, borderRadius: 10,
+      paddingHorizontal: 28, paddingVertical: 11, marginBottom: 10, width: "100%",
+      justifyContent: "center",
+    },
+    modalCopyTxt: { fontSize: 15, fontWeight: "700", color: c.primaryForeground },
+    modalCloseBtn: {
+      borderWidth: 1, borderColor: c.border, borderRadius: 10,
+      paddingHorizontal: 28, paddingVertical: 10, width: "100%", alignItems: "center",
+    },
+    modalCloseTxt: { fontSize: 14, fontWeight: "600", color: c.mutedForeground },
+
+    // Regen code button
+    regenBtn: {
+      flexDirection: "row-reverse", alignItems: "center", justifyContent: "center", gap: 8,
+      borderRadius: 12, paddingVertical: 13, marginTop: 10,
+      backgroundColor: c.secondary, borderWidth: 1, borderColor: c.primary + "40",
+    },
+    regenBtnTxt: { fontSize: 15, fontWeight: "700", color: c.primary },
 
     // Actions
     actionsCard: { gap: 10 },
@@ -701,8 +784,8 @@ const makeStyles = (c: ReturnType<typeof useColors>, _bottomInset: number) =>
       borderRadius: 12, paddingVertical: 13, borderWidth: 1,
       backgroundColor: "#FEF2F2", borderColor: "#FECACA",
     },
-    actionBtnTxt: { fontSize: 15, fontWeight: "700", textAlign: "right" },
-    deleteTxt: { fontSize: 15, fontWeight: "700", color: "#DC2626", textAlign: "right" },
+    actionBtnTxt: { fontSize: 15, fontWeight: "700" },
+    deleteTxt: { fontSize: 15, fontWeight: "700", color: "#DC2626" },
 
     // Requests
     reqSectionHeader: { flexDirection: "row-reverse", alignItems: "center", gap: 8, marginBottom: 10 },
@@ -713,16 +796,16 @@ const makeStyles = (c: ReturnType<typeof useColors>, _bottomInset: number) =>
     reqCountTxt: { fontSize: 12, fontWeight: "800", color: c.primaryForeground },
     reqLoading: { alignItems: "center", paddingVertical: 20 },
     emptyRequests: { alignItems: "center", paddingVertical: 28, gap: 8 },
-    emptyReqTxt: { fontSize: 14, color: c.mutedForeground, textAlign: "right", writingDirection: "rtl" },
+    emptyReqTxt: { fontSize: 14, color: c.mutedForeground },
     reqGroupHeader: { flexDirection: "row-reverse", alignItems: "center", gap: 8, marginBottom: 8 },
     reqGroupDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: c.primary },
     reqGroupTitle: { fontSize: 14, fontWeight: "600", color: c.primary },
 
     // Fallback
-    emptyTxt: { fontSize: 16, color: c.mutedForeground, marginTop: 12, textAlign: "right", writingDirection: "rtl" },
+    emptyTxt: { fontSize: 16, color: c.mutedForeground, marginTop: 12 },
     backFallback: {
       marginTop: 16, backgroundColor: c.primary, borderRadius: 10,
       paddingHorizontal: 20, paddingVertical: 10,
     },
-    backFallbackTxt: { color: c.primaryForeground, fontWeight: "700", fontSize: 15, textAlign: "right" },
+    backFallbackTxt: { color: c.primaryForeground, fontWeight: "700", fontSize: 15 },
   });

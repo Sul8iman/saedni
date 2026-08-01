@@ -1,15 +1,13 @@
 import React, { useState } from "react";
 import {
-  View, Text, TouchableOpacity, StyleSheet,
+  View, Text, TextInput, TouchableOpacity, StyleSheet,
   ActivityIndicator, Alert, Linking,
 } from "react-native";
-import ArabicTextInput from "@/components/ArabicTextInput";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
-import SectionLabel from "@/components/SectionLabel";
 import { useColors } from "@/hooks/useColors";
 import { useAuth, type AuthUser } from "@/contexts/AuthContext";
 
@@ -126,7 +124,7 @@ export default function RegisterScreen() {
           {step === "form" && (
             <>
               {/* Role selector */}
-              <SectionLabel style={s.fieldLabel}>نوع الحساب</SectionLabel>
+              <Text style={s.fieldLabel}>نوع الحساب</Text>
               <View style={s.roleRow}>
                 {(["customer", "helper"] as const).map((v) => (
                   <TouchableOpacity
@@ -150,23 +148,25 @@ export default function RegisterScreen() {
                 ))}
               </View>
 
-              <SectionLabel style={s.fieldLabel}>الاسم الكامل</SectionLabel>
-              <ArabicTextInput
+              <Text style={s.fieldLabel}>الاسم الكامل</Text>
+              <TextInput
                 style={s.input}
                 value={name}
                 onChangeText={setName}
                 placeholder="مثال: أحمد الريامي"
+                textAlign="right"
                 placeholderTextColor={colors.mutedForeground}
                 returnKeyType="next"
               />
 
-              <SectionLabel style={s.fieldLabel}>رقم الهاتف</SectionLabel>
-              <ArabicTextInput
+              <Text style={s.fieldLabel}>رقم الهاتف</Text>
+              <TextInput
                 style={s.input}
                 value={phone}
                 onChangeText={setPhone}
                 placeholder="96891000001"
                 keyboardType="phone-pad"
+                textAlign="right"
                 placeholderTextColor={colors.mutedForeground}
                 returnKeyType="done"
                 onSubmitEditing={handleRegister}
@@ -240,7 +240,7 @@ export default function RegisterScreen() {
                 </>
               )}
               <Text style={s.fieldLabel}>رمز التحقق</Text>
-              <ArabicTextInput
+              <TextInput
                 style={[s.input, s.otpInput]}
                 value={otp}
                 onChangeText={t => setOtp(t.replace(/\D/g, "").slice(0, 6))}
@@ -248,7 +248,6 @@ export default function RegisterScreen() {
                 keyboardType="number-pad"
                 maxLength={6}
                 textAlign="center"
-                writingDirection="ltr"
                 placeholderTextColor={colors.mutedForeground}
                 autoFocus
               />
@@ -296,8 +295,7 @@ const makeStyles = (c: ReturnType<typeof useColors>) =>
     },
     fieldLabel: {
       fontSize: 14, fontWeight: "600", color: c.foreground,
-      textAlign: "right", marginBottom: 10, alignSelf: "stretch",
-      writingDirection: "rtl",
+      textAlign: "right", marginBottom: 10,
     },
     input: {
       borderWidth: 1.5, borderColor: c.border, borderRadius: 12,
@@ -340,7 +338,7 @@ const makeStyles = (c: ReturnType<typeof useColors>) =>
       alignItems: "center", marginBottom: 12,
     },
     btnDisabled: { opacity: 0.4 },
-    primaryBtnTxt: { color: c.primaryForeground, fontSize: 16, fontWeight: "700", textAlign: "right" },
+    primaryBtnTxt: { color: c.primaryForeground, fontSize: 16, fontWeight: "700" },
     ghostBtn: { alignItems: "center", paddingVertical: 10 },
     ghostTxt: { fontSize: 14, color: c.mutedForeground, textAlign: "center" },
     ghostLink: { color: c.primary, fontWeight: "700" },
@@ -349,7 +347,7 @@ const makeStyles = (c: ReturnType<typeof useColors>) =>
       flexDirection: "row-reverse", alignItems: "center", justifyContent: "center",
       gap: 10, marginBottom: 16,
     },
-    waBtnTxt: { color: "#fff", fontSize: 14, fontWeight: "700", textAlign: "right" },
+    waBtnTxt: { color: "#fff", fontSize: 14, fontWeight: "700" },
     waInfoBox: {
       flexDirection: "row-reverse", alignItems: "center", gap: 8,
       backgroundColor: "#F0FDF4", borderRadius: 10, padding: 12,
@@ -365,5 +363,4 @@ const makeStyles = (c: ReturnType<typeof useColors>) =>
       color: c.secondaryForeground, fontSize: 13, textAlign: "right",
       flex: 1, lineHeight: 20,
     },
-
   });

@@ -21,14 +21,13 @@ import { TextInput, type TextInputProps } from "react-native";
 
 const ArabicTextInput = React.forwardRef<TextInput, TextInputProps>(
   function ArabicTextInput(
-    { textAlign = "right", writingDirection = "rtl", ...props },
+    { textAlign = "right", ...props },
     ref,
   ) {
     return (
       <TextInput
         ref={ref}
         textAlign={textAlign}
-        writingDirection={writingDirection}
         {...props}
       />
     );

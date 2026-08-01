@@ -13,6 +13,9 @@
     },
     "preview": {
       "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_DOMAIN": "saedni.onrender.com"
+      },
       "ios": {
         "simulator": true
       }
@@ -28,7 +31,7 @@
       },
       "android": {
         "buildType": "app-bundle",
-        "autoIncrement": false
+        "autoIncrement": "versionCode"
       }
     }
   },

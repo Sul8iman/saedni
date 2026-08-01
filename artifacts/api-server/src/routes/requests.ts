@@ -142,7 +142,7 @@ async function enrichRequest(req: typeof requestsTable.$inferSelect) {
           .where(inArray(usersTable.id, ids))
       : [];
 
-  const userMap = Object.fromEntries(users.map((u) => [u.id, u]));
+  const userMap = Object.fromEntries(users.map((u: typeof users[number]) => [u.id, u]));
 
   return {
     ...req,

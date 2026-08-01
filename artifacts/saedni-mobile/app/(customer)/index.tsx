@@ -1,10 +1,8 @@
 import React, { useState } from "react";
 import {
-  View, Text, TouchableOpacity, StyleSheet,
+  View, Text, TextInput, TouchableOpacity, StyleSheet,
   ActivityIndicator, Alert, Modal, FlatList, Platform,
 } from "react-native";
-import ArabicTextInput from "@/components/ArabicTextInput";
-import SectionLabel from "@/components/SectionLabel";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -15,6 +13,7 @@ import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/contexts/AuthContext";
 import { CATEGORIES, AREAS } from "@/constants/categories";
 import type { CategoryValue } from "@/constants/categories";
+import ArabicText from "@/components/ArabicText";
 
 const BASE = process.env.EXPO_PUBLIC_DOMAIN ? `https://${process.env.EXPO_PUBLIC_DOMAIN}` : "";
 
@@ -135,8 +134,8 @@ export default function CustomerHomeScreen() {
       {/* Header */}
       <SafeAreaView edges={["top"]} style={s.headerSafe}>
         <View style={s.headerInner}>
-          <Text style={s.headerSub}>ماذا تحتاج اليوم؟</Text>
-          <Text style={s.headerTitle}>ساعدني</Text>
+          <ArabicText style={s.headerSub}>ماذا تحتاج اليوم؟</ArabicText>
+          <ArabicText style={s.headerTitle}>ساعدني</ArabicText>
         </View>
       </SafeAreaView>
 
@@ -151,7 +150,7 @@ export default function CustomerHomeScreen() {
         {isBlocked && (
           <View style={s.alertBox}>
             <Ionicons name="shield-outline" size={18} color="#DC2626" />
-            <Text style={s.alertTxt}>تم تعطيل حسابك. يرجى التواصل مع الإدارة</Text>
+            <ArabicText style={s.alertTxt}>تم تعطيل حسابك. يرجى التواصل مع الإدارة</ArabicText>
           </View>
         )}
 
@@ -169,7 +168,7 @@ export default function CustomerHomeScreen() {
         )}
 
         {/* ── Categories: 2 rows × 3 columns, RTL ── */}
-        <SectionLabel style={s.sectionLabel}>ساعدني في:</SectionLabel>
+        <ArabicText style={s.sectionLabel}>ساعدني في:</ArabicText>
         <View style={s.catGrid}>
           {catRows.map((row, rowIdx) => (
             <View key={rowIdx} style={s.catRow}>
@@ -199,8 +198,8 @@ export default function CustomerHomeScreen() {
         </View>
 
         {/* Details */}
-        <SectionLabel style={s.sectionLabel}>تفاصيل الطلب</SectionLabel>
-        <ArabicTextInput
+        <ArabicText style={s.sectionLabel}>تفاصيل الطلب</ArabicText>
+        <TextInput
           style={[s.textarea, isBlocked && s.disabled]}
           value={details}
           onChangeText={setDetails}
@@ -208,12 +207,13 @@ export default function CustomerHomeScreen() {
           multiline
           numberOfLines={4}
           textAlignVertical="top"
+          textAlign="right"
           placeholderTextColor={colors.mutedForeground}
           editable={!isBlocked}
         />
 
         {/* Time type toggle */}
-        <SectionLabel style={s.sectionLabel}>الوقت</SectionLabel>
+        <ArabicText style={s.sectionLabel}>الوقت</ArabicText>
         <View style={s.segmented}>
           {(["now", "scheduled"] as const).map((t) => (
             <TouchableOpacity
@@ -240,7 +240,7 @@ export default function CustomerHomeScreen() {
           <View style={s.scheduledCard}>
             <View style={s.scheduledHeader}>
               <Ionicons name="calendar" size={16} color={colors.primary} />
-              <Text style={s.scheduledHeaderTxt}>اختر موعد الطلب</Text>
+              <ArabicText style={[s.scheduledHeaderTxt, { flex: 1 }]}>اختر موعد الطلب</ArabicText>
             </View>
 
             {/* Date row */}
@@ -314,7 +314,7 @@ export default function CustomerHomeScreen() {
         )}
 
         {/* Area */}
-        <SectionLabel style={s.sectionLabel}>المنطقة</SectionLabel>
+        <ArabicText style={s.sectionLabel}>المنطقة</ArabicText>
         <TouchableOpacity
           style={[s.picker, isBlocked && s.disabled]}
           onPress={() => !isBlocked && setAreaPickerVisible(true)}
@@ -328,15 +328,16 @@ export default function CustomerHomeScreen() {
         </TouchableOpacity>
 
         {/* Amount */}
-        <SectionLabel style={s.sectionLabel}>المبلغ المدفوع</SectionLabel>
+        <ArabicText style={s.sectionLabel}>المبلغ المدفوع</ArabicText>
         <View style={[s.amountRow, isBlocked && s.disabled]}>
           <Text style={s.currencyLabel}>ر.ع.</Text>
-          <ArabicTextInput
+          <TextInput
             style={s.amountInput}
             value={amount}
             onChangeText={t => setAmount(t.replace(/[^0-9.]/g, ""))}
             placeholder="0.000"
             keyboardType="decimal-pad"
+            textAlign="right"
             placeholderTextColor={colors.mutedForeground}
             editable={!isBlocked}
           />
@@ -458,8 +459,8 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
     container: { flex: 1, backgroundColor: c.background },
     headerSafe: { backgroundColor: c.card, borderBottomWidth: 1, borderBottomColor: c.border },
     headerInner: { paddingHorizontal: 20, paddingVertical: 14 },
-    headerTitle: { fontSize: 26, fontWeight: "800", color: c.primary, textAlign: "right", alignSelf: "stretch" },
-    headerSub: { fontSize: 13, color: c.mutedForeground, textAlign: "right", alignSelf: "stretch" },
+    headerTitle: { fontSize: 26, fontWeight: "800", color: c.primary, textAlign: "right" },
+    headerSub: { fontSize: 13, color: c.mutedForeground, textAlign: "right" },
     scroll: { flex: 1 },
     content: { padding: 16, paddingBottom: bottomInset + 100 },
 
@@ -479,7 +480,6 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
     sectionLabel: {
       fontSize: 14, fontWeight: "700", color: c.foreground,
       textAlign: "right", marginBottom: 10, marginTop: 4,
-      alignSelf: "stretch", writingDirection: "rtl",
     },
 
     // ── Category grid ──
@@ -516,7 +516,7 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
       flexDirection: "row-reverse", alignItems: "center", justifyContent: "center", gap: 6,
     },
     segBtnActive: { backgroundColor: c.primary },
-    segTxt: { fontSize: 14, color: c.mutedForeground, fontWeight: "600", textAlign: "right" },
+    segTxt: { fontSize: 14, color: c.mutedForeground, fontWeight: "600" },
     segTxtActive: { color: c.primaryForeground, fontWeight: "700" },
 
     // ── Scheduled date/time card ──
@@ -528,7 +528,7 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
       flexDirection: "row-reverse", alignItems: "center", gap: 8,
       paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: c.border,
     },
-    scheduledHeaderTxt: { fontSize: 14, fontWeight: "700", color: c.foreground, textAlign: "right", alignSelf: "stretch" },
+    scheduledHeaderTxt: { fontSize: 14, fontWeight: "700", color: c.foreground, textAlign: "right" },
 
     dtBtn: {
       flexDirection: "row-reverse", alignItems: "center", gap: 10,
@@ -540,7 +540,7 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
     dtPlaceholder: { color: c.mutedForeground, fontWeight: "400" },
 
     dtHint: { flexDirection: "row-reverse", alignItems: "center", gap: 5, paddingTop: 2 },
-    dtHintTxt: { fontSize: 12, color: c.mutedForeground, textAlign: "right" },
+    dtHintTxt: { fontSize: 12, color: c.mutedForeground },
 
     // ── iOS picker sheet ──
     dtSheet: {
@@ -559,9 +559,9 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
     },
     dtSheetTitle: { fontSize: 16, fontWeight: "700", color: c.foreground },
     dtConfirmBtn: { paddingHorizontal: 4, paddingVertical: 4 },
-    dtConfirmTxt: { fontSize: 16, fontWeight: "700", color: c.primary, textAlign: "right" },
+    dtConfirmTxt: { fontSize: 16, fontWeight: "700", color: c.primary },
     dtDismissBtn: { paddingHorizontal: 4, paddingVertical: 4 },
-    dtDismissTxt: { fontSize: 15, color: c.mutedForeground, textAlign: "right" },
+    dtDismissTxt: { fontSize: 15, color: c.mutedForeground },
     dtPicker: { width: "100%", height: 200 },
 
     // ── Area picker ──
@@ -579,7 +579,7 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
     },
     currencyLabel: {
       paddingHorizontal: 16, fontSize: 14, color: c.mutedForeground, fontWeight: "700",
-      borderEndWidth: 1.5, borderEndColor: c.border, paddingVertical: 14, backgroundColor: c.muted,
+      borderRightWidth: 1.5, borderRightColor: c.border, paddingVertical: 14, backgroundColor: c.muted,
     },
     amountInput: {
       flex: 1, fontSize: 17, color: c.foreground, paddingHorizontal: 16,

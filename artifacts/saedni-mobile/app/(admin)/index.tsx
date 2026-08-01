@@ -511,7 +511,7 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
       paddingHorizontal: 16, paddingVertical: 12,
       flexDirection: "row-reverse", alignItems: "center", justifyContent: "space-between",
     },
-    headerTitle: { fontSize: 20, fontWeight: "800", color: c.foreground, textAlign: "right", writingDirection: "rtl" },
+    headerTitle: { fontSize: 20, fontWeight: "800", color: c.foreground },
     headerAction: { padding: 4 },
     tabs: {
       flexDirection: "row-reverse",
@@ -524,7 +524,7 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
     },
     tabActive: { borderBottomColor: c.primary },
     tabInner: { flexDirection: "row-reverse", alignItems: "center", gap: 6 },
-    tabTxt: { fontSize: 14, fontWeight: "600", color: c.mutedForeground, textAlign: "right", writingDirection: "rtl" },
+    tabTxt: { fontSize: 14, fontWeight: "600", color: c.mutedForeground },
     tabTxtActive: { color: c.primary },
     badge: {
       backgroundColor: "#EF4444", borderRadius: 10,
@@ -543,11 +543,11 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
       shadowOpacity: 0.05, shadowRadius: 4, elevation: 2,
     },
     statIcon: { width: 38, height: 38, borderRadius: 10, alignItems: "center", justifyContent: "center", marginBottom: 8 },
-    statVal: { fontSize: 24, fontWeight: "800", color: c.foreground, textAlign: "right" },
-    statLabel: { fontSize: 11, color: c.mutedForeground, textAlign: "right", marginTop: 2, alignSelf: "stretch" },
+    statVal: { fontSize: 24, fontWeight: "800", color: c.foreground },
+    statLabel: { fontSize: 11, color: c.mutedForeground, textAlign: "right", marginTop: 2 },
 
     // Feedback stats
-    feedbackTitle: { fontSize: 15, fontWeight: "700", color: c.foreground, textAlign: "right", marginBottom: 10, alignSelf: "stretch", writingDirection: "rtl" },
+    feedbackTitle: { fontSize: 15, fontWeight: "700", color: c.foreground, textAlign: "right", marginBottom: 10 },
     feedbackRow: { flexDirection: "row-reverse", gap: 8, marginBottom: 20 },
     feedbackCard: {
       flex: 1, backgroundColor: c.card, borderRadius: 14, borderWidth: 1.5,
@@ -559,24 +559,24 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
       width: 34, height: 34, borderRadius: 10,
       alignItems: "center", justifyContent: "center", marginBottom: 6,
     },
-    feedbackVal: { fontSize: 20, fontWeight: "800", marginBottom: 2, textAlign: "right" },
-    feedbackLabel: { fontSize: 10, color: c.mutedForeground, textAlign: "right", alignSelf: "stretch" },
+    feedbackVal: { fontSize: 20, fontWeight: "800", marginBottom: 2 },
+    feedbackLabel: { fontSize: 10, color: c.mutedForeground, textAlign: "right" },
 
-    sectionTitle: { fontSize: 17, fontWeight: "700", color: c.foreground, textAlign: "right", marginBottom: 12, alignSelf: "stretch", writingDirection: "rtl" },
+    sectionTitle: { fontSize: 17, fontWeight: "700", color: c.foreground, textAlign: "right", marginBottom: 12 },
 
     // Help badge on request cards
     helpBadge: { alignSelf: "flex-end", borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3, marginBottom: 6 },
-    helpBadgeTxt: { fontSize: 11, fontWeight: "700", textAlign: "right", writingDirection: "rtl" },
+    helpBadgeTxt: { fontSize: 11, fontWeight: "700" },
 
     // Feedback filter buttons
-    filterTitle: { fontSize: 13, fontWeight: "600", color: c.mutedForeground, textAlign: "right", marginBottom: 8, alignSelf: "stretch", writingDirection: "rtl" },
+    filterTitle: { fontSize: 13, fontWeight: "600", color: c.mutedForeground, textAlign: "right", marginBottom: 8 },
     filterRow: { flexDirection: "row-reverse", flexWrap: "wrap", gap: 6, marginBottom: 14 },
     filterBtn: {
       borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6,
       backgroundColor: c.muted, borderWidth: 1, borderColor: c.border,
     },
     filterBtnActive: { backgroundColor: c.primary, borderColor: c.primary },
-    filterBtnTxt: { fontSize: 12, fontWeight: "600", color: c.mutedForeground, textAlign: "right", writingDirection: "rtl" },
+    filterBtnTxt: { fontSize: 12, fontWeight: "600", color: c.mutedForeground },
     filterBtnTxtActive: { color: c.primaryForeground },
 
     // Request cards
@@ -589,24 +589,24 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
     reqTop: { flexDirection: "row-reverse", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 6 },
     reqLeft: { flexDirection: "row-reverse", alignItems: "center", gap: 8 },
     reqCat: { fontSize: 15, fontWeight: "700", color: c.foreground, flex: 1, textAlign: "right" },
-    reqAmount: { fontSize: 14, fontWeight: "700", color: c.primary, textAlign: "right" },
+    reqAmount: { fontSize: 14, fontWeight: "700", color: c.primary },
     statusBadge: { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
-    statusTxt: { fontSize: 11, fontWeight: "700", textAlign: "right" },
-    reqDetails: { fontSize: 13, color: c.mutedForeground, textAlign: "right", marginBottom: 8, alignSelf: "stretch", writingDirection: "rtl" },
+    statusTxt: { fontSize: 11, fontWeight: "700" },
+    reqDetails: { fontSize: 13, color: c.mutedForeground, textAlign: "right", marginBottom: 8 },
     reqActions: { flexDirection: "row-reverse", gap: 8, marginBottom: 10 },
     endBtn: {
       flex: 1, flexDirection: "row-reverse", alignItems: "center", justifyContent: "center",
       gap: 5, backgroundColor: c.secondary, borderRadius: 8,
       paddingHorizontal: 10, paddingVertical: 7, borderWidth: 1, borderColor: c.border,
     },
-    endTxt: { fontSize: 12, color: c.primary, fontWeight: "700", textAlign: "right" },
+    endTxt: { fontSize: 12, color: c.primary, fontWeight: "700" },
     deleteBtn: { flexDirection: "row-reverse", alignItems: "center", gap: 4, backgroundColor: "#FEF2F2", borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 },
-    deleteTxt: { fontSize: 12, color: "#DC2626", fontWeight: "600", textAlign: "right" },
+    deleteTxt: { fontSize: 12, color: "#DC2626", fontWeight: "600" },
     reqMeta: { flexDirection: "row-reverse", alignItems: "center", gap: 5, marginBottom: 6 },
-    metaTxt: { fontSize: 12, color: c.mutedForeground, textAlign: "right", writingDirection: "rtl" },
+    metaTxt: { fontSize: 12, color: c.mutedForeground },
     dot: { width: 3, height: 3, borderRadius: 1.5, backgroundColor: c.mutedForeground },
     publishRow: { flexDirection: "row-reverse", alignItems: "center", gap: 5 },
-    publishTxt: { fontSize: 11, color: c.mutedForeground, textAlign: "right" },
+    publishTxt: { fontSize: 11, color: c.mutedForeground },
     publishVal: { fontSize: 11, color: c.foreground, fontWeight: "600" },
 
     // Notification cards
@@ -615,7 +615,7 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
       marginBottom: 12, backgroundColor: c.primary + "12",
       borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8,
     },
-    notifHeaderTxt: { fontSize: 13, color: c.primary, fontWeight: "700", textAlign: "right", writingDirection: "rtl" },
+    notifHeaderTxt: { fontSize: 13, color: c.primary, fontWeight: "700" },
     notifCard: {
       backgroundColor: c.card, borderRadius: 14, borderWidth: 1, borderColor: c.border,
       padding: 14, marginBottom: 10,
@@ -636,11 +636,11 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
     notifText: { flex: 1 },
     notifTitleRow: { flexDirection: "row-reverse", alignItems: "center", gap: 6, marginBottom: 4 },
     unreadDot: { width: 7, height: 7, borderRadius: 3.5, backgroundColor: c.primary },
-    notifTitle: { fontSize: 14, fontWeight: "700", color: c.foreground, textAlign: "right", alignSelf: "stretch", writingDirection: "rtl" },
+    notifTitle: { fontSize: 14, fontWeight: "700", color: c.foreground, textAlign: "right" },
     notifTitleUnread: { color: c.primary },
-    notifMeta: { fontSize: 13, color: c.mutedForeground, textAlign: "right", marginBottom: 2, alignSelf: "stretch", writingDirection: "rtl" },
+    notifMeta: { fontSize: 13, color: c.mutedForeground, textAlign: "right", marginBottom: 2 },
     notifMetaKey: { fontWeight: "600", color: c.foreground },
-    notifTime: { fontSize: 11, color: c.mutedForeground, textAlign: "right", marginTop: 4, alignSelf: "stretch", writingDirection: "rtl" },
+    notifTime: { fontSize: 11, color: c.mutedForeground, textAlign: "right", marginTop: 4 },
     notifAction: { paddingTop: 2 },
     viewUserBtn: {
       marginTop: 10, flexDirection: "row-reverse", alignItems: "center", gap: 6,
@@ -650,5 +650,5 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
     viewUserTxt: { fontSize: 12, color: c.primary, fontWeight: "700" },
 
     empty: { alignItems: "center", paddingTop: 60, gap: 10 },
-    emptyTxt: { fontSize: 16, color: c.mutedForeground, fontWeight: "600", textAlign: "right", writingDirection: "rtl" },
+    emptyTxt: { fontSize: 16, color: c.mutedForeground, fontWeight: "600" },
   });

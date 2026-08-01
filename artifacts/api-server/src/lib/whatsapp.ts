@@ -10,29 +10,24 @@ function maskPhone(phone: string): string {
 
 export interface WhatsAppOtpResult {
   success: boolean;
-  messageId?: string;
-  metaStatus?: number;
-  metaResponseBody?: string;
   error?: string;
 }
 
 /**
  * Send a 6-digit OTP via the Meta Cloud API using the saedni_otp authentication template.
  * Never logs the OTP value itself.
- * Returns full Meta HTTP status and raw response body for diagnostic DB writes.
  */
 export async function sendWhatsAppOtp(
   phone: string,
   otp: string,
   userType: string,
-  platform = "unknown",
 ): Promise<WhatsAppOtpResult> {
   const accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
   const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
 
   if (!accessToken || !phoneNumberId) {
     logger.warn(
-      { platform, maskedPhone: maskPhone(phone), userType },
+      { maskedPhone: maskPhone(phone), userType },
       "whatsapp: env vars missing — WHATSAPP_ACCESS_TOKEN or WHATSAPP_PHONE_NUMBER_ID not set",
     );
     return { success: false, error: "WhatsApp configuration missing" };
@@ -72,44 +67,29 @@ export async function sendWhatsAppOtp(
       body: JSON.stringify(payload),
     });
 
-    const metaStatus = res.status;
-    const rawBody = await res.text().catch(() => "");
-    let body: unknown = null;
-    try { body = JSON.parse(rawBody); } catch {}
-
     if (res.ok) {
-      const messageId =
-        typeof body === "object" && body !== null && "messages" in body
-          ? String(
-              (
-                (body as Record<string, unknown>).messages as
-                  | Array<Record<string, unknown>>
-                  | undefined
-              )?.[0]?.id ?? "no-id",
-            )
-          : "no-id";
-
       logger.info(
-        { platform, maskedPhone: maskPhone(phone), userType, httpStatus: metaStatus, messageId },
+        { maskedPhone: maskPhone(phone), userType, httpStatus: res.status },
         "whatsapp: OTP sent successfully",
       );
-      return { success: true, messageId, metaStatus, metaResponseBody: rawBody };
+      return { success: true };
     }
 
-    logger.warn(
-      { platform, maskedPhone: maskPhone(phone), userType, httpStatus: metaStatus, metaErrorBody: rawBody },
-      "whatsapp: OTP delivery failed",
-    );
-
+    // Parse error without logging sensitive data
+    const body: unknown = await res.json().catch(() => null);
     const errMsg =
       typeof body === "object" && body !== null && "error" in body
-        ? JSON.stringify((body as Record<string, unknown>).error)
-        : `HTTP ${metaStatus}`;
+        ? String((body as Record<string, unknown>).error)
+        : `HTTP ${res.status}`;
 
-    return { success: false, error: errMsg, metaStatus, metaResponseBody: rawBody };
+    logger.warn(
+      { maskedPhone: maskPhone(phone), userType, httpStatus: res.status, apiError: errMsg },
+      "whatsapp: OTP delivery failed",
+    );
+    return { success: false, error: errMsg };
   } catch (err) {
     logger.warn(
-      { platform, maskedPhone: maskPhone(phone), userType, err },
+      { maskedPhone: maskPhone(phone), userType, err },
       "whatsapp: network error sending OTP",
     );
     return { success: false, error: "Network error" };

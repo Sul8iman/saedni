@@ -1,17 +1,16 @@
 import React, { useState } from "react";
 import {
-  View, Text, TouchableOpacity, StyleSheet,
+  View, Text, TextInput, TouchableOpacity, StyleSheet,
   ActivityIndicator, Alert, Linking,
 } from "react-native";
-import ArabicTextInput from "@/components/ArabicTextInput";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
-import SectionLabel from "@/components/SectionLabel";
 import { useColors } from "@/hooks/useColors";
 import { useAuth, type AuthUser } from "@/contexts/AuthContext";
+import ArabicText from "@/components/ArabicText";
 
 type Step = "phone" | "otp" | "pin";
 
@@ -201,14 +200,15 @@ export default function LoginScreen() {
           {/* ── Phone step ── */}
           {step === "phone" && (
             <>
-              <SectionLabel style={s.cardTitle}>تسجيل الدخول</SectionLabel>
-              <SectionLabel style={s.fieldLabel}>رقم الهاتف</SectionLabel>
-              <ArabicTextInput
+              <ArabicText style={s.cardTitle}>تسجيل الدخول</ArabicText>
+              <ArabicText style={s.fieldLabel}>رقم الهاتف</ArabicText>
+              <TextInput
                 style={s.input}
                 value={phone}
                 onChangeText={setPhone}
                 placeholder="96891000001"
                 keyboardType="phone-pad"
+                textAlign="right"
                 placeholderTextColor={colors.mutedForeground}
                 autoFocus
                 returnKeyType="done"
@@ -236,24 +236,24 @@ export default function LoginScreen() {
           {/* ── OTP step ── */}
           {step === "otp" && (
             <>
-              <SectionLabel style={s.cardTitle}>رمز التحقق</SectionLabel>
+              <ArabicText style={s.cardTitle}>رمز التحقق</ArabicText>
 
               {isUnverified && (
                 <View style={s.warnBox}>
                   <Ionicons name="warning-outline" size={16} color="#92400E" />
-                  <Text style={s.warnTxt}>حسابك غير مفعّل — أدخل رمز التحقق لتفعيله</Text>
+                  <ArabicText style={s.warnTxt}>حسابك غير مفعّل — أدخل رمز التحقق لتفعيله</ArabicText>
                 </View>
               )}
 
-              <Text style={s.subLabel}>
+              <ArabicText style={s.subLabel}>
                 الرقم: <Text style={s.subLabelBold}>{phone}</Text>
-              </Text>
+              </ArabicText>
 
               {otpDelivery === "whatsapp" ? (
                 // Customer: OTP sent via WhatsApp automatically
                 <View style={s.waInfoBox}>
                   <Ionicons name="logo-whatsapp" size={18} color="#25D366" />
-                  <Text style={s.waInfoTxt}>أدخل رمز التحقق المرسل إلى رقم واتساب المسجل.</Text>
+                  <ArabicText style={s.waInfoTxt}>أدخل رمز التحقق المرسل إلى رقم واتساب المسجل.</ArabicText>
                 </View>
               ) : (
                 // Helper / manual flow: contact admin
@@ -266,7 +266,7 @@ export default function LoginScreen() {
                 </>
               )}
 
-              <ArabicTextInput
+              <TextInput
                 style={[s.input, s.otpInput]}
                 value={otp}
                 onChangeText={t => setOtp(t.replace(/\D/g, "").slice(0, 6))}
@@ -274,7 +274,6 @@ export default function LoginScreen() {
                 keyboardType="number-pad"
                 maxLength={6}
                 textAlign="center"
-                writingDirection="ltr"
                 placeholderTextColor={colors.mutedForeground}
                 autoFocus
               />
@@ -301,8 +300,8 @@ export default function LoginScreen() {
                 <Ionicons name="shield-checkmark" size={16} color={colors.primary} />
                 <Text style={s.adminBadgeTxt}>دخول المدير</Text>
               </View>
-              <SectionLabel style={s.fieldLabel}>رمز PIN</SectionLabel>
-              <ArabicTextInput
+              <ArabicText style={s.fieldLabel}>رمز PIN</ArabicText>
+              <TextInput
                 style={[s.input, s.otpInput]}
                 value={pin}
                 onChangeText={t => setPin(t.replace(/\D/g, "").slice(0, 6))}
@@ -330,6 +329,18 @@ export default function LoginScreen() {
             </>
           )}
         </View>
+
+        {/* ── DIAGNOSTIC: RTL test navigation — remove before production ── */}
+        <TouchableOpacity
+          onPress={() => router.push("/rtl-test" as never)}
+          style={{ alignItems: "center", paddingVertical: 16, marginTop: 8 }}
+        >
+          <Text style={{ fontSize: 11, color: "#9CA3AF" }}>
+            [RTL Test Screen]
+          </Text>
+        </TouchableOpacity>
+        {/* ──────────────────────────────────────────────────────────────── */}
+
       </KeyboardAwareScrollViewCompat>
     </SafeAreaView>
   );
@@ -358,15 +369,13 @@ const makeStyles = (c: ReturnType<typeof useColors>) =>
     },
     cardTitle: {
       fontSize: 20, fontWeight: "700", color: c.foreground,
-      textAlign: "right", marginBottom: 20, alignSelf: "stretch",
-      writingDirection: "rtl",
+      textAlign: "right", marginBottom: 20,
     },
     fieldLabel: {
       fontSize: 14, fontWeight: "600", color: c.foreground,
-      textAlign: "right", marginBottom: 8, alignSelf: "stretch",
-      writingDirection: "rtl",
+      textAlign: "right", marginBottom: 8,
     },
-    subLabel: { fontSize: 13, color: c.mutedForeground, textAlign: "right", marginBottom: 12, alignSelf: "stretch" },
+    subLabel: { fontSize: 13, color: c.mutedForeground, textAlign: "right", marginBottom: 12 },
     subLabelBold: { fontWeight: "700", color: c.foreground },
     input: {
       borderWidth: 1.5, borderColor: c.border, borderRadius: 12,
@@ -383,7 +392,7 @@ const makeStyles = (c: ReturnType<typeof useColors>) =>
       alignItems: "center", marginBottom: 12,
     },
     btnDisabled: { opacity: 0.4 },
-    primaryBtnTxt: { color: c.primaryForeground, fontSize: 16, fontWeight: "700", textAlign: "right" },
+    primaryBtnTxt: { color: c.primaryForeground, fontSize: 16, fontWeight: "700" },
     ghostBtn: { alignItems: "center", paddingVertical: 10 },
     ghostTxt: { fontSize: 14, color: c.mutedForeground, textAlign: "center" },
     ghostLink: { color: c.primary, fontWeight: "700" },
@@ -396,7 +405,7 @@ const makeStyles = (c: ReturnType<typeof useColors>) =>
       flexDirection: "row-reverse", alignItems: "center", justifyContent: "center",
       gap: 10, marginBottom: 16,
     },
-    waBtnTxt: { color: "#fff", fontSize: 14, fontWeight: "700", textAlign: "right" },
+    waBtnTxt: { color: "#fff", fontSize: 14, fontWeight: "700" },
     waInfoBox: {
       flexDirection: "row-reverse", alignItems: "center", gap: 8,
       backgroundColor: "#F0FDF4", borderRadius: 10, padding: 12,
@@ -414,6 +423,5 @@ const makeStyles = (c: ReturnType<typeof useColors>) =>
       backgroundColor: c.secondary, borderRadius: 10, padding: 10,
       alignSelf: "flex-end", marginBottom: 16,
     },
-    adminBadgeTxt: { color: c.primary, fontWeight: "700", fontSize: 13, textAlign: "right" },
-
+    adminBadgeTxt: { color: c.primary, fontWeight: "700", fontSize: 13 },
   });

@@ -124,5 +124,5 @@ const makeStyles = (c: ReturnType<typeof useColors>) =>
       backgroundColor: c.primary, borderRadius: 12,
       paddingVertical: 15, alignItems: "center",
     },
-    acceptBtnTxt: { color: c.primaryForeground, fontSize: 16, fontWeight: "700", textAlign: "right" },
+    acceptBtnTxt: { color: c.primaryForeground, fontSize: 16, fontWeight: "700" },
   });

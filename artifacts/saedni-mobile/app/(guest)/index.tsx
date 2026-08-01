@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState } from "react";
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
   ActivityIndicator, RefreshControl, ScrollView,
@@ -60,9 +60,6 @@ export default function GuestBrowseScreen() {
   const router = useRouter();
   const { exitGuestMode } = useAuth();
   const s = makeStyles(colors, insets.bottom);
-
-  const catScrollRef = useRef<ScrollView>(null);
-  const areaScrollRef = useRef<ScrollView>(null);
 
   const [catFilter, setCatFilter] = useState("all");
   const [areaFilter, setAreaFilter] = useState("all");
@@ -193,11 +190,9 @@ export default function GuestBrowseScreen() {
       <View style={s.filterSection}>
         <Text style={s.filterLabel}>نوع المهمة</Text>
         <ScrollView
-          ref={catScrollRef}
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={s.chipsRow}
-          onContentSizeChange={() => catScrollRef.current?.scrollToEnd({ animated: false })}
         >
           {CAT_FILTERS.map(f => (
             <TouchableOpacity
@@ -218,11 +213,9 @@ export default function GuestBrowseScreen() {
       <View style={[s.filterSection, s.filterSectionBorder]}>
         <Text style={s.filterLabel}>الموقع</Text>
         <ScrollView
-          ref={areaScrollRef}
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={s.chipsRow}
-          onContentSizeChange={() => areaScrollRef.current?.scrollToEnd({ animated: false })}
         >
           {AREA_FILTERS.map(f => (
             <TouchableOpacity
@@ -328,7 +321,6 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
     filterLabel: {
       fontSize: 12, fontWeight: "700", color: c.mutedForeground,
       textAlign: "right", paddingHorizontal: 16, marginBottom: 6,
-      alignSelf: "stretch", writingDirection: "rtl",
     },
     chipsRow: { paddingHorizontal: 16, flexDirection: "row-reverse", gap: 8 },
     chip: {
@@ -356,33 +348,32 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
       backgroundColor: c.secondary, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4,
       flexShrink: 1, maxWidth: "60%",
     },
-    catTxt: { fontSize: 13, fontWeight: "700", color: c.primary, textAlign: "right", alignSelf: "stretch" },
+    catTxt: { fontSize: 13, fontWeight: "700", color: c.primary, textAlign: "right" },
     amount: { fontSize: 22, fontWeight: "800", color: c.primary },
     amountCur: { fontSize: 14, fontWeight: "600" },
     details: {
       fontSize: 14, color: c.mutedForeground, textAlign: "right",
-      lineHeight: 21, marginBottom: 12, alignSelf: "stretch",
-      writingDirection: "rtl",
+      lineHeight: 21, marginBottom: 12,
     },
     publishRow: { flexDirection: "row-reverse", alignItems: "center", gap: 5, marginBottom: 12 },
-    publishTxt: { fontSize: 11, color: c.mutedForeground, textAlign: "right", alignSelf: "stretch" },
+    publishTxt: { fontSize: 11, color: c.mutedForeground, textAlign: "right" },
     publishVal: { fontSize: 11, color: c.foreground, fontWeight: "600" },
     metaRow: { flexDirection: "row-reverse", gap: 8, marginBottom: 12, flexWrap: "wrap" },
     metaChip: {
       flexDirection: "row-reverse", alignItems: "center", gap: 4,
       backgroundColor: c.muted, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5,
     },
-    metaTxt: { fontSize: 12, color: c.mutedForeground, fontWeight: "500", textAlign: "right" },
+    metaTxt: { fontSize: 12, color: c.mutedForeground, fontWeight: "500" },
 
     lockedBtn: {
       flexDirection: "row-reverse", alignItems: "center", justifyContent: "center", gap: 8,
       backgroundColor: c.muted, borderRadius: 10, paddingVertical: 11,
       borderWidth: 1, borderColor: c.border,
     },
-    lockedBtnTxt: { fontSize: 13, color: c.mutedForeground, fontWeight: "600", textAlign: "right", writingDirection: "rtl" },
+    lockedBtnTxt: { fontSize: 13, color: c.mutedForeground, fontWeight: "600" },
 
     empty: { alignItems: "center", justifyContent: "center", paddingTop: 80, gap: 10 },
-    emptyTitle: { fontSize: 18, fontWeight: "700", color: c.foreground, textAlign: "right", writingDirection: "rtl" },
+    emptyTitle: { fontSize: 18, fontWeight: "700", color: c.foreground },
     emptyHint: { fontSize: 14, color: c.mutedForeground, textAlign: "center", lineHeight: 22 },
 
     footerCta: {
@@ -390,5 +381,5 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
       paddingVertical: 16, flexDirection: "row-reverse", alignItems: "center",
       justifyContent: "center", gap: 10,
     },
-    footerCtaTxt: { color: c.primaryForeground, fontSize: 15, fontWeight: "700", textAlign: "right" },
+    footerCtaTxt: { color: c.primaryForeground, fontSize: 15, fontWeight: "700" },
   });

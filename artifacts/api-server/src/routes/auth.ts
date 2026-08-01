@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
-import { eq, sql as drizzleSql } from "drizzle-orm";
-import { randomUUID } from "crypto";
+import { eq } from "drizzle-orm";
+import { randomUUID, createHmac } from "crypto";
 import { db, usersTable, adminNotificationsTable } from "@workspace/db";
 import { RegisterBody, LoginBody, VerifyOtpBody, AdminLoginBody } from "@workspace/api-zod";
 import { logger } from "../lib/logger";
@@ -9,93 +9,22 @@ import { sendWhatsAppOtp } from "../lib/whatsapp";
 
 const router: IRouter = Router();
 
-const OTP_EXPIRY_MS = 10 * 60 * 1000;
+const OTP_EXPIRY_MS = 10 * 60 * 1000;          // customer OTP only
+const HELPER_VERIFY_MAX_ATTEMPTS = 5;
+const HELPER_VERIFY_LOCKOUT_MS   = 15 * 60 * 1000;
 
 const ADMIN_PHONE = process.env.ADMIN_PHONE ?? "98584898";
 const ADMIN_PIN   = process.env.ADMIN_PIN   ?? "2724";
 
-function generate6DigitOtp(): string {
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+function generate6DigitCode(): string {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
 function maskPhone(phone: string): string {
   if (phone.length <= 6) return "***";
   return phone.slice(0, 3) + "****" + phone.slice(-3);
-}
-
-/** Detect client platform from the User-Agent header.
- *  Android RN/Expo uses okhttp; iOS uses CFNetwork/Darwin.
- */
-function detectPlatform(req: import("express").Request): string {
-  const ua = (req.headers["user-agent"] ?? "").toLowerCase();
-  if (ua.includes("okhttp") || ua.includes("android")) return "android";
-  if (ua.includes("cfnetwork") || ua.includes("darwin") || ua.includes("ios")) return "ios";
-  return "unknown";
-}
-
-// ── Unicode / phone analysis helpers ────────────────────────────────────────
-
-/** JSON array of Unicode codepoints for every character in the string. */
-function phoneCodepoints(phone: string): string {
-  return JSON.stringify([...phone].map(c => c.codePointAt(0)));
-}
-
-/**
- * Arabic-Indic digits: U+0660–U+0669 (Arabic) and U+06F0–U+06F9 (Extended Arabic-Indic / Persian).
- * On some Android locales the phone-pad keyboard emits these instead of ASCII 0–9.
- * They are visually indistinguishable from ASCII digits but produce a different byte sequence,
- * causing Meta to address the message to a nonexistent WhatsApp number.
- */
-function hasArabicIndicDigits(phone: string): boolean {
-  return /[\u0660-\u0669\u06F0-\u06F9]/.test(phone);
-}
-
-/** Convert Arabic-Indic / Extended Arabic-Indic digits to ASCII 0–9. */
-function toAsciiDigits(phone: string): string {
-  return phone
-    .replace(/[\u0660-\u0669]/g, c => String.fromCharCode(c.codePointAt(0)! - 0x0660 + 0x30))
-    .replace(/[\u06F0-\u06F9]/g, c => String.fromCharCode(c.codePointAt(0)! - 0x06F0 + 0x30));
-}
-
-// ── Diagnostic DB write ──────────────────────────────────────────────────────
-
-interface DiagData {
-  platform: string;
-  userAgent: string;
-  endpoint: string;
-  rawPhone: string;
-  userId?: number;
-  metaStatus?: number;
-  metaWamid?: string;
-  metaResponseBody?: string;
-  metaError?: string;
-}
-
-async function writeDiagnostic(data: DiagData): Promise<void> {
-  const codepoints   = phoneCodepoints(data.rawPhone);
-  const phoneLen     = data.rawPhone.length;
-  const hasPlus      = data.rawPhone.startsWith("+");
-  const hasAI        = hasArabicIndicDigits(data.rawPhone);
-  const asciiPhone   = toAsciiDigits(data.rawPhone);
-
-  try {
-    await db.execute(drizzleSql`
-      INSERT INTO otp_diagnostics (
-        platform, user_agent, endpoint,
-        raw_phone, phone_codepoints, phone_len, has_plus, has_arabic_indic, ascii_phone,
-        meta_status, meta_wamid, meta_response_body, meta_error,
-        user_id
-      ) VALUES (
-        ${data.platform}, ${data.userAgent}, ${data.endpoint},
-        ${data.rawPhone}, ${codepoints}, ${phoneLen}, ${hasPlus}, ${hasAI}, ${asciiPhone},
-        ${data.metaStatus ?? null}, ${data.metaWamid ?? null},
-        ${data.metaResponseBody ?? null}, ${data.metaError ?? null},
-        ${data.userId ?? null}
-      )
-    `);
-  } catch (err) {
-    logger.warn({ err }, "DIAG: failed to write otp_diagnostics row (non-fatal)");
-  }
 }
 
 function parseRoles(rolesJson: string | null, userType: string): string[] {
@@ -105,8 +34,58 @@ function parseRoles(rolesJson: string | null, userType: string): string[] {
   return [userType];
 }
 
+/**
+ * HMAC-SHA256 of the 6-digit code, keyed on SESSION_SECRET.
+ * Never log the plain code; only log/store the hash.
+ */
+function hashHelperCode(code: string): string {
+  const secret = process.env.SESSION_SECRET ?? "dev-secret-change-me";
+  return createHmac("sha256", secret).update(code).digest("hex");
+}
+
+// ── Per-user rate limiter for helper code verification ────────────────────────
+
+interface RateLimitEntry { attempts: number; lockedUntil: number | null }
+const helperVerifyAttempts = new Map<number, RateLimitEntry>();
+
+function checkHelperRateLimit(userId: number): { allowed: boolean; retryAfterMs?: number } {
+  const now = Date.now();
+  const entry = helperVerifyAttempts.get(userId) ?? { attempts: 0, lockedUntil: null };
+
+  if (entry.lockedUntil !== null && now < entry.lockedUntil) {
+    return { allowed: false, retryAfterMs: entry.lockedUntil - now };
+  }
+  // Reset if lock expired
+  if (entry.lockedUntil !== null && now >= entry.lockedUntil) {
+    helperVerifyAttempts.set(userId, { attempts: 0, lockedUntil: null });
+    return { allowed: true };
+  }
+  if (entry.attempts >= HELPER_VERIFY_MAX_ATTEMPTS) {
+    const lockedUntil = now + HELPER_VERIFY_LOCKOUT_MS;
+    helperVerifyAttempts.set(userId, { attempts: entry.attempts, lockedUntil });
+    return { allowed: false, retryAfterMs: HELPER_VERIFY_LOCKOUT_MS };
+  }
+  return { allowed: true };
+}
+
+function recordHelperFailedAttempt(userId: number): void {
+  const entry = helperVerifyAttempts.get(userId) ?? { attempts: 0, lockedUntil: null };
+  helperVerifyAttempts.set(userId, { ...entry, attempts: entry.attempts + 1 });
+}
+
+function clearHelperRateLimit(userId: number): void {
+  helperVerifyAttempts.delete(userId);
+}
+
+// ── safeUser ──────────────────────────────────────────────────────────────────
+
 function safeUser(user: typeof usersTable.$inferSelect) {
-  const { passwordHash: _, authToken: __, ...safe } = user;
+  const {
+    passwordHash: _,
+    authToken: __,
+    helperActivationCodeHash: ___,   // never expose hash
+    ...safe
+  } = user;
   return {
     ...safe,
     roles: parseRoles(safe.roles, safe.userType),
@@ -114,8 +93,12 @@ function safeUser(user: typeof usersTable.$inferSelect) {
     createdAt: safe.createdAt.toISOString(),
     lastLogin: safe.lastLogin?.toISOString() ?? null,
     otpCreatedAt: safe.otpCreatedAt?.toISOString() ?? null,
+    helperActivationCodeCreatedAt: safe.helperActivationCodeCreatedAt?.toISOString() ?? null,
+    helperActivationCodeUsedAt: safe.helperActivationCodeUsedAt?.toISOString() ?? null,
   };
 }
+
+// ── Notification helpers ──────────────────────────────────────────────────────
 
 async function createOtpNotification(opts: {
   userId?: number;
@@ -167,13 +150,14 @@ async function createWhatsAppFailureNotification(opts: {
 }
 
 /**
- * Determines whether to send a WhatsApp OTP for this user type.
- * Customers (طالب المساعدة) → WhatsApp OTP.
- * Helpers (المساعد) and admins → manual / admin flow.
+ * Returns true for user types that receive a WhatsApp OTP.
+ * Helpers always use the admin-mediated activation code flow.
  */
 function shouldSendWhatsApp(userType: string): boolean {
   return userType === "customer";
 }
+
+// ── Routes ───────────────────────────────────────────────────────────────────
 
 // POST /auth/register
 router.post("/auth/register", async (req, res): Promise<void> => {
@@ -185,66 +169,26 @@ router.post("/auth/register", async (req, res): Promise<void> => {
   const [existing] = await db.select().from(usersTable).where(eq(usersTable.phone, phone));
 
   if (existing) {
-    // Check if this role already exists for this user
     const existingRoles = parseRoles(existing.roles, existing.userType);
-
     if (existingRoles.includes(userType)) {
       res.status(400).json({ error: "رقم الهاتف مسجل مسبقاً بهذا النوع" });
       return;
     }
 
-    // Add the new role to the existing user (dual-role registration)
     const updatedRoles = [...existingRoles, userType];
-    const otp = generate6DigitOtp();
-
-    await db.update(usersTable)
-      .set({ roles: JSON.stringify(updatedRoles), otpCode: otp, otpCreatedAt: new Date() })
-      .where(eq(usersTable.id, existing.id));
-
-    req.log.info(
-      { userId: existing.id, newRole: userType, maskedPhone: maskPhone(phone) },
-      "Dual role added",
-    );
 
     if (shouldSendWhatsApp(userType)) {
-      // Customer: send WhatsApp OTP, no admin push needed
-      const platform = detectPlatform(req);
-      req.log.info(
-        {
-          platform,
-          userAgent: req.headers["user-agent"],
-          userId: existing.id,
-          userType,
-          otpDelivery: "whatsapp",
-          normalizedPhone: phone,
-          maskedPhone: maskPhone(phone),
-          phoneLen: phone.length,
-          hasPlus: phone.startsWith("+"),
-          endpoint: `${req.method} ${req.originalUrl}`,
-          baseUrl: `${req.protocol}://${req.get("host")}`,
-        },
-        "DIAG: OTP requested — register dual-role",
-      );
-      const result = await sendWhatsAppOtp(phone, otp, userType, platform);
-      void writeDiagnostic({
-        platform,
-        userAgent: req.headers["user-agent"] ?? "",
-        endpoint: "register-dual-role",
-        rawPhone: phone,
-        userId: existing.id,
-        metaStatus: result.metaStatus,
-        metaWamid: result.messageId,
-        metaResponseBody: result.metaResponseBody,
-        metaError: result.error,
-      });
+      // Customer dual-role: customer OTP via WhatsApp (with expiry)
+      const otp = generate6DigitCode();
+      await db.update(usersTable)
+        .set({ roles: JSON.stringify(updatedRoles), otpCode: otp, otpCreatedAt: new Date() })
+        .where(eq(usersTable.id, existing.id));
+
+      req.log.info({ userId: existing.id, newRole: userType, maskedPhone: maskPhone(phone) }, "Dual role added (customer)");
+
+      const result = await sendWhatsAppOtp(phone, otp, userType);
       if (!result.success) {
-        await createWhatsAppFailureNotification({
-          userId: existing.id,
-          userName: existing.name,
-          phone,
-          userType,
-          error: result.error,
-        });
+        await createWhatsAppFailureNotification({ userId: existing.id, userName: existing.name, phone, userType, error: result.error });
       }
       res.status(201).json({
         message: "تم إضافة دور العميل لحسابك. سيتم إرسال رمز التحقق عبر واتساب",
@@ -252,9 +196,22 @@ router.post("/auth/register", async (req, res): Promise<void> => {
         roleAdded: true,
       });
     } else {
-      // Helper/other: admin flow
+      // Helper dual-role: non-expiring activation code
+      const code = generate6DigitCode();
+      await db.update(usersTable)
+        .set({
+          roles: JSON.stringify(updatedRoles),
+          helperActivationCodeHash: hashHelperCode(code),
+          helperActivationCodeCreatedAt: new Date(),
+          helperActivationCodeUsedAt: null,
+          helperActivationCodeActive: true,
+        })
+        .where(eq(usersTable.id, existing.id));
+
+      req.log.info({ userId: existing.id, newRole: userType, maskedPhone: maskPhone(phone) }, "Dual role added (helper)");
+
       const notifId = await createOtpNotification({ userId: existing.id, userName: existing.name, phone, userType });
-      if (notifId != null) void sendAdminOtpPush(notifId, existing.id, phone, new Date().toISOString());
+      if (notifId != null) void sendAdminOtpPush(notifId, existing.id, phone, new Date().toISOString(), code);
       res.status(201).json({
         message: "تم إضافة الدور الجديد لحسابك. يرجى التواصل مع الإدارة للحصول على رمز التحقق",
         isVerified: existing.isVerified,
@@ -264,64 +221,39 @@ router.post("/auth/register", async (req, res): Promise<void> => {
     return;
   }
 
-  const otp = generate6DigitOtp();
-
-  const [user] = await db
-    .insert(usersTable)
-    .values({
+  if (shouldSendWhatsApp(userType)) {
+    // New customer: WhatsApp OTP (with expiry)
+    const otp = generate6DigitCode();
+    const [user] = await db.insert(usersTable).values({
       name, phone, passwordHash: "", userType,
       roles: JSON.stringify([userType]),
       isVerified: false, isBlocked: false, otpCode: otp, otpCreatedAt: new Date(),
-    })
-    .returning();
+    }).returning();
 
-  req.log.info(
-    { userId: user.id, userType, maskedPhone: maskPhone(phone) },
-    "User registered (unverified)",
-  );
+    req.log.info({ userId: user.id, userType, maskedPhone: maskPhone(phone) }, "Customer registered (unverified)");
 
-  if (shouldSendWhatsApp(userType)) {
-    // Customer: send WhatsApp OTP automatically
-    const platform = detectPlatform(req);
-    req.log.info(
-      {
-        platform,
-        userAgent: req.headers["user-agent"],
-        userId: user.id,
-        userType,
-        otpDelivery: "whatsapp",
-        normalizedPhone: phone,
-        maskedPhone: maskPhone(phone),
-        phoneLen: phone.length,
-        hasPlus: phone.startsWith("+"),
-        endpoint: `${req.method} ${req.originalUrl}`,
-        baseUrl: `${req.protocol}://${req.get("host")}`,
-      },
-      "DIAG: OTP requested — register new user",
-    );
-    const result = await sendWhatsAppOtp(phone, otp, userType, platform);
-    void writeDiagnostic({
-      platform,
-      userAgent: req.headers["user-agent"] ?? "",
-      endpoint: "register-new",
-      rawPhone: phone,
-      userId: user.id,
-      metaStatus: result.metaStatus,
-      metaWamid: result.messageId,
-      metaResponseBody: result.metaResponseBody,
-      metaError: result.error,
-    });
+    const result = await sendWhatsAppOtp(phone, otp, userType);
     if (!result.success) {
       await createWhatsAppFailureNotification({ userId: user.id, userName: name, phone, userType, error: result.error });
     }
-    res.status(201).json({
-      message: "تم إنشاء الحساب. سيتم إرسال رمز التحقق عبر واتساب",
-      isVerified: false,
-    });
+    res.status(201).json({ message: "تم إنشاء الحساب. سيتم إرسال رمز التحقق عبر واتساب", isVerified: false });
   } else {
-    // Helper: keep existing admin-mediated flow
+    // New helper: non-expiring activation code
+    const code = generate6DigitCode();
+    const [user] = await db.insert(usersTable).values({
+      name, phone, passwordHash: "", userType,
+      roles: JSON.stringify([userType]),
+      isVerified: false, isBlocked: false,
+      helperActivationCodeHash: hashHelperCode(code),
+      helperActivationCodeCreatedAt: new Date(),
+      helperActivationCodeUsedAt: null,
+      helperActivationCodeActive: true,
+    }).returning();
+
+    req.log.info({ userId: user.id, userType, maskedPhone: maskPhone(phone) }, "Helper registered (unverified)");
+
     const notifId = await createOtpNotification({ userId: user.id, userName: name, phone, userType });
-    if (notifId != null) void sendAdminOtpPush(notifId, user.id, phone, new Date().toISOString());
+    if (notifId != null) void sendAdminOtpPush(notifId, user.id, phone, new Date().toISOString(), code);
     res.status(201).json({
       message: "تم إنشاء الحساب. يرجى التواصل مع الإدارة للحصول على رمز التحقق",
       isVerified: false,
@@ -349,46 +281,17 @@ router.post("/auth/login", async (req, res): Promise<void> => {
     return;
   }
 
-  const otp = generate6DigitOtp();
-  await db.update(usersTable).set({ otpCode: otp, otpCreatedAt: new Date() }).where(eq(usersTable.id, user.id));
-
   req.log.info(
     { userId: user.id, userType: user.userType, maskedPhone: maskPhone(phone), isVerified: user.isVerified },
-    "OTP generated",
+    "OTP/code generated for login",
   );
 
   if (shouldSendWhatsApp(user.userType)) {
-    // Customer: send WhatsApp OTP, no admin intervention required
-    const platform = detectPlatform(req);
-    req.log.info(
-      {
-        platform,
-        userAgent: req.headers["user-agent"],
-        userId: user.id,
-        userType: user.userType,
-        otpDelivery: "whatsapp",
-        normalizedPhone: phone,
-        maskedPhone: maskPhone(phone),
-        phoneLen: phone.length,
-        hasPlus: phone.startsWith("+"),
-        endpoint: `${req.method} ${req.originalUrl}`,
-        baseUrl: `${req.protocol}://${req.get("host")}`,
-        isVerified: user.isVerified,
-      },
-      "DIAG: OTP requested — login",
-    );
-    const result = await sendWhatsAppOtp(phone, otp, user.userType, platform);
-    void writeDiagnostic({
-      platform,
-      userAgent: req.headers["user-agent"] ?? "",
-      endpoint: "login",
-      rawPhone: phone,
-      userId: user.id,
-      metaStatus: result.metaStatus,
-      metaWamid: result.messageId,
-      metaResponseBody: result.metaResponseBody,
-      metaError: result.error,
-    });
+    // Customer: WhatsApp OTP (with expiry)
+    const otp = generate6DigitCode();
+    await db.update(usersTable).set({ otpCode: otp, otpCreatedAt: new Date() }).where(eq(usersTable.id, user.id));
+
+    const result = await sendWhatsAppOtp(phone, otp, user.userType);
     if (!result.success) {
       await createWhatsAppFailureNotification({ userId: user.id, userName: user.name, phone, userType: user.userType, error: result.error });
     }
@@ -400,9 +303,19 @@ router.post("/auth/login", async (req, res): Promise<void> => {
       otpDelivery: "whatsapp",
     });
   } else {
-    // Helper: keep existing admin-mediated flow
+    // Helper: generate new non-expiring activation code (invalidates the old one)
+    const code = generate6DigitCode();
+    await db.update(usersTable)
+      .set({
+        helperActivationCodeHash: hashHelperCode(code),
+        helperActivationCodeCreatedAt: new Date(),
+        helperActivationCodeUsedAt: null,
+        helperActivationCodeActive: true,
+      })
+      .where(eq(usersTable.id, user.id));
+
     const notifId = await createOtpNotification({ userId: user.id, userName: user.name, phone, userType: user.userType });
-    if (notifId != null) void sendAdminOtpPush(notifId, user.id, phone, new Date().toISOString());
+    if (notifId != null) void sendAdminOtpPush(notifId, user.id, phone, new Date().toISOString(), code);
     res.json({
       message: user.isVerified
         ? "تواصل مع الإدارة للحصول على رمز التفعيل"
@@ -441,7 +354,7 @@ router.post("/auth/admin-login", async (req, res): Promise<void> => {
   res.json({ user: safeUser(updated), token: authToken });
 });
 
-// POST /auth/verify-otp — validates OTP, returns persistent token
+// POST /auth/verify-otp — validates code/OTP, returns persistent token
 router.post("/auth/verify-otp", async (req, res): Promise<void> => {
   const parsed = VerifyOtpBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
@@ -461,16 +374,67 @@ router.post("/auth/verify-otp", async (req, res): Promise<void> => {
     return;
   }
 
+  // ── Helper path: non-expiring activation code ────────────────────────────
+  if (!shouldSendWhatsApp(user.userType)) {
+    const rateCheck = checkHelperRateLimit(user.id);
+    if (!rateCheck.allowed) {
+      const minutes = Math.ceil((rateCheck.retryAfterMs ?? HELPER_VERIFY_LOCKOUT_MS) / 60000);
+      res.status(429).json({ error: `تجاوزت الحد المسموح من المحاولات. حاول مجدداً بعد ${minutes} دقيقة` });
+      return;
+    }
+
+    if (!user.helperActivationCodeActive || !user.helperActivationCodeHash) {
+      res.status(400).json({ error: "لا يوجد رمز تفعيل نشط. تواصل مع الإدارة لإنشاء رمز جديد" });
+      return;
+    }
+
+    const expectedHash = hashHelperCode(otp);
+    if (expectedHash !== user.helperActivationCodeHash) {
+      recordHelperFailedAttempt(user.id);
+      res.status(400).json({ error: "رمز التحقق غير صحيح" });
+      return;
+    }
+
+    // Code is valid — mark as used
+    clearHelperRateLimit(user.id);
+    const authToken = user.authToken ?? randomUUID();
+
+    const updates: Partial<typeof usersTable.$inferInsert> = {
+      helperActivationCodeActive: false,
+      helperActivationCodeUsedAt: new Date(),
+      lastLogin: new Date(),
+      authToken,
+    };
+    if (!user.isVerified) {
+      updates.isVerified = true;
+      updates.isBlocked = false;
+    }
+
+    const [updated] = await db
+      .update(usersTable)
+      .set(updates)
+      .where(eq(usersTable.id, user.id))
+      .returning();
+
+    (req as any).session = (req as any).session || {};
+    (req as any).session.userId = user.id;
+
+    req.log.info(
+      { userId: user.id, userType: user.userType, wasVerified: user.isVerified },
+      "Helper logged in via activation code",
+    );
+    res.json({ user: safeUser(updated), token: authToken });
+    return;
+  }
+
+  // ── Customer path: WhatsApp OTP with 10-min expiry ───────────────────────
   if (!user.otpCode || user.otpCode !== otp) {
     res.status(400).json({ error: "رمز التحقق غير صحيح" });
     return;
   }
 
   if (!user.otpCreatedAt || Date.now() - user.otpCreatedAt.getTime() > OTP_EXPIRY_MS) {
-    const expiryMsg = shouldSendWhatsApp(user.userType)
-      ? "انتهت صلاحية رمز التحقق، يرجى طلب رمز جديد"
-      : "انتهت صلاحية رمز التحقق، يرجى طلب رمز جديد من الإدارة";
-    res.status(400).json({ error: expiryMsg });
+    res.status(400).json({ error: "انتهت صلاحية رمز التحقق، يرجى طلب رمز جديد" });
     return;
   }
 
@@ -498,7 +462,7 @@ router.post("/auth/verify-otp", async (req, res): Promise<void> => {
 
   req.log.info(
     { userId: user.id, userType: user.userType, wasVerified: user.isVerified },
-    "User logged in via OTP",
+    "Customer logged in via WhatsApp OTP",
   );
   res.json({ user: safeUser(updated), token: authToken });
 });

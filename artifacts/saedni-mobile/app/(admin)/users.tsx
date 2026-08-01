@@ -15,7 +15,7 @@ const BASE = `https://${process.env.EXPO_PUBLIC_DOMAIN ?? "saedni.onrender.com"}
 interface User {
   id: number; name: string; phone: string; userType: string;
   isActive: boolean; isVerified: boolean; isBlocked: boolean;
-  otpCode?: string | null; area?: string | null;
+  helperActivationCodeActive?: boolean | null; area?: string | null;
 }
 
 type Filter = "all" | "customer" | "helper";
@@ -91,10 +91,10 @@ export default function AdminUsersScreen() {
               <Ionicons name="chevron-back" size={14} color={colors.mutedForeground} style={s.chevron} />
             </View>
             <Text style={s.userPhone}>{item.phone}</Text>
-            {item.otpCode && (
+            {item.userType === "helper" && item.helperActivationCodeActive === true && !item.isVerified && (
               <View style={s.otpChip}>
                 <Ionicons name="key-outline" size={11} color={colors.mutedForeground} />
-                <Text style={s.otpTxt}>OTP: {item.otpCode}</Text>
+                <Text style={s.otpTxt}>رمز تفعيل نشط</Text>
               </View>
             )}
           </View>
@@ -210,7 +210,7 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
       paddingHorizontal: 16, paddingVertical: 12,
       flexDirection: "row-reverse", alignItems: "center", justifyContent: "space-between",
     },
-    headerTitle: { fontSize: 20, fontWeight: "800", color: c.foreground, textAlign: "right", writingDirection: "rtl" },
+    headerTitle: { fontSize: 20, fontWeight: "800", color: c.foreground },
     backBtn: { padding: 4 },
     filterRow: {
       flexDirection: "row-reverse", paddingHorizontal: 16, paddingVertical: 10, gap: 8,
@@ -220,7 +220,7 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
       backgroundColor: c.muted,
     },
     filterTabActive: { backgroundColor: c.primary },
-    filterTxt: { fontSize: 13, color: c.mutedForeground, fontWeight: "600", textAlign: "right", writingDirection: "rtl" },
+    filterTxt: { fontSize: 13, color: c.mutedForeground, fontWeight: "600" },
     filterTxtActive: { color: c.primaryForeground, fontWeight: "700" },
     listContent: { padding: 16, paddingBottom: bottomInset + 24 },
     card: {
@@ -267,5 +267,5 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
     tagTxtPending: { color: "#92400E" },
     tagTxtBlocked: { color: "#DC2626" },
     empty: { alignItems: "center", justifyContent: "center", paddingTop: 80, gap: 10 },
-    emptyTxt: { fontSize: 16, color: c.mutedForeground, textAlign: "right", writingDirection: "rtl" },
+    emptyTxt: { fontSize: 16, color: c.mutedForeground },
   });

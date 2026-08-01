@@ -9,7 +9,6 @@ import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { useMutation } from "@tanstack/react-query";
 import { useColors } from "@/hooks/useColors";
-import SectionLabel from "@/components/SectionLabel";
 import { useAuth } from "@/contexts/AuthContext";
 import { CATEGORIES, AREAS } from "@/constants/categories";
 
@@ -151,7 +150,7 @@ export default function HelperProfileScreen() {
           </Text>
 
           {/* Category interests */}
-          <SectionLabel style={s.subTitle}>نوع الطلب</SectionLabel>
+          <Text style={s.subTitle}>نوع الطلب</Text>
           <View style={s.chipsWrap}>
             {CATEGORIES.map(cat => {
               const on = selCats.includes(cat.value);
@@ -170,7 +169,7 @@ export default function HelperProfileScreen() {
           </View>
 
           {/* Area preferences */}
-          <SectionLabel style={[s.subTitle, { marginTop: 16 }]}>المناطق المفضلة</SectionLabel>
+          <Text style={[s.subTitle, { marginTop: 16 }]}>المناطق المفضلة</Text>
           <View style={s.chipsWrap}>
             {AREAS.map(area => {
               const on = selAreas.includes(area);
@@ -219,9 +218,9 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
     container: { flex: 1, backgroundColor: c.background },
     headerSafe: { backgroundColor: c.card, borderBottomWidth: 1, borderBottomColor: c.border },
     headerInner: { paddingHorizontal: 20, paddingVertical: 14 },
-    headerTitle: { fontSize: 22, fontWeight: "800", color: c.foreground, textAlign: "right", alignSelf: "stretch" },
+    headerTitle: { fontSize: 22, fontWeight: "800", color: c.foreground, textAlign: "right" },
     scroll: { flex: 1 },
-    content: { padding: 20, paddingBottom: bottomInset + 100 },
+    content: { padding: 20, paddingBottom: bottomInset + 100, alignItems: "center" },
 
     avatarSection: { alignItems: "center", paddingVertical: 28 },
     avatar: {
@@ -239,14 +238,14 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
       position: "absolute", bottom: -2, right: -2,
       backgroundColor: c.card, borderRadius: 12,
     },
-    name: { fontSize: 24, fontWeight: "800", color: c.foreground, marginBottom: 4, textAlign: "right", writingDirection: "rtl" },
-    phone: { fontSize: 15, color: c.mutedForeground, marginBottom: 12, textAlign: "right", writingDirection: "rtl" },
+    name: { fontSize: 24, fontWeight: "800", color: c.foreground, marginBottom: 4 },
+    phone: { fontSize: 15, color: c.mutedForeground, marginBottom: 12 },
     rolePill: {
       flexDirection: "row-reverse", alignItems: "center", gap: 6,
       backgroundColor: c.secondary, borderRadius: 20,
       paddingHorizontal: 16, paddingVertical: 7,
     },
-    roleTxt: { fontSize: 14, color: c.primary, fontWeight: "700", textAlign: "right", writingDirection: "rtl" },
+    roleTxt: { fontSize: 14, color: c.primary, fontWeight: "700" },
 
     pendingBox: {
       width: "100%", backgroundColor: "#FEF3C7", borderRadius: 14, padding: 14,
@@ -254,8 +253,8 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
       borderWidth: 1, borderColor: "#FDE68A",
     },
     pendingText: { flex: 1 },
-    pendingTitle: { fontSize: 14, fontWeight: "700", color: "#92400E", textAlign: "right", marginBottom: 2, alignSelf: "stretch", writingDirection: "rtl" },
-    pendingHint: { fontSize: 13, color: "#92400E", textAlign: "right", lineHeight: 18, alignSelf: "stretch", writingDirection: "rtl" },
+    pendingTitle: { fontSize: 14, fontWeight: "700", color: "#92400E", textAlign: "right", marginBottom: 2 },
+    pendingHint: { fontSize: 13, color: "#92400E", textAlign: "right", lineHeight: 18 },
 
     infoCard: {
       width: "100%", backgroundColor: c.card, borderRadius: 16,
@@ -267,8 +266,8 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
       flexDirection: "row-reverse", justifyContent: "space-between", alignItems: "center",
       paddingHorizontal: 18, paddingVertical: 16,
     },
-    infoKey: { fontSize: 14, color: c.mutedForeground, fontWeight: "500", textAlign: "right", writingDirection: "rtl" },
-    infoVal: { fontSize: 15, fontWeight: "600", color: c.foreground, textAlign: "right", writingDirection: "rtl" },
+    infoKey: { fontSize: 14, color: c.mutedForeground, fontWeight: "500" },
+    infoVal: { fontSize: 15, fontWeight: "600", color: c.foreground },
     divider: { height: StyleSheet.hairlineWidth, backgroundColor: c.border, marginHorizontal: 18 },
     statusRow: { flexDirection: "row-reverse", alignItems: "center", gap: 6 },
     statusDot: { width: 8, height: 8, borderRadius: 4 },
@@ -285,16 +284,14 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
       flexDirection: "row-reverse", alignItems: "center",
       gap: 8, marginBottom: 8,
     },
-    interestsTitle: { fontSize: 18, fontWeight: "800", color: c.foreground, textAlign: "right", writingDirection: "rtl" },
+    interestsTitle: { fontSize: 18, fontWeight: "800", color: c.foreground },
     interestsHint: {
       fontSize: 13, color: c.mutedForeground, textAlign: "right",
-      lineHeight: 20, marginBottom: 18, alignSelf: "stretch",
-      writingDirection: "rtl",
+      lineHeight: 20, marginBottom: 18,
     },
     subTitle: {
       fontSize: 14, fontWeight: "700", color: c.foreground,
-      textAlign: "right", marginBottom: 10, alignSelf: "stretch",
-      writingDirection: "rtl",
+      textAlign: "right", marginBottom: 10,
     },
     chipsWrap: {
       flexDirection: "row-reverse", flexWrap: "wrap", gap: 8,
@@ -309,7 +306,7 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
       backgroundColor: c.primary, borderColor: c.primary,
     },
     chipCheck: { marginStart: 4 },
-    chipTxt: { fontSize: 13, color: c.foreground, fontWeight: "600", textAlign: "right", writingDirection: "rtl" },
+    chipTxt: { fontSize: 13, color: c.foreground, fontWeight: "600" },
     chipTxtOn: { color: c.primaryForeground },
     saveBtn: {
       marginTop: 20, backgroundColor: c.primary, borderRadius: 12,
@@ -317,12 +314,12 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
       alignItems: "center", justifyContent: "center", gap: 8,
     },
     saveBtnDisabled: { opacity: 0.5 },
-    saveBtnTxt: { color: c.primaryForeground, fontSize: 15, fontWeight: "700", textAlign: "right" },
+    saveBtnTxt: { color: c.primaryForeground, fontSize: 15, fontWeight: "700" },
 
     logoutBtn: {
       width: "100%", flexDirection: "row-reverse", alignItems: "center", gap: 12,
       backgroundColor: "#FEF2F2", borderRadius: 14, paddingVertical: 16, paddingHorizontal: 20,
       borderWidth: 1, borderColor: "#FECACA",
     },
-    logoutTxt: { fontSize: 16, color: "#DC2626", fontWeight: "700", textAlign: "right", writingDirection: "rtl" },
+    logoutTxt: { fontSize: 16, color: "#DC2626", fontWeight: "700" },
   });

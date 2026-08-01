@@ -6,29 +6,26 @@ type ArabicTextProps = React.ComponentProps<typeof Text> & {
 };
 
 /**
- * Right-aligned Arabic text — platform-safe.
+ * Right-aligned Arabic text — iOS behaviour matches v1.0.1 exactly.
  *
- * iOS:  `textAlign:"right"` + `writingDirection:"rtl"`.
- *       iOS handles Arabic direction natively; no I18nManager override needed.
+ * iOS:  textAlign:"right" only.
+ *       iOS renders Arabic glyphs correctly via the Unicode bidi algorithm
+ *       with no additional configuration.  Do NOT add writingDirection or any
+ *       I18nManager override — that injects native RTL which swaps the
+ *       physical direction and moves text to the left.
  *
- * Android: `textAlign:"right"` + `alignSelf:"stretch"`.
- *       Fabric/New Architecture sizes Text to its intrinsic content width by
- *       default.  With a narrow box, textAlign:"right" looks left-aligned.
- *       `alignSelf:"stretch"` expands the box to the parent width so the
- *       alignment is visible.  I18nManager.forceRTL is set at app start
- *       (Android only, in _layout.tsx).
+ * Android: textAlign:"right" + alignSelf:"stretch".
+ *       Fabric/New Architecture sizes Text to its intrinsic content width.
+ *       alignSelf:"stretch" expands the box to the parent width so the
+ *       right-alignment is visible.  I18nManager.forceRTL is set at app
+ *       start (Android-only, in _layout.tsx).
  *
- * Row-layout usage (icon + label):
- *   Pass style={{ flex: 1 }} — it overrides alignSelf and lets the text fill
- *   the remaining space next to the icon.
+ * Row-layout (icon + label): pass style={{ flex: 1 }} to override alignSelf.
  */
 export default function ArabicText({ style, ...props }: ArabicTextProps) {
   const baseStyle: TextStyle = {
     textAlign: "right",
     ...Platform.select({
-      ios: {
-        writingDirection: "rtl",
-      },
       android: {
         alignSelf: "stretch",
       },

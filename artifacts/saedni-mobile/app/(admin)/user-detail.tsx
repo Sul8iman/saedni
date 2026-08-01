@@ -713,7 +713,6 @@ const makeStyles = (c: ReturnType<typeof useColors>, _bottomInset: number) =>
     },
     otpCopyTxt: { fontSize: 13, fontWeight: "600", color: c.primary },
 
-
     // Sections
     section: { marginBottom: 16 },
     sectionTitle: { fontSize: 16, fontWeight: "700", color: c.foreground, textAlign: "right", marginBottom: 10 },

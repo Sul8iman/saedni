@@ -9,7 +9,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack, useRouter } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect, useRef } from "react";
-import { I18nManager } from "react-native";
+import { I18nManager, Platform } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -18,15 +18,19 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AuthProvider, useAuth, BASE } from "@/contexts/AuthContext";
 import { readAuthToken } from "@/hooks/usePushNotifications";
 
-// ── Force RTL for Arabic layout ─────────────────────────────────────────────
-// Must run before the first render. On Android a restart is required after
-// the very first install; subsequent launches apply RTL immediately.
-I18nManager.allowRTL(true);
-I18nManager.forceRTL(true);
-I18nManager.swapLeftAndRightInRTL(true);
+// ── Force RTL for Arabic layout (Android only) ──────────────────────────────
+// iOS handles Arabic text direction natively via the Unicode bidi algorithm.
+// Applying forceRTL + swapLeftAndRightInRTL on iOS causes textAlign:"right"
+// to be swapped to the physical left, breaking Arabic layout.
+// Android requires an explicit RTL nudge because it runs under an LTR system
+// locale and Fabric/New Architecture does not auto-detect script direction.
+if (Platform.OS === "android") {
+  I18nManager.allowRTL(true);
+  I18nManager.forceRTL(true);
+  I18nManager.swapLeftAndRightInRTL(true);
+}
 
 // Patch global fetch to include session cookies on every request
-declare var global: typeof globalThis;
 const _origFetch = global.fetch;
 global.fetch = (input: RequestInfo | URL, init?: RequestInit) =>
   _origFetch(input, { credentials: "include", ...init });
@@ -140,7 +144,6 @@ function RootLayoutNav() {
         <Stack.Screen name="(helper)" />
         <Stack.Screen name="(admin)" />
         <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="rtl-test" />
       </Stack>
     </>
   );

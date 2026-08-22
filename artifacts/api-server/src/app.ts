@@ -53,7 +53,8 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser(process.env.SESSION_SECRET ?? "saidni_secret"));
 
-// Simple in-memory session store (MVP — replaced by token auth for mobile)
+// Simple in-memory session store. Bearer tokens are preferred for mobile, but
+// the signed cookie keeps already-installed clients working while they upgrade.
 const sessions: Record<string, { userId?: number }> = {};
 
 // Token-based auth middleware — reads Authorization: Bearer <token> header
@@ -80,8 +81,10 @@ app.use(async (req, _res, next) => {
   next();
 });
 
-// Session middleware — token auth takes priority over cookie sessions
-app.use((req, _res, next) => {
+// Session middleware — token auth takes priority over cookie sessions.
+// Persist newly-created sessions so legacy mobile clients that use cookies can
+// still access protected admin routes after a successful PIN login.
+app.use((req, res, next) => {
   const tokenUserId = (req as any)._tokenUserId;
   if (tokenUserId != null) {
     (req as any).session = { userId: tokenUserId };
@@ -97,6 +100,14 @@ app.use((req, _res, next) => {
     sessions[newSid] = {};
     (req as any).session = sessions[newSid];
     (req as any).sessionId = newSid;
+    const isProduction = process.env.NODE_ENV === "production";
+    res.cookie("sid", newSid, {
+      httpOnly: true,
+      signed: true,
+      secure: isProduction,
+      sameSite: isProduction ? "none" : "lax",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
   }
   next();
 });

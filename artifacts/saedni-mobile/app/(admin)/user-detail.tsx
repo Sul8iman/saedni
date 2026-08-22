@@ -113,7 +113,10 @@ export default function UserDetailScreen() {
   const { data: user, isLoading: userLoading } = useQuery<UserDetail>({
     queryKey: ["admin-user-detail", userId],
     queryFn: async () => {
-      const r = await fetch(`${BASE}/api/users/${userId}`, { credentials: "include" });
+      const r = await fetch(`${BASE}/api/users/${userId}`, {
+        credentials: "include",
+        headers: await getAuthHeaders(),
+      });
       if (!r.ok) throw new Error("فشل تحميل المستخدم");
       return r.json();
     },
@@ -128,7 +131,10 @@ export default function UserDetailScreen() {
       if (user.userType === "customer") url += `?customerId=${userId}`;
       else if (user.userType === "helper") url += `?helperId=${userId}`;
       else return [];
-      const r = await fetch(url, { credentials: "include" });
+      const r = await fetch(url, {
+        credentials: "include",
+        headers: await getAuthHeaders(),
+      });
       if (!r.ok) return [];
       return r.json();
     },
@@ -139,7 +145,7 @@ export default function UserDetailScreen() {
     mutationFn: async (isActive: boolean) => {
       const r = await fetch(`${BASE}/api/users/${userId}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...(await getAuthHeaders()) },
         credentials: "include",
         body: JSON.stringify({ isActive }),
       });

@@ -37,6 +37,18 @@ interface AdminNotification {
   isRead: boolean; createdAt: string;
 }
 
+async function readAdminResponse<T>(response: Response, fallbackMessage: string): Promise<T> {
+  const body: unknown = await response.json().catch(() => null);
+  if (!response.ok) {
+    const message =
+      body && typeof body === "object" && "error" in body && typeof body.error === "string"
+        ? body.error
+        : fallbackMessage;
+    throw new Error(message);
+  }
+  return body as T;
+}
+
 function fmtScheduled(iso: string) {
   const d = new Date(iso);
   const dd = d.getDate().toString().padStart(2, "0");
@@ -91,15 +103,20 @@ export default function AdminDashboard() {
     queryKey: ["admin-stats"],
     queryFn: async () => {
       const r = await fetch(`${BASE}/api/admin/stats`, { credentials: "include", headers: await getAuthHeaders() });
-      return r.json() as Promise<Stats>;
+      return readAdminResponse<Stats>(r, "تعذر تحميل الإحصائيات");
     },
   });
 
   const { data: requests, isLoading: reqLoading, refetch: refetchReqs, isRefetching: reqRefetching } = useQuery({
     queryKey: ["admin-requests"],
     queryFn: async () => {
-      const r = await fetch(`${BASE}/api/requests`, { credentials: "include" });
-      return r.json() as Promise<HelpRequest[]>;
+      const r = await fetch(`${BASE}/api/requests`, {
+        credentials: "include",
+        headers: await getAuthHeaders(),
+      });
+      const data = await readAdminResponse<unknown>(r, "تعذر تحميل الطلبات");
+      if (!Array.isArray(data)) throw new Error("استجابة الطلبات غير صالحة");
+      return data as HelpRequest[];
     },
   });
 
@@ -107,14 +124,18 @@ export default function AdminDashboard() {
     queryKey: ["admin-notifications"],
     queryFn: async () => {
       const r = await fetch(`${BASE}/api/admin/notifications`, { credentials: "include", headers: await getAuthHeaders() });
-      return r.json() as Promise<AdminNotification[]>;
+      const data = await readAdminResponse<unknown>(r, "تعذر تحميل الإشعارات");
+      if (!Array.isArray(data)) throw new Error("استجابة الإشعارات غير صالحة");
+      return data as AdminNotification[];
     },
     refetchInterval: 30_000,
   });
 
-  const unreadCount = notifications?.filter(n => !n.isRead).length ?? 0;
+  const notificationItems = Array.isArray(notifications) ? notifications : [];
+  const requestItems = Array.isArray(requests) ? requests : [];
+  const unreadCount = notificationItems.filter(n => !n.isRead).length;
 
-  const filteredRequests = (requests ?? []).filter(req => {
+  const filteredRequests = requestItems.filter(req => {
     if (feedbackFilter === "all") return true;
     if (feedbackFilter === "completed") return req.helpCompleted === true;
     if (feedbackFilter === "not_completed") return req.helpCompleted === false;
@@ -124,7 +145,11 @@ export default function AdminDashboard() {
 
   const deleteReqMutation = useMutation({
     mutationFn: async (id: number) => {
-      const r = await fetch(`${BASE}/api/requests/${id}`, { method: "DELETE", credentials: "include" });
+      const r = await fetch(`${BASE}/api/requests/${id}`, {
+        method: "DELETE",
+        credentials: "include",
+        headers: await getAuthHeaders(),
+      });
       if (!r.ok) throw new Error();
     },
     onSuccess: () => {
@@ -137,7 +162,11 @@ export default function AdminDashboard() {
 
   const endReqMutation = useMutation({
     mutationFn: async (id: number) => {
-      const r = await fetch(`${BASE}/api/requests/${id}/complete`, { method: "PATCH", credentials: "include" });
+      const r = await fetch(`${BASE}/api/requests/${id}/complete`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: await getAuthHeaders(),
+      });
       if (!r.ok) throw new Error();
     },
     onSuccess: () => {
@@ -469,7 +498,7 @@ export default function AdminDashboard() {
         />
       ) : (
         <FlatList
-          data={notifications ?? []}
+          data={notificationItems}
           keyExtractor={i => String(i.id)}
           renderItem={renderNotification}
           contentContainerStyle={s.listContent}

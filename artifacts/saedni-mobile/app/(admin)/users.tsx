@@ -32,8 +32,14 @@ export default function AdminUsersScreen() {
     queryKey: ["admin-users", filter],
     queryFn: async () => {
       const q = filter !== "all" ? `?userType=${filter}` : "";
-      const r = await fetch(`${BASE}/api/users${q}`, { credentials: "include" });
-      return r.json() as Promise<User[]>;
+      const r = await fetch(`${BASE}/api/users${q}`, {
+        credentials: "include",
+        headers: await getAuthHeaders(),
+      });
+      if (!r.ok) throw new Error("تعذر تحميل المستخدمين");
+      const data: unknown = await r.json();
+      if (!Array.isArray(data)) throw new Error("استجابة المستخدمين غير صالحة");
+      return data as User[];
     },
   });
 

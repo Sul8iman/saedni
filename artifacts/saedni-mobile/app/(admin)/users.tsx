@@ -1,7 +1,7 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
-  ActivityIndicator, RefreshControl, Alert,
+  ActivityIndicator, RefreshControl, Alert, TextInput,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -21,12 +21,27 @@ interface User {
 
 type Filter = "all" | "customer" | "helper";
 
+function normalizePhone(value: string): string {
+  return value
+    .replace(/[()\s-]/g, "")
+    .replace(/^\+/, "")
+    .replace(/\D/g, "");
+}
+
+function localPhonePart(value: string): string {
+  const normalized = normalizePhone(value);
+  return normalized.startsWith("968") && normalized.length > 8
+    ? normalized.slice(3)
+    : normalized;
+}
+
 export default function AdminUsersScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const qc = useQueryClient();
   const [filter, setFilter] = useState<Filter>("all");
+  const [searchQuery, setSearchQuery] = useState("");
 
   const { data, isLoading, refetch, isRefetching } = useQuery({
     queryKey: ["admin-users", filter],
@@ -83,6 +98,25 @@ export default function AdminUsersScreen() {
     { v: "customer", label: "العملاء" },
     { v: "helper", label: "المساعدون" },
   ];
+
+  const filteredUsers = useMemo(() => {
+    const nameQuery = searchQuery.trim().toLocaleLowerCase();
+    const phoneQuery = normalizePhone(searchQuery);
+    const localQuery = localPhonePart(searchQuery);
+
+    if (!nameQuery && !phoneQuery) return data ?? [];
+
+    return (data ?? []).filter((item) => {
+      const matchesName = nameQuery.length > 0 &&
+        item.name.toLocaleLowerCase().includes(nameQuery);
+      const normalizedStoredPhone = normalizePhone(item.phone);
+      const matchesPhone = phoneQuery.length > 0 && (
+        normalizedStoredPhone.includes(phoneQuery) ||
+        (localQuery.length > 0 && localPhonePart(item.phone).includes(localQuery))
+      );
+      return matchesName || matchesPhone;
+    });
+  }, [data, searchQuery]);
 
   const renderItem = ({ item }: { item: User }) => (
     <View style={s.card}>
@@ -173,6 +207,20 @@ export default function AdminUsersScreen() {
             <Ionicons name="arrow-forward" size={22} color={colors.foreground} />
           </TouchableOpacity>
         </View>
+        <View style={s.searchRow}>
+          <View style={s.searchBox}>
+            <Ionicons name="search-outline" size={19} color={colors.mutedForeground} />
+            <TextInput
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              placeholder="ابحث بالاسم أو رقم الهاتف"
+              placeholderTextColor={colors.mutedForeground}
+              style={s.searchInput}
+              textAlign="right"
+              accessibilityLabel="ابحث بالاسم أو رقم الهاتف"
+            />
+          </View>
+        </View>
         {/* Filter tabs */}
         <View style={s.filterRow}>
           {FILTERS.map(f => (
@@ -192,7 +240,7 @@ export default function AdminUsersScreen() {
         <View style={s.centered}><ActivityIndicator size="large" color={colors.primary} /></View>
       ) : (
         <FlatList
-          data={data ?? []}
+          data={filteredUsers}
           keyExtractor={i => String(i.id)}
           renderItem={renderItem}
           contentContainerStyle={s.listContent}
@@ -223,6 +271,16 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
     },
     headerTitle: { fontSize: 20, fontWeight: "800", color: c.foreground },
     backBtn: { padding: 4 },
+    searchRow: { paddingHorizontal: 16, paddingBottom: 4 },
+    searchBox: {
+      minHeight: 44, borderRadius: 12, borderWidth: 1, borderColor: c.border,
+      backgroundColor: c.background, flexDirection: "row-reverse",
+      alignItems: "center", paddingHorizontal: 12, gap: 8,
+    },
+    searchInput: {
+      flex: 1, minHeight: 42, color: c.foreground, fontSize: 14,
+      textAlign: "right", writingDirection: "rtl",
+    },
     filterRow: {
       flexDirection: "row-reverse", paddingHorizontal: 16, paddingVertical: 10, gap: 8,
     },

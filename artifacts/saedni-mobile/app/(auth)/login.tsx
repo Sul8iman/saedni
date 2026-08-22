@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
-  ActivityIndicator, Alert, Linking,
+  ActivityIndicator, Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -60,8 +60,6 @@ export default function LoginScreen() {
   const [otp, setOtp] = useState("");
   const [pin, setPin] = useState("");
   const [isUnverified, setIsUnverified] = useState(false);
-  // "whatsapp" = customer (OTP sent via WhatsApp), "admin" = helper/manual flow
-  const [otpDelivery, setOtpDelivery] = useState<"whatsapp" | "admin">("admin");
   const [loading, setLoading] = useState(false);
 
   async function handlePhoneSubmit() {
@@ -92,8 +90,6 @@ export default function LoginScreen() {
       setStep("pin");
     } else {
       setIsUnverified(data.isVerified === false);
-      // Server sends otpDelivery: "whatsapp" | "admin"; fall back to "admin" for old server
-      setOtpDelivery((data.otpDelivery as "whatsapp" | "admin") ?? "admin");
       setStep("otp");
     }
   }
@@ -168,12 +164,6 @@ export default function LoginScreen() {
     router.replace("/");
   }
 
-  function openWhatsAppAdmin() {
-    Linking.openURL(
-      `https://wa.me/96892771450?text=${encodeURIComponent("مرحباً، أحتاج رمز التحقق للدخول إلى تطبيق ساعدني")}`
-    );
-  }
-
   const s = makeStyles(colors);
 
   return (
@@ -201,6 +191,7 @@ export default function LoginScreen() {
           {step === "phone" && (
             <>
               <ArabicText style={s.cardTitle}>تسجيل الدخول</ArabicText>
+              <ArabicText style={s.subLabel}>سنرسل رمز التحقق عبر واتساب بعد إدخال رقمك</ArabicText>
               <ArabicText style={s.fieldLabel}>رقم الهاتف</ArabicText>
               <TextInput
                 style={s.input}
@@ -249,22 +240,10 @@ export default function LoginScreen() {
                 الرقم: <Text style={s.subLabelBold}>{phone}</Text>
               </ArabicText>
 
-              {otpDelivery === "whatsapp" ? (
-                // Customer: OTP sent via WhatsApp automatically
-                <View style={s.waInfoBox}>
-                  <Ionicons name="logo-whatsapp" size={18} color="#25D366" />
-                  <ArabicText style={s.waInfoTxt}>أدخل رمز التحقق المرسل إلى رقم واتساب المسجل.</ArabicText>
-                </View>
-              ) : (
-                // Helper / manual flow: contact admin
-                <>
-                  <Text style={s.adminHint}>يرجى التواصل مع الإدارة للحصول على رمز التفعيل.</Text>
-                  <TouchableOpacity style={s.waBtn} onPress={openWhatsAppAdmin} activeOpacity={0.85}>
-                    <Ionicons name="logo-whatsapp" size={20} color="#fff" />
-                    <Text style={s.waBtnTxt}>تواصل مع الإدارة</Text>
-                  </TouchableOpacity>
-                </>
-              )}
+              <View style={s.waInfoBox}>
+                <Ionicons name="logo-whatsapp" size={18} color="#25D366" />
+                <ArabicText style={s.waInfoTxt}>أدخل رمز التحقق المرسل إلى رقم واتساب المسجل.</ArabicText>
+              </View>
 
               <TextInput
                 style={[s.input, s.otpInput]}
@@ -385,16 +364,6 @@ const makeStyles = (c: ReturnType<typeof useColors>) =>
     ghostBtn: { alignItems: "center", paddingVertical: 10 },
     ghostTxt: { fontSize: 14, color: c.mutedForeground, textAlign: "center" },
     ghostLink: { color: c.primary, fontWeight: "700" },
-    adminHint: {
-      fontSize: 13, color: c.mutedForeground, textAlign: "center",
-      marginBottom: 12, lineHeight: 20,
-    },
-    waBtn: {
-      backgroundColor: "#25D366", borderRadius: 12, paddingVertical: 13,
-      flexDirection: "row-reverse", alignItems: "center", justifyContent: "center",
-      gap: 10, marginBottom: 16,
-    },
-    waBtnTxt: { color: "#fff", fontSize: 14, fontWeight: "700" },
     waInfoBox: {
       flexDirection: "row-reverse", alignItems: "center", gap: 8,
       backgroundColor: "#F0FDF4", borderRadius: 10, padding: 12,

@@ -40,6 +40,8 @@ export interface User {
   otpCode?: string | null;
   /** @nullable */
   otpCreatedAt?: string | null;
+  /** @nullable */
+  helperWelcomeMessageSentAt?: string | null;
   createdAt: string;
   /** @nullable */
   helperInterests?: string | null;
@@ -75,11 +77,19 @@ export interface AdminLoginInput {
   pin: string;
 }
 
+export type OtpRequestResponseOtpDelivery = typeof OtpRequestResponseOtpDelivery[keyof typeof OtpRequestResponseOtpDelivery];
+
+
+export const OtpRequestResponseOtpDelivery = {
+  whatsapp: 'whatsapp',
+} as const;
+
 export interface OtpRequestResponse {
   message: string;
   otp?: string;
   isVerified?: boolean;
   isAdmin?: boolean;
+  otpDelivery?: OtpRequestResponseOtpDelivery;
 }
 
 export interface AuthResponse {

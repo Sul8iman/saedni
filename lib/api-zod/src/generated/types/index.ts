@@ -24,6 +24,7 @@ export * from './listRequestsParams';
 export * from './listUsersParams';
 export * from './loginInput';
 export * from './otpRequestResponse';
+export * from './otpRequestResponseOtpDelivery';
 export * from './registerInput';
 export * from './registerInputUserType';
 export * from './successResponse';

@@ -9,6 +9,7 @@ import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useColors } from "@/hooks/useColors";
+import { getAuthHeaders } from "@/contexts/AuthContext";
 
 const BASE = `https://${process.env.EXPO_PUBLIC_DOMAIN ?? "saedni.onrender.com"}`;
 
@@ -40,7 +41,7 @@ export default function AdminUsersScreen() {
     mutationFn: async ({ id, action }: { id: number; action: "verify" | "block" }) => {
       const r = await fetch(`${BASE}/api/admin/helpers/${id}/verify`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...(await getAuthHeaders()) },
         credentials: "include",
         body: JSON.stringify({ action }),
       });
@@ -55,7 +56,11 @@ export default function AdminUsersScreen() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      const r = await fetch(`${BASE}/api/admin/users/${id}/delete`, { method: "DELETE", credentials: "include" });
+      const r = await fetch(`${BASE}/api/admin/users/${id}/delete`, {
+        method: "DELETE",
+        credentials: "include",
+        headers: await getAuthHeaders(),
+      });
       if (!r.ok) throw new Error();
     },
     onSuccess: () => {

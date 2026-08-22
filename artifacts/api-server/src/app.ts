@@ -11,7 +11,10 @@ import { logger } from "./lib/logger";
 (async () => {
   try {
     await db.execute(drizzleSql`ALTER TABLE users ADD COLUMN IF NOT EXISTS expo_push_token text`);
-    logger.info("Schema migration: expo_push_token column ensured");
+    await db.execute(drizzleSql`ALTER TABLE users ADD COLUMN IF NOT EXISTS helper_welcome_message_sent_at timestamptz`);
+    await db.execute(drizzleSql`ALTER TABLE users ADD COLUMN IF NOT EXISTS helper_welcome_message_lease_id text`);
+    await db.execute(drizzleSql`ALTER TABLE users ADD COLUMN IF NOT EXISTS helper_welcome_message_lease_expires_at timestamptz`);
+    logger.info("Schema migration: runtime columns ensured");
   } catch (err) {
     logger.warn({ err }, "Schema migration check failed (non-fatal)");
   }

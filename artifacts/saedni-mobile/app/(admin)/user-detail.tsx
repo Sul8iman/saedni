@@ -9,6 +9,7 @@ import * as Haptics from "expo-haptics";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useColors } from "@/hooks/useColors";
+import { getAuthHeaders } from "@/contexts/AuthContext";
 import { CATEGORIES, STATUS_INFO } from "@/constants/categories";
 
 const BASE = `https://${process.env.EXPO_PUBLIC_DOMAIN ?? "saedni.onrender.com"}`;
@@ -159,6 +160,7 @@ export default function UserDetailScreen() {
       const r = await fetch(`${BASE}/api/admin/helpers/${userId}/regenerate-code`, {
         method: "POST",
         credentials: "include",
+        headers: await getAuthHeaders(),
       });
       if (!r.ok) {
         const body = await r.json().catch(() => ({}));
@@ -180,6 +182,7 @@ export default function UserDetailScreen() {
       const r = await fetch(`${BASE}/api/admin/users/${userId}/delete`, {
         method: "DELETE",
         credentials: "include",
+        headers: await getAuthHeaders(),
       });
       if (!r.ok) throw new Error();
     },

@@ -80,6 +80,11 @@ export async function secureDelete(key: string): Promise<void> {
   try { await AsyncStorage.removeItem(key); } catch {}
 }
 
+export async function getAuthHeaders(): Promise<Record<string, string>> {
+  const token = await secureGet(TOKEN_KEY);
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 export interface AuthUser {

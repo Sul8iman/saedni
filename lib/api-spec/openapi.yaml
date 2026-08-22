@@ -542,6 +542,8 @@ components:
           type: ["string", "null"]
         otpCreatedAt:
           type: ["string", "null"]
+        helperWelcomeMessageSentAt:
+          type: ["string", "null"]
         createdAt:
           type: string
         helperInterests:
@@ -598,6 +600,9 @@ components:
           type: boolean
         isAdmin:
           type: boolean
+        otpDelivery:
+          type: string
+          enum: [whatsapp]
 
     AuthResponse:
       type: object

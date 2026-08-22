@@ -25,6 +25,8 @@ export interface User {
   otpCode?: string | null;
   /** @nullable */
   otpCreatedAt?: string | null;
+  /** @nullable */
+  helperWelcomeMessageSentAt?: string | null;
   createdAt: string;
   /** @nullable */
   helperInterests?: string | null;

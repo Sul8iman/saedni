@@ -8,6 +8,30 @@ import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
 
+router.use("/admin", async (req, res, next): Promise<void> => {
+  const userId = (req as any).session?.userId;
+  if (!userId) {
+    res.status(401).json({ error: "يلزم تسجيل دخول المدير" });
+    return;
+  }
+
+  const [user] = await db
+    .select({
+      userType: usersTable.userType,
+      isVerified: usersTable.isVerified,
+      isBlocked: usersTable.isBlocked,
+    })
+    .from(usersTable)
+    .where(eq(usersTable.id, userId));
+
+  if (!user || user.userType !== "admin" || !user.isVerified || user.isBlocked) {
+    res.status(403).json({ error: "هذه العملية متاحة للمدير فقط" });
+    return;
+  }
+
+  next();
+});
+
 function generate6DigitCode(): string {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
@@ -21,6 +45,8 @@ function safeUser(user: typeof usersTable.$inferSelect) {
   const {
     passwordHash: _,
     helperActivationCodeHash: __,   // never expose hash
+    helperWelcomeMessageLeaseId: ___,
+    helperWelcomeMessageLeaseExpiresAt: ____,
     ...safe
   } = user;
   return {

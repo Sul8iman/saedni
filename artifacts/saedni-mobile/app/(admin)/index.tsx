@@ -9,7 +9,7 @@ import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useColors } from "@/hooks/useColors";
-import { useAuth } from "@/contexts/AuthContext";
+import { getAuthHeaders, useAuth } from "@/contexts/AuthContext";
 import { useAdminPushRegistration } from "@/hooks/usePushNotifications";
 import { CATEGORIES, STATUS_INFO } from "@/constants/categories";
 
@@ -90,7 +90,7 @@ export default function AdminDashboard() {
   const { data: stats, refetch: refetchStats } = useQuery({
     queryKey: ["admin-stats"],
     queryFn: async () => {
-      const r = await fetch(`${BASE}/api/admin/stats`, { credentials: "include" });
+      const r = await fetch(`${BASE}/api/admin/stats`, { credentials: "include", headers: await getAuthHeaders() });
       return r.json() as Promise<Stats>;
     },
   });
@@ -106,7 +106,7 @@ export default function AdminDashboard() {
   const { data: notifications, isLoading: notifLoading, refetch: refetchNotifs, isRefetching: notifRefetching } = useQuery({
     queryKey: ["admin-notifications"],
     queryFn: async () => {
-      const r = await fetch(`${BASE}/api/admin/notifications`, { credentials: "include" });
+      const r = await fetch(`${BASE}/api/admin/notifications`, { credentials: "include", headers: await getAuthHeaders() });
       return r.json() as Promise<AdminNotification[]>;
     },
     refetchInterval: 30_000,
@@ -153,6 +153,7 @@ export default function AdminDashboard() {
       const r = await fetch(`${BASE}/api/admin/notifications/${id}/read`, {
         method: "PATCH",
         credentials: "include",
+        headers: await getAuthHeaders(),
       });
       if (!r.ok) throw new Error();
       return r.json() as Promise<AdminNotification>;

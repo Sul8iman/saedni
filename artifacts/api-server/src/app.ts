@@ -14,6 +14,8 @@ import { logger } from "./lib/logger";
     await db.execute(drizzleSql`ALTER TABLE users ADD COLUMN IF NOT EXISTS helper_welcome_message_sent_at timestamptz`);
     await db.execute(drizzleSql`ALTER TABLE users ADD COLUMN IF NOT EXISTS helper_welcome_message_lease_id text`);
     await db.execute(drizzleSql`ALTER TABLE users ADD COLUMN IF NOT EXISTS helper_welcome_message_lease_expires_at timestamptz`);
+    await db.execute(drizzleSql`ALTER TABLE admin_notifications ADD COLUMN IF NOT EXISTS event_key text`);
+    await db.execute(drizzleSql`CREATE UNIQUE INDEX IF NOT EXISTS admin_notifications_event_key_unique ON admin_notifications(event_key)`);
     logger.info("Schema migration: runtime columns ensured");
   } catch (err) {
     logger.warn({ err }, "Schema migration check failed (non-fatal)");

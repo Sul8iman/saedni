@@ -1,6 +1,7 @@
 import { logger } from "./logger";
 import { db, usersTable } from "@workspace/db";
 import { eq, isNotNull, and } from "drizzle-orm";
+import type { AdminEventNotification } from "./admin-event-notifications";
 
 interface PushMessage {
   title: string;
@@ -48,6 +49,35 @@ async function batchSendPush(
   }
 }
 
+async function getAdminPushRecipients(): Promise<{ uniqueTokens: string[]; adminCount: number }> {
+  const rows = await db
+    .select({
+      id: usersTable.id,
+      userType: usersTable.userType,
+      roles: usersTable.roles,
+      expoPushToken: usersTable.expoPushToken,
+    })
+    .from(usersTable)
+    .where(and(eq(usersTable.isBlocked, false), isNotNull(usersTable.expoPushToken)));
+
+  const seenTokens = new Set<string>();
+  let adminCount = 0;
+
+  for (const user of rows) {
+    let roles: string[];
+    try {
+      roles = user.roles ? (JSON.parse(user.roles) as string[]) : [user.userType];
+    } catch {
+      roles = [user.userType];
+    }
+    if (!roles.includes("admin") && user.userType !== "admin") continue;
+    adminCount++;
+    if (user.expoPushToken) seenTokens.add(user.expoPushToken);
+  }
+
+  return { uniqueTokens: [...seenTokens], adminCount };
+}
+
 // ── Admin OTP push ──────────────────────────────────────────────────────────
 
 const notifiedOtpIds = new Set<number>();
@@ -66,32 +96,7 @@ export async function sendAdminOtpPush(
   notifiedOtpIds.add(notificationId);
 
   try {
-    const rows = await db
-      .select({
-        id: usersTable.id,
-        userType: usersTable.userType,
-        roles: usersTable.roles,
-        expoPushToken: usersTable.expoPushToken,
-      })
-      .from(usersTable)
-      .where(and(eq(usersTable.isBlocked, false), isNotNull(usersTable.expoPushToken)));
-
-    const seenTokens = new Set<string>();
-    let adminCount = 0;
-
-    for (const u of rows) {
-      let roles: string[];
-      try {
-        roles = u.roles ? (JSON.parse(u.roles) as string[]) : [u.userType];
-      } catch {
-        roles = [u.userType];
-      }
-      if (!roles.includes("admin") && u.userType !== "admin") continue;
-      adminCount++;
-      if (u.expoPushToken) seenTokens.add(u.expoPushToken);
-    }
-
-    const uniqueTokens = [...seenTokens];
+    const { uniqueTokens, adminCount } = await getAdminPushRecipients();
     logger.info(
       { notificationId, adminCount, uniqueTokens: uniqueTokens.length },
       "push: admin OTP dispatch started",
@@ -124,5 +129,48 @@ export async function sendAdminOtpPush(
     );
   } catch (err) {
     logger.warn({ notificationId, err }, "push: admin OTP dispatch failed");
+  }
+}
+
+const notifiedAdminEventIds = new Set<number>();
+
+export async function sendAdminEventPush(
+  notificationId: number,
+  event: AdminEventNotification,
+): Promise<void> {
+  if (notifiedAdminEventIds.has(notificationId)) {
+    logger.warn({ notificationId, type: event.type }, "push: admin event duplicate suppressed");
+    return;
+  }
+  notifiedAdminEventIds.add(notificationId);
+
+  try {
+    const { uniqueTokens, adminCount } = await getAdminPushRecipients();
+    logger.info(
+      { notificationId, type: event.type, adminCount, uniqueTokens: uniqueTokens.length },
+      "push: admin event dispatch started",
+    );
+
+    await batchSendPush(
+      uniqueTokens,
+      {
+        title: event.title,
+        body: event.body,
+        data: {
+          ...event.pushData,
+          notificationType: event.type,
+          notificationId,
+        },
+        sound: "default",
+      },
+      { notificationId, type: event.type },
+    );
+
+    logger.info(
+      { notificationId, type: event.type, adminCount, uniqueTokens: uniqueTokens.length },
+      "push: admin event dispatch complete",
+    );
+  } catch (err) {
+    logger.warn({ notificationId, type: event.type, err }, "push: admin event dispatch failed");
   }
 }

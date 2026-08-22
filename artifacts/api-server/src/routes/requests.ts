@@ -2,6 +2,8 @@ import { Router, type IRouter } from "express";
 import { eq, and, inArray, isNotNull } from "drizzle-orm";
 import { db, requestsTable, usersTable } from "@workspace/db";
 import { logger } from "../lib/logger";
+import { buildNewRequestAdminEvent } from "../lib/admin-event-notifications";
+import { notifyAdminEvent } from "../lib/admin-event-store";
 import {
   CreateRequestBody,
   UpdateRequestBody,
@@ -185,7 +187,12 @@ router.post("/requests", async (req, res): Promise<void> => {
   }
 
   const [customer] = await db
-    .select({ isBlocked: usersTable.isBlocked })
+    .select({
+      id: usersTable.id,
+      name: usersTable.name,
+      phone: usersTable.phone,
+      isBlocked: usersTable.isBlocked,
+    })
     .from(usersTable)
     .where(eq(usersTable.id, parsed.data.customerId));
 
@@ -203,6 +210,17 @@ router.post("/requests", async (req, res): Promise<void> => {
     .insert(requestsTable)
     .values({ ...parsed.data, status: "available" })
     .returning();
+
+  await notifyAdminEvent(
+    buildNewRequestAdminEvent({
+      requestId: row.id,
+      category: row.category,
+      area: row.area,
+      customerId: customer.id,
+      customerName: customer.name,
+      customerPhone: customer.phone,
+    }),
+  );
 
   const enriched = await enrichRequest(row);
   res.status(201).json(enriched);

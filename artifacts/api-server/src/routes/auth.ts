@@ -5,6 +5,8 @@ import { db, usersTable, adminNotificationsTable } from "@workspace/db";
 import { RegisterBody, LoginBody, VerifyOtpBody, AdminLoginBody } from "@workspace/api-zod";
 import { logger } from "../lib/logger";
 import { sendHelperWelcomeTemplate, sendWhatsAppOtp } from "../lib/whatsapp";
+import { buildNewUserAdminEvent } from "../lib/admin-event-notifications";
+import { notifyAdminEvent } from "../lib/admin-event-store";
 
 const router: IRouter = Router();
 
@@ -268,6 +270,15 @@ router.post("/auth/register", async (req, res): Promise<void> => {
   req.log.info(
     { userId: user.id, userType, maskedPhone: maskPhone(phone) },
     `${userType} registered (unverified); WhatsApp OTP requested`,
+  );
+
+  await notifyAdminEvent(
+    buildNewUserAdminEvent({
+      userId: user.id,
+      name: user.name,
+      phone: user.phone,
+      userType: userType === "helper" ? "helper" : "customer",
+    }),
   );
 
   const result = await sendWhatsAppOtp(phone, otp, userType);

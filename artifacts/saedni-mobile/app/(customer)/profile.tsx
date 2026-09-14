@@ -1,17 +1,38 @@
-import React from "react";
-import { View, Text, TouchableOpacity, StyleSheet, Alert, ScrollView } from "react-native";
+import React, { useState } from "react";
+import { View, Text, TouchableOpacity, StyleSheet, Alert, ScrollView, ActivityIndicator } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/contexts/AuthContext";
+import { AREAS } from "@/constants/categories";
+import { getAuthHeaders } from "@/contexts/AuthContext";
+import { useMutation } from "@tanstack/react-query";
 
 export default function CustomerProfileScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { user, logout } = useAuth();
+  const { user, logout, setUser } = useAuth();
+  const [area, setArea] = useState(user?.area ?? "");
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch(`${process.env.EXPO_PUBLIC_DOMAIN ? `https://${process.env.EXPO_PUBLIC_DOMAIN}` : ""}/api/users/${user?.id}`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { ...(await getAuthHeaders()), "Content-Type": "application/json" },
+        body: JSON.stringify({ area }),
+      });
+      if (!response.ok) throw new Error();
+      return response.json();
+    },
+    onSuccess: (updated) => {
+      setUser(updated);
+      Alert.alert("تم الحفظ", "تم تحديث منطقتك");
+    },
+    onError: () => Alert.alert("خطأ", "تعذر تحديث المنطقة"),
+  });
 
   function handleLogout() {
     Alert.alert("تسجيل الخروج", "هل تريد الخروج من حسابك؟", [
@@ -74,6 +95,31 @@ export default function CustomerProfileScreen() {
           </View>
         </View>
 
+        <View style={s.areaCard}>
+          <Text style={s.areaTitle}>منطقتي</Text>
+          <Text style={s.areaHint}>اختر منطقتك لتظهر الطلبات المناسبة لك</Text>
+          <View style={s.areaWrap}>
+            {AREAS.map((item) => (
+              <TouchableOpacity
+                key={item}
+                style={[s.areaChip, area === item && s.areaChipSelected]}
+                onPress={() => setArea(item)}
+              >
+                <Text style={[s.areaChipTxt, area === item && s.areaChipTxtSelected]}>{item}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          <TouchableOpacity
+            style={[s.saveBtn, (!area || saveMutation.isPending) && s.saveBtnDisabled]}
+            onPress={() => saveMutation.mutate()}
+            disabled={!area || saveMutation.isPending}
+          >
+            {saveMutation.isPending
+              ? <ActivityIndicator color={colors.primaryForeground} />
+              : <Text style={s.saveBtnTxt}>حفظ المنطقة</Text>}
+          </TouchableOpacity>
+        </View>
+
         {/* Logout */}
         <TouchableOpacity style={s.logoutBtn} onPress={handleLogout} activeOpacity={0.85}>
           <Ionicons name="log-out-outline" size={20} color="#DC2626" />
@@ -122,6 +168,20 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
     infoVal: { fontSize: 15, fontWeight: "600", color: c.foreground },
     divider: { height: StyleSheet.hairlineWidth, backgroundColor: c.border, marginHorizontal: 18 },
     statusDot: { width: 8, height: 8, borderRadius: 4, marginStart: 6 },
+    areaCard: {
+      width: "100%", backgroundColor: c.card, borderRadius: 16, borderWidth: 1,
+      borderColor: c.border, padding: 18, marginBottom: 20,
+    },
+    areaTitle: { fontSize: 17, fontWeight: "800", color: c.foreground, textAlign: "right" },
+    areaHint: { fontSize: 13, color: c.mutedForeground, textAlign: "right", marginTop: 6, marginBottom: 14 },
+    areaWrap: { flexDirection: "row-reverse", flexWrap: "wrap", gap: 8 },
+    areaChip: { borderWidth: 1.5, borderColor: c.border, borderRadius: 18, paddingHorizontal: 12, paddingVertical: 7 },
+    areaChipSelected: { borderColor: c.primary, backgroundColor: c.primary },
+    areaChipTxt: { fontSize: 12, color: c.mutedForeground, fontWeight: "600" },
+    areaChipTxtSelected: { color: c.primaryForeground },
+    saveBtn: { marginTop: 16, backgroundColor: c.primary, borderRadius: 10, paddingVertical: 12, alignItems: "center" },
+    saveBtnDisabled: { opacity: 0.45 },
+    saveBtnTxt: { color: c.primaryForeground, fontWeight: "700" },
     logoutBtn: {
       width: "100%", flexDirection: "row-reverse", alignItems: "center", gap: 12,
       backgroundColor: "#FEF2F2", borderRadius: 14, paddingVertical: 16, paddingHorizontal: 20,

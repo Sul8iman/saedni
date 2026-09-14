@@ -13,7 +13,7 @@ import { I18nManager, Platform } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import { setBaseUrl } from "@workspace/api-client-react";
+import { setAuthTokenGetter, setBaseUrl } from "@workspace/api-client-react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AuthProvider, useAuth, BASE } from "@/contexts/AuthContext";
 import { readAuthToken } from "@/hooks/usePushNotifications";
@@ -39,6 +39,7 @@ global.fetch = (input: RequestInfo | URL, init?: RequestInit) =>
 if (process.env.EXPO_PUBLIC_DOMAIN) {
   setBaseUrl(`https://${process.env.EXPO_PUBLIC_DOMAIN}`);
 }
+setAuthTokenGetter(readAuthToken);
 
 SplashScreen.preventAutoHideAsync();
 

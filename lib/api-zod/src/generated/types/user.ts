@@ -16,6 +16,11 @@ export interface User {
   area?: string | null;
   /** @nullable */
   rating?: number | null;
+  /**
+     * Count calculated from helper_ratings; not a client-maintained counter.
+     * @minimum 0
+     */
+  ratingCount?: number;
   isActive: boolean;
   isVerified?: boolean;
   isBlocked?: boolean;
@@ -32,4 +37,5 @@ export interface User {
   helperInterests?: string | null;
   /** @nullable */
   preferredAreas?: string | null;
+  serviceAreas?: string[];
 }

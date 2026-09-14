@@ -6,7 +6,7 @@ import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import { useColors } from "@/hooks/useColors";
-import { useAuth } from "@/contexts/AuthContext";
+import { getAuthHeaders, useAuth } from "@/contexts/AuthContext";
 import { CATEGORIES, STATUS_INFO } from "@/constants/categories";
 
 const BASE = process.env.EXPO_PUBLIC_DOMAIN ? `https://${process.env.EXPO_PUBLIC_DOMAIN}` : "";
@@ -26,7 +26,11 @@ export default function HelperMyRequestsScreen() {
     queryKey: ["helper-my-requests", user?.id],
     queryFn: async () => {
       if (!user) return [];
-      const r = await fetch(`${BASE}/api/requests?helperId=${user.id}`, { credentials: "include" });
+      const r = await fetch(`${BASE}/api/requests?helperId=${user.id}`, {
+        credentials: "include",
+        headers: await getAuthHeaders(),
+      });
+      if (!r.ok) throw new Error("تعذر تحميل الطلبات");
       return r.json() as Promise<HelpRequest[]>;
     },
     enabled: !!user,

@@ -7,9 +7,9 @@ import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useColors } from "@/hooks/useColors";
-import { useAuth } from "@/contexts/AuthContext";
+import { getAuthHeaders, useAuth } from "@/contexts/AuthContext";
 import { CATEGORIES, AREAS } from "@/constants/categories";
 
 const BASE = process.env.EXPO_PUBLIC_DOMAIN ? `https://${process.env.EXPO_PUBLIC_DOMAIN}` : "";
@@ -24,6 +24,18 @@ export default function HelperProfileScreen() {
   const router = useRouter();
   const { user, logout, setUser } = useAuth();
   const isVerified = user?.isVerified ?? false;
+  const { data: profile } = useQuery({
+    queryKey: ["helper-profile", user?.id],
+    queryFn: async () => {
+      const response = await fetch(`${BASE}/api/users/${user?.id}`, {
+        credentials: "include",
+        headers: await getAuthHeaders(),
+      });
+      if (!response.ok) throw new Error();
+      return response.json() as Promise<{ rating?: number | null; ratingCount?: number }>;
+    },
+    enabled: !!user?.id,
+  });
 
   const [selCats, setSelCats] = useState<string[]>(() => parseJson(user?.helperInterests));
   const [selAreas, setSelAreas] = useState<string[]>(() => parseJson(user?.preferredAreas));
@@ -40,6 +52,7 @@ export default function HelperProfileScreen() {
 
   const saveMutation = useMutation({
     mutationFn: async () => {
+      if (selAreas.length === 0) throw new Error("اختر منطقة خدمة واحدة على الأقل");
       const res = await fetch(`${BASE}/api/users/${user?.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -136,6 +149,13 @@ export default function HelperProfileScreen() {
               <Text style={s.infoVal}>{isVerified ? "موثّق" : "قيد المراجعة"}</Text>
             </View>
             <Text style={s.infoKey}>حالة التوثيق</Text>
+          </View>
+          <View style={s.divider} />
+          <View style={s.infoRow}>
+            <Text style={s.infoVal}>
+              {profile?.rating != null ? `${profile.rating.toFixed(1)} / 5 (${profile.ratingCount ?? 0})` : "لا توجد تقييمات"}
+            </Text>
+            <Text style={s.infoKey}>التقييم</Text>
           </View>
         </View>
 

@@ -1,5 +1,9 @@
 import { logger } from "./logger";
 import { db, usersTable } from "@workspace/db";
+import {
+  assertSafeTestOutboundEnvironment,
+  isTestEnvironment,
+} from "@workspace/db/test-safety";
 import { eq, isNotNull, and } from "drizzle-orm";
 import type { AdminEventNotification } from "./admin-event-notifications";
 
@@ -15,6 +19,12 @@ async function batchSendPush(
   message: PushMessage,
   logCtx: Record<string, unknown>,
 ): Promise<void> {
+  if (isTestEnvironment()) {
+    assertSafeTestOutboundEnvironment();
+    logger.info({ ...logCtx, uniqueTokens: 0 }, "push: mocked in test environment");
+    return;
+  }
+
   if (tokens.length === 0) {
     logger.info({ ...logCtx, uniqueTokens: 0 }, "push: no tokens to send");
     return;

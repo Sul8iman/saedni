@@ -197,7 +197,7 @@ export default function UserDetailScreen() {
       qc.invalidateQueries({ queryKey: ["admin-users"] });
       router.back();
     },
-    onError: () => Alert.alert("خطأ", "تعذر حذف المستخدم"),
+    onError: () => Alert.alert("خطأ", "تعذر تعطيل المستخدم"),
   });
 
   const s = makeStyles(colors, insets.bottom);
@@ -453,15 +453,15 @@ export default function UserDetailScreen() {
               <TouchableOpacity
                 style={s.actionBtnDelete}
                 onPress={() =>
-                  Alert.alert("حذف المستخدم", `سيتم حذف حساب ${user.name} نهائياً ولا يمكن التراجع.`, [
+                  Alert.alert("تعطيل المستخدم", `سيتم تعطيل حساب ${user.name} وأرشفة طلباته. لن تُحذف البيانات نهائياً.`, [
                     { text: "إلغاء", style: "cancel" },
-                    { text: "حذف", style: "destructive", onPress: () => deleteMutation.mutate() },
+                    { text: "تعطيل", style: "destructive", onPress: () => deleteMutation.mutate() },
                   ])
                 }
                 disabled={deleteMutation.isPending}
               >
                 <Ionicons name="trash-outline" size={18} color="#DC2626" />
-                <Text style={s.deleteTxt}>حذف المستخدم</Text>
+                <Text style={s.deleteTxt}>تعطيل المستخدم</Text>
               </TouchableOpacity>
             </View>
           </View>

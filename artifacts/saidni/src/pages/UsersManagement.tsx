@@ -18,6 +18,7 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { CATEGORY_MAP } from "@/lib/categories";
+import { AREAS } from "@/lib/categories";
 import { BottomNav } from "@/components/BottomNav";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -116,12 +117,12 @@ function UserDetail({ userId, onBack }: { userId: number; onBack: () => void }) 
           queryClient.invalidateQueries({ queryKey: getListUsersQueryKey() });
           queryClient.invalidateQueries({ queryKey: getListRequestsQueryKey() });
           setShowDeleteConfirm(false);
-          toast({ title: "تم حذف المستخدم وطلباته" });
+          toast({ title: "تم تعطيل المستخدم وأرشفة طلباته" });
           onBack();
         },
         onError: (err: any) => {
           setShowDeleteConfirm(false);
-          const msg = err?.data?.error ?? "فشل حذف المستخدم";
+          const msg = err?.data?.error ?? "فشل تعطيل المستخدم";
           toast({ title: "خطأ", description: msg, variant: "destructive" });
         },
       }
@@ -285,7 +286,7 @@ function UserDetail({ userId, onBack }: { userId: number; onBack: () => void }) 
           </div>
         )}
 
-        {/* Actions: toggle + delete */}
+        {/* Actions: toggle + safe account deactivation */}
         <div className="pt-1 space-y-2">
           {isActive ? (
             <Button
@@ -318,17 +319,17 @@ function UserDetail({ userId, onBack }: { userId: number; onBack: () => void }) 
             data-testid="btn-delete-user"
           >
             <Trash2 className="w-4 h-4 ml-2" />
-            حذف المستخدم
+            تعطيل المستخدم
           </Button>
         </div>
       </div>
 
-      {/* Confirm delete modal */}
+      {/* Confirm account deactivation modal */}
       <ConfirmModal
         open={showDeleteConfirm}
-        title="حذف المستخدم"
-        message="هل أنت متأكد من حذف هذا المستخدم؟ سيتم حذف بياناته وجميع طلباته ولا يمكن التراجع."
-        confirmLabel="نعم، حذف المستخدم"
+        title="تعطيل المستخدم"
+        message="سيتم تعطيل الحساب وحفظ طلباته في الأرشيف؛ لن تُحذف البيانات نهائياً."
+        confirmLabel="نعم، تعطيل المستخدم"
         onConfirm={handleDeleteUser}
         onCancel={() => setShowDeleteConfirm(false)}
         loading={deleteMutation.isPending}
@@ -340,9 +341,25 @@ function UserDetail({ userId, onBack }: { userId: number; onBack: () => void }) 
 // ── Users List ────────────────────────────────────────────────────────────────
 export default function UsersManagement() {
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
+  const [userType, setUserType] = useState("");
+  const [selectedAreas, setSelectedAreas] = useState<string[]>([]);
+  const [includeNoArea, setIncludeNoArea] = useState(false);
+  const [isActive, setIsActive] = useState("");
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const pageSize = 50;
 
-  const { data: users, isLoading } = useListUsers(undefined, {
-    query: { queryKey: getListUsersQueryKey() },
+  const listParams = {
+    ...(userType ? { userType } : {}),
+    ...(selectedAreas.length ? { area: selectedAreas } : {}),
+    ...(includeNoArea ? { includeNoArea: true } : {}),
+    ...(isActive ? { isActive: isActive === "active" } : {}),
+    ...(search.trim() ? { search: search.trim() } : {}),
+    page,
+    pageSize,
+  };
+  const { data: users, isLoading } = useListUsers(listParams, {
+    query: { queryKey: getListUsersQueryKey(listParams) },
   });
 
   if (selectedUserId) {
@@ -357,6 +374,49 @@ export default function UsersManagement() {
       </div>
 
       <div className="px-4 py-5 pb-nav space-y-2">
+        <div className="bg-white rounded-2xl border border-border p-3 space-y-2">
+          <input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="بحث بالاسم أو الهاتف"
+            className="w-full rounded-xl border border-border px-3 py-2 text-sm text-right"
+          />
+          <div className="flex gap-2">
+            <select value={userType} onChange={(event) => setUserType(event.target.value)} className="flex-1 rounded-xl border border-border px-2 py-2 text-sm">
+              <option value="">كل الحسابات</option>
+              <option value="customer">طالبي المساعدة</option>
+              <option value="helper">المساعدون</option>
+            </select>
+            <select value={isActive} onChange={(event) => { setIsActive(event.target.value); setPage(1); }} className="flex-1 rounded-xl border border-border px-2 py-2 text-sm">
+              <option value="">كل الحالات</option>
+              <option value="active">مفعّل</option>
+              <option value="inactive">معطّل</option>
+            </select>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            <button type="button" onClick={() => { setSelectedAreas([]); setPage(1); }} className={`rounded-full px-2.5 py-1 text-xs ${selectedAreas.length === 0 ? "bg-primary text-white" : "bg-muted text-muted-foreground"}`}>
+              كل المناطق
+            </button>
+            {AREAS.map((item) => (
+              <label key={item} className={`cursor-pointer rounded-full px-2.5 py-1 text-xs ${selectedAreas.includes(item) ? "bg-primary text-white" : "bg-muted text-muted-foreground"}`}>
+                <input
+                  type="checkbox"
+                  className="sr-only"
+                  checked={selectedAreas.includes(item)}
+                  onChange={() => {
+                    setSelectedAreas((current) => current.includes(item) ? current.filter((area) => area !== item) : [...current, item]);
+                    setPage(1);
+                  }}
+                />
+                {item}
+              </label>
+            ))}
+          </div>
+          <label className="flex items-center gap-2 text-sm text-muted-foreground">
+            <input type="checkbox" checked={includeNoArea} onChange={(event) => { setIncludeNoArea(event.target.checked); setPage(1); }} />
+            إظهار المساعدين بلا مناطق خدمة
+          </label>
+        </div>
         {isLoading && Array.from({ length: 5 }).map((_, i) => (
           <Skeleton key={i} className="h-16 w-full rounded-2xl" />
         ))}
@@ -386,6 +446,11 @@ export default function UsersManagement() {
             </button>
           );
         })}
+        <div className="flex items-center justify-between pt-2">
+          <button type="button" disabled={page === 1} onClick={() => setPage((current) => current - 1)} className="rounded-xl border border-border px-3 py-2 text-sm disabled:opacity-40">السابق</button>
+          <span className="text-xs text-muted-foreground">صفحة {page}</span>
+          <button type="button" disabled={!users || users.length < pageSize} onClick={() => setPage((current) => current + 1)} className="rounded-xl border border-border px-3 py-2 text-sm disabled:opacity-40">التالي</button>
+        </div>
       </div>
 
       <BottomNav />

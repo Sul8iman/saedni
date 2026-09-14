@@ -4,8 +4,11 @@ import cookieParser from "cookie-parser";
 import pinoHttp from "pino-http";
 import { eq, sql as drizzleSql } from "drizzle-orm";
 import { db, usersTable } from "@workspace/db";
+import { assertSafeTestOutboundEnvironment } from "@workspace/db/test-safety";
 import router from "./routes";
 import { logger } from "./lib/logger";
+
+assertSafeTestOutboundEnvironment();
 
 // ── Startup schema migration — idempotent, safe to run on every boot ──────────
 (async () => {
@@ -16,6 +19,29 @@ import { logger } from "./lib/logger";
     await db.execute(drizzleSql`ALTER TABLE users ADD COLUMN IF NOT EXISTS helper_welcome_message_lease_expires_at timestamptz`);
     await db.execute(drizzleSql`ALTER TABLE admin_notifications ADD COLUMN IF NOT EXISTS event_key text`);
     await db.execute(drizzleSql`CREATE UNIQUE INDEX IF NOT EXISTS admin_notifications_event_key_unique ON admin_notifications(event_key)`);
+    await db.execute(drizzleSql`ALTER TABLE requests ADD COLUMN IF NOT EXISTS deleted_at timestamptz`);
+    await db.execute(drizzleSql`ALTER TABLE requests ADD COLUMN IF NOT EXISTS deleted_by_user_id integer`);
+    await db.execute(drizzleSql`ALTER TABLE requests ADD COLUMN IF NOT EXISTS deleted_reason text`);
+    await db.execute(drizzleSql`
+      CREATE TABLE IF NOT EXISTS request_lifecycle_events (
+        id serial PRIMARY KEY,
+        request_id integer NOT NULL,
+        action text NOT NULL,
+        actor_user_id integer,
+        actor_role text,
+        reason text,
+        metadata text,
+        created_at timestamptz NOT NULL DEFAULT now()
+      )
+    `);
+    await db.execute(drizzleSql`
+      CREATE INDEX IF NOT EXISTS request_lifecycle_events_request_created_at_idx
+      ON request_lifecycle_events(request_id, created_at)
+    `);
+    await db.execute(drizzleSql`
+      CREATE INDEX IF NOT EXISTS requests_active_created_at_idx
+      ON requests(created_at) WHERE deleted_at IS NULL
+    `);
     logger.info("Schema migration: runtime columns ensured");
   } catch (err) {
     logger.warn({ err }, "Schema migration check failed (non-fatal)");

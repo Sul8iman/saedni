@@ -88,7 +88,7 @@ export default function AdminUsersScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       qc.invalidateQueries({ queryKey: ["admin-users"] });
     },
-    onError: () => Alert.alert("خطأ", "تعذر حذف المستخدم"),
+    onError: () => Alert.alert("خطأ", "تعذر تعطيل المستخدم"),
   });
 
   const s = makeStyles(colors, insets.bottom);
@@ -163,9 +163,9 @@ export default function AdminUsersScreen() {
           <TouchableOpacity
             style={s.deleteBtn}
             onPress={() =>
-              Alert.alert("حذف", `حذف ${item.name}؟`, [
+              Alert.alert("تعطيل الحساب", `سيتم تعطيل ${item.name} وأرشفة طلباته. لن تُحذف البيانات نهائياً.`, [
                 { text: "إلغاء", style: "cancel" },
-                { text: "حذف", style: "destructive", onPress: () => deleteMutation.mutate(item.id) },
+                { text: "تعطيل", style: "destructive", onPress: () => deleteMutation.mutate(item.id) },
               ])
             }
             hitSlop={4}

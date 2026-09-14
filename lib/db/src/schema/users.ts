@@ -10,6 +10,7 @@ export const usersTable = pgTable("users", {
   userType: text("user_type").notNull().default("customer"),
   roles: text("roles"),                                         // JSON: string[] e.g. ["customer","helper"]
   area: text("area"),
+  // Existing average rating. New rating counts are computed from helper_ratings.
   rating: real("rating"),
   isVerified: boolean("is_verified").notNull().default(false),
   isBlocked: boolean("is_blocked").notNull().default(false),

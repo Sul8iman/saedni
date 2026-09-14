@@ -10,6 +10,7 @@ import * as Haptics from "expo-haptics";
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
 import { useColors } from "@/hooks/useColors";
 import { useAuth, type AuthUser } from "@/contexts/AuthContext";
+import { AREAS } from "@/constants/categories";
 
 type Step = "form" | "otp";
 type UserType = "customer" | "helper";
@@ -28,12 +29,28 @@ export default function RegisterScreen() {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [userType, setUserType] = useState<UserType>("customer");
+  const [customerArea, setCustomerArea] = useState("");
+  const [helperAreas, setHelperAreas] = useState<string[]>([]);
   const [otp, setOtp] = useState("");
   const [loading, setLoading] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
 
+  function toggleHelperArea(area: string) {
+    setHelperAreas((current) => current.includes(area)
+      ? current.filter((item) => item !== area)
+      : [...current, area]);
+  }
+
   async function handleRegister() {
     if (!name.trim() || !phone.trim()) return;
+    if (userType === "customer" && !customerArea) {
+      Alert.alert("المنطقة مطلوبة", "اختر منطقتك للمتابعة");
+      return;
+    }
+    if (userType === "helper" && helperAreas.length === 0) {
+      Alert.alert("مناطق الخدمة مطلوبة", "اختر منطقة خدمة واحدة على الأقل");
+      return;
+    }
     if (!termsAccepted) {
       Alert.alert("الشروط والأحكام", "يرجى الموافقة على الشروط والأحكام أولاً");
       return;
@@ -45,7 +62,12 @@ export default function RegisterScreen() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ name: name.trim(), phone: phone.trim(), userType }),
+          body: JSON.stringify({
+            name: name.trim(),
+            phone: phone.trim(),
+            userType,
+            ...(userType === "customer" ? { area: customerArea } : { preferredAreas: helperAreas }),
+          }),
       });
       const data = await res.json();
       if (!res.ok) { Alert.alert("خطأ", data.error || "فشل التسجيل"); return; }
@@ -88,7 +110,10 @@ export default function RegisterScreen() {
     finally { setLoading(false); }
   }
 
-  const canSubmit = !!name.trim() && !!phone.trim() && termsAccepted;
+  const canSubmit = !!name.trim()
+    && !!phone.trim()
+    && termsAccepted
+    && (userType === "customer" ? !!customerArea : helperAreas.length > 0);
   const s = makeStyles(colors);
 
   return (
@@ -163,6 +188,27 @@ export default function RegisterScreen() {
                 returnKeyType="done"
                 onSubmitEditing={handleRegister}
               />
+
+              <Text style={s.fieldLabel}>
+                {userType === "customer" ? "منطقتك" : "مناطق الخدمة"}
+              </Text>
+              <View style={s.areaWrap}>
+                {AREAS.map((area) => {
+                  const selected = userType === "customer"
+                    ? customerArea === area
+                    : helperAreas.includes(area);
+                  return (
+                    <TouchableOpacity
+                      key={area}
+                      style={[s.areaChip, selected && s.areaChipSelected]}
+                      onPress={() => userType === "customer" ? setCustomerArea(area) : toggleHelperArea(area)}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={[s.areaChipTxt, selected && s.areaChipTxtSelected]}>{area}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
 
               {/* Terms & Conditions checkbox */}
               <TouchableOpacity
@@ -292,6 +338,14 @@ const makeStyles = (c: ReturnType<typeof useColors>) =>
     roleLabelActive: { color: c.primary },
     roleHint: { fontSize: 11, color: c.mutedForeground, textAlign: "center" },
     roleHintActive: { color: c.secondaryForeground },
+    areaWrap: { flexDirection: "row-reverse", flexWrap: "wrap", gap: 8, marginBottom: 18 },
+    areaChip: {
+      borderWidth: 1.5, borderColor: c.border, borderRadius: 18,
+      paddingHorizontal: 12, paddingVertical: 7, backgroundColor: c.background,
+    },
+    areaChipSelected: { borderColor: c.primary, backgroundColor: c.primary },
+    areaChipTxt: { fontSize: 12, color: c.mutedForeground, fontWeight: "600" },
+    areaChipTxtSelected: { color: c.primaryForeground },
 
     // Terms checkbox
     termsRow: {

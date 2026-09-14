@@ -1,7 +1,13 @@
 import { Router, type IRouter } from "express";
-import { eq, count, desc, and } from "drizzle-orm";
+import { eq, count, desc, and, inArray, isNull } from "drizzle-orm";
 import { createHmac } from "crypto";
-import { db, usersTable, requestsTable, adminNotificationsTable } from "@workspace/db";
+import {
+  adminNotificationsTable,
+  db,
+  requestLifecycleEventsTable,
+  requestsTable,
+  usersTable,
+} from "@workspace/db";
 import { VerifyHelperParams, VerifyHelperBody, DeleteUserParams } from "@workspace/api-zod";
 import { sendAdminOtpPush } from "../lib/push";
 import { logger } from "../lib/logger";
@@ -78,29 +84,40 @@ router.get("/admin/stats", async (_req, res): Promise<void> => {
     .select({ count: count() })
     .from(usersTable)
     .where(eq(usersTable.userType, "customer"));
-  const [totalRequestsResult] = await db.select({ count: count() }).from(requestsTable);
+  const [totalRequestsResult] = await db
+    .select({ count: count() })
+    .from(requestsTable)
+    .where(isNull(requestsTable.deletedAt));
   const [activeRequestsResult] = await db
     .select({ count: count() })
     .from(requestsTable)
-    .where(eq(requestsTable.status, "available"));
+    .where(and(eq(requestsTable.status, "available"), isNull(requestsTable.deletedAt)));
   const [completedRequestsResult] = await db
     .select({ count: count() })
     .from(requestsTable)
-    .where(eq(requestsTable.status, "completed"));
+    .where(and(eq(requestsTable.status, "completed"), isNull(requestsTable.deletedAt)));
   const [cancelledRequestsResult] = await db
     .select({ count: count() })
     .from(requestsTable)
-    .where(eq(requestsTable.status, "cancelled"));
+    .where(and(eq(requestsTable.status, "cancelled"), isNull(requestsTable.deletedAt)));
 
   // Feedback stats
   const [helpCompletedResult] = await db
     .select({ count: count() })
     .from(requestsTable)
-    .where(and(eq(requestsTable.status, "completed"), eq(requestsTable.helpCompleted, true)));
+    .where(and(
+      eq(requestsTable.status, "completed"),
+      eq(requestsTable.helpCompleted, true),
+      isNull(requestsTable.deletedAt),
+    ));
   const [helpNotCompletedResult] = await db
     .select({ count: count() })
     .from(requestsTable)
-    .where(and(eq(requestsTable.status, "completed"), eq(requestsTable.helpCompleted, false)));
+    .where(and(
+      eq(requestsTable.status, "completed"),
+      eq(requestsTable.helpCompleted, false),
+      isNull(requestsTable.deletedAt),
+    ));
 
   const helpYes = helpCompletedResult.count;
   const helpNo  = helpNotCompletedResult.count;
@@ -235,6 +252,8 @@ router.post("/admin/helpers/:id/regenerate-code", async (req, res): Promise<void
 });
 
 // DELETE /admin/users/:id/delete
+// Deactivates the account and archives customer-owned requests. It intentionally
+// never hard-deletes a user or request from the normal admin workflow.
 router.delete("/admin/users/:id/delete", async (req, res): Promise<void> => {
   const params = DeleteUserParams.safeParse(req.params);
   if (!params.success) {
@@ -248,18 +267,86 @@ router.delete("/admin/users/:id/delete", async (req, res): Promise<void> => {
     return;
   }
 
-  await db.delete(requestsTable).where(eq(requestsTable.customerId, params.data.id));
+  const archivedAt = new Date();
+  const result = await db.transaction(async (tx) => {
+    const [user] = await tx
+      .update(usersTable)
+      .set({
+        isBlocked: true,
+        isVerified: false,
+        authToken: null,
+        helperActivationCodeActive: false,
+      })
+      .where(eq(usersTable.id, params.data.id))
+      .returning();
 
-  const [user] = await db
-    .delete(usersTable)
-    .where(eq(usersTable.id, params.data.id))
-    .returning();
+    if (!user) return { user: null, archivedRequests: [], requeuedRequests: [] };
 
-  if (!user) {
+    const archivedRequests = await tx
+      .update(requestsTable)
+      .set({
+        deletedAt: archivedAt,
+        deletedByUserId: currentUserId,
+        deletedReason: "account_deactivated",
+      })
+      .where(and(
+        eq(requestsTable.customerId, user.id),
+        isNull(requestsTable.deletedAt),
+      ))
+      .returning({ id: requestsTable.id, status: requestsTable.status });
+
+    if (archivedRequests.length > 0) {
+      await tx.insert(requestLifecycleEventsTable).values(
+        archivedRequests.map((request) => ({
+          requestId: request.id,
+          action: "soft_deleted",
+          actorUserId: currentUserId,
+          actorRole: "admin",
+          reason: "account_deactivated",
+          metadata: JSON.stringify({ status: request.status }),
+        })),
+      );
+    }
+
+    const requeuedRequests = await tx
+      .update(requestsTable)
+      .set({ helperId: null, status: "available" })
+      .where(and(
+        eq(requestsTable.helperId, user.id),
+        isNull(requestsTable.deletedAt),
+        inArray(requestsTable.status, ["accepted", "in_progress"]),
+      ))
+      .returning({ id: requestsTable.id, status: requestsTable.status });
+
+    if (requeuedRequests.length > 0) {
+      await tx.insert(requestLifecycleEventsTable).values(
+        requeuedRequests.map((request) => ({
+          requestId: request.id,
+          action: "status_changed",
+          actorUserId: currentUserId,
+          actorRole: "admin",
+          reason: "helper_account_deactivated",
+          metadata: JSON.stringify({ fromStatus: request.status, toStatus: "available" }),
+        })),
+      );
+    }
+
+    return { user, archivedRequests, requeuedRequests };
+  });
+
+  if (!result.user) {
     res.status(404).json({ error: "المستخدم غير موجود" });
     return;
   }
 
+  req.log.info(
+    {
+      userId: result.user.id,
+      archivedRequests: result.archivedRequests.length,
+      requeuedRequests: result.requeuedRequests.length,
+    },
+    "admin: account deactivated, customer requests archived, helper work requeued",
+  );
   res.sendStatus(204);
 });
 

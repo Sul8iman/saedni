@@ -10,7 +10,7 @@ import * as Haptics from "expo-haptics";
 import DateTimePicker, { DateTimePickerEvent } from "@react-native-community/datetimepicker";
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
 import { useColors } from "@/hooks/useColors";
-import { useAuth } from "@/contexts/AuthContext";
+import { getAuthHeaders, useAuth } from "@/contexts/AuthContext";
 import { CATEGORIES, AREAS } from "@/constants/categories";
 import type { CategoryValue } from "@/constants/categories";
 import ArabicText from "@/components/ArabicText";
@@ -101,7 +101,7 @@ export default function CustomerHomeScreen() {
       }
       const res = await fetch(`${BASE}/api/requests`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { ...(await getAuthHeaders()), "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
           customerId: user.id, category, details, timeType, area,

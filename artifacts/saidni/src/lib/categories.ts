@@ -30,11 +30,8 @@ export const AREAS = [
   "القرم",
   "غلا",
   "روي",
-  "صور",
-  "صحار",
-  "نزوى",
-  "صلالة",
-  "أخرى",
+  "مطرح",
+  "قريات",
 ];
 
 export const STATUS_MAP: Record<string, { label: string; color: string }> = {

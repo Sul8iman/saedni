@@ -12,8 +12,7 @@ export type CategoryValue = (typeof CATEGORIES)[number]["value"];
 export const AREAS = [
   "مسقط", "بوشر", "الخوير", "الغبرة", "الموالح",
   "السيب", "العامرات",
-  "المعبيلة", "الخوض", "الأنصب", "العذيبة", "القرم", "غلا", "روي",
-  "صور", "صحار", "نزوى", "صلالة", "أخرى",
+  "المعبيلة", "الخوض", "الأنصب", "العذيبة", "القرم", "غلا", "روي", "مطرح", "قريات",
 ];
 
 export const STATUS_INFO: Record<string, { label: string; color: string; bg: string }> = {

@@ -8,7 +8,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useColors } from "@/hooks/useColors";
-import { useAuth } from "@/contexts/AuthContext";
+import { getAuthHeaders, useAuth } from "@/contexts/AuthContext";
 import { CATEGORIES, STATUS_INFO } from "@/constants/categories";
 
 const BASE = process.env.EXPO_PUBLIC_DOMAIN ? `https://${process.env.EXPO_PUBLIC_DOMAIN}` : "";
@@ -25,6 +25,7 @@ interface HelpRequest {
   createdAt: string;
   customerPhone?: string | null;
   helpCompleted?: boolean | null;
+  completedHelperId?: number | null;
 }
 
 function fmtDate(iso: string | null | undefined): string {
@@ -63,26 +64,79 @@ export default function CustomerMyRequestsScreen() {
     queryKey: ["my-requests", user?.id],
     queryFn: async () => {
       if (!user) return [];
-      const r = await fetch(`${BASE}/api/requests?customerId=${user.id}`, { credentials: "include" });
+      const r = await fetch(`${BASE}/api/requests?customerId=${user.id}`, {
+        credentials: "include",
+        headers: await getAuthHeaders(),
+      });
+      if (!r.ok) throw new Error("تعذر تحميل الطلبات");
       return r.json() as Promise<HelpRequest[]>;
     },
     enabled: !!user,
   });
 
   const endMutation = useMutation({
-    mutationFn: ({ id, helpCompleted }: { id: number; helpCompleted: boolean }) =>
-      fetch(`${BASE}/api/requests/${id}/complete`, {
+    mutationFn: ({ id, helpCompleted, completedHelperId, ratingStars }: {
+      id: number;
+      helpCompleted: boolean;
+      completedHelperId?: number;
+      ratingStars?: number;
+    }) =>
+      getAuthHeaders().then((authHeaders) => fetch(`${BASE}/api/requests/${id}/complete`, {
         method: "PATCH",
         credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ helpCompleted }),
-      }).then(r => { if (!r.ok) throw new Error(); }),
+        headers: { ...authHeaders, "Content-Type": "application/json" },
+        body: JSON.stringify({ helpCompleted, completedHelperId, ratingStars }),
+      })).then(async r => {
+        if (!r.ok) {
+          const body = await r.json().catch(() => null);
+          throw new Error(typeof body?.error === "string" ? body.error : "تعذر إنهاء الطلب");
+        }
+        return r.json();
+      }),
     onSuccess: () => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       qc.invalidateQueries({ queryKey: ["my-requests", user?.id] });
     },
-    onError: () => Alert.alert("خطأ", "تعذر إنهاء الطلب"),
+    onError: (error) => Alert.alert("خطأ", error instanceof Error ? error.message : "تعذر إنهاء الطلب"),
   });
+
+  const chooseRating = useCallback((id: number, helperId: number) => {
+    Alert.alert(
+      "قيّم المساعد",
+      "اختر تقييماً من نجمة إلى خمس نجوم",
+      [1, 2, 3, 4, 5].map((stars) => ({
+        text: `${"★".repeat(stars)} (${stars})`,
+        onPress: () => endMutation.mutate({ id, helpCompleted: true, completedHelperId: helperId, ratingStars: stars }),
+      })),
+      { cancelable: true },
+    );
+  }, [endMutation]);
+
+  const chooseHelper = useCallback(async (id: number) => {
+    try {
+      const response = await fetch(`${BASE}/api/requests/${id}/contacted-helpers`, {
+        credentials: "include",
+        headers: await getAuthHeaders(),
+      });
+      if (!response.ok) throw new Error("تعذر تحميل المساعدين الذين تواصلوا معك");
+      const helpers = await response.json() as Array<{ helperId: number; helperName?: string | null }>;
+      if (helpers.length === 0) {
+        Alert.alert("لا يمكن إنهاء الطلب", "يجب أن يتواصل معك مساعد قبل تسجيل إتمام المساعدة");
+        return;
+      }
+      Alert.alert(
+        "من المساعد الذي أنجز الطلب؟",
+        "",
+        helpers.map((helper) => ({
+          text: helper.helperName ?? `مساعد ${helper.helperId}`,
+          onPress: () => chooseRating(id, helper.helperId),
+        })),
+        { cancelable: true },
+      );
+    } catch (error) {
+      Alert.alert("خطأ", error instanceof Error ? error.message : "تعذر تحميل المساعدين");
+    }
+  }, [chooseRating]);
 
   const confirmEnd = useCallback((id: number) => {
     Alert.alert(
@@ -97,11 +151,11 @@ export default function CustomerMyRequestsScreen() {
         },
         {
           text: "نعم",
-          onPress: () => endMutation.mutate({ id, helpCompleted: true }),
+          onPress: () => chooseHelper(id),
         },
       ]
     );
-  }, [endMutation]);
+  }, [chooseHelper, endMutation]);
 
   const catLabel = useCallback((v: string) => CATEGORIES.find(c => c.value === v)?.label ?? v, []);
   const s = makeStyles(colors, insets.bottom);

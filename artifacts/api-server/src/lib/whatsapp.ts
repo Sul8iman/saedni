@@ -1,4 +1,8 @@
 import { logger } from "./logger";
+import {
+  assertSafeTestOutboundEnvironment,
+  isTestEnvironment,
+} from "@workspace/db/test-safety";
 
 const GRAPH_API_VERSION = "v20.0";
 const GRAPH_API_BASE = "https://graph.facebook.com";
@@ -30,6 +34,12 @@ export async function sendWhatsAppOtp(
   otp: string,
   userType: string,
 ): Promise<WhatsAppOtpResult> {
+  if (isTestEnvironment()) {
+    assertSafeTestOutboundEnvironment();
+    logger.info({ maskedPhone: maskPhone(phone), userType }, "whatsapp: OTP mocked in test environment");
+    return { success: true };
+  }
+
   const accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
   const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
 
@@ -114,6 +124,12 @@ export async function sendWhatsAppOtp(
 export async function sendHelperWelcomeTemplate(
   phone: string,
 ): Promise<WhatsAppTemplateResult> {
+  if (isTestEnvironment()) {
+    assertSafeTestOutboundEnvironment();
+    logger.info({ maskedPhone: maskPhone(phone) }, "whatsapp: welcome template mocked in test environment");
+    return { success: true };
+  }
+
   const accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
   const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
 

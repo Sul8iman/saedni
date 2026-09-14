@@ -12,6 +12,13 @@ import { useColors } from "@/hooks/useColors";
 import { getAuthHeaders, useAuth } from "@/contexts/AuthContext";
 import { useAdminPushRegistration } from "@/hooks/usePushNotifications";
 import { CATEGORIES, STATUS_INFO } from "@/constants/categories";
+import {
+  listRequestLifecycleEvents,
+  useCompleteRequest,
+  useDeleteRequest,
+  useListDeletedRequests,
+  useRestoreRequest,
+} from "@workspace/api-client-react";
 
 const BASE = `https://${process.env.EXPO_PUBLIC_DOMAIN ?? "saedni.onrender.com"}`;
 
@@ -27,6 +34,8 @@ interface HelpRequest {
   createdAt: string;
   helpCompleted?: boolean | null;
   completedAt?: string | null;
+  deletedAt?: string | null;
+  deletedReason?: string | null;
 }
 
 type FeedbackFilter = "all" | "completed" | "not_completed" | "no_rating";
@@ -81,7 +90,7 @@ const USER_TYPE_LABEL: Record<string, string> = {
   admin: "مدير",
 };
 
-type Tab = "requests" | "notifications";
+type Tab = "requests" | "notifications" | "archive";
 
 function helpBadgeInfo(helpCompleted: boolean | null | undefined): { label: string; color: string; bg: string } {
   if (helpCompleted === true)  return { label: "تمت المساعدة",    color: "#059669", bg: "#D1FAE5" };
@@ -131,8 +140,18 @@ export default function AdminDashboard() {
     refetchInterval: 30_000,
   });
 
+  const {
+    data: archivedRequests,
+    isLoading: archiveLoading,
+    refetch: refetchArchived,
+    isRefetching: archiveRefetching,
+  } = useListDeletedRequests({
+    query: { queryKey: ["admin-archived-requests"] },
+  });
+
   const notificationItems = Array.isArray(notifications) ? notifications : [];
   const requestItems = Array.isArray(requests) ? requests : [];
+  const archivedRequestItems = Array.isArray(archivedRequests) ? archivedRequests as HelpRequest[] : [];
   const unreadCount = notificationItems.filter(n => !n.isRead).length;
 
   const filteredRequests = requestItems.filter(req => {
@@ -143,39 +162,67 @@ export default function AdminDashboard() {
     return true;
   });
 
-  const deleteReqMutation = useMutation({
-    mutationFn: async (id: number) => {
-      const r = await fetch(`${BASE}/api/requests/${id}`, {
-        method: "DELETE",
-        credentials: "include",
-        headers: await getAuthHeaders(),
-      });
-      if (!r.ok) throw new Error();
-    },
-    onSuccess: () => {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      qc.invalidateQueries({ queryKey: ["admin-requests"] });
-      qc.invalidateQueries({ queryKey: ["admin-stats"] });
-    },
-    onError: () => Alert.alert("خطأ", "تعذر حذف الطلب"),
-  });
+  const deleteReqMutation = useDeleteRequest();
+  const endReqMutation = useCompleteRequest();
+  const restoreReqMutation = useRestoreRequest();
 
-  const endReqMutation = useMutation({
-    mutationFn: async (id: number) => {
-      const r = await fetch(`${BASE}/api/requests/${id}/complete`, {
-        method: "PATCH",
-        credentials: "include",
-        headers: await getAuthHeaders(),
-      });
-      if (!r.ok) throw new Error();
-    },
-    onSuccess: () => {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      qc.invalidateQueries({ queryKey: ["admin-requests"] });
-      qc.invalidateQueries({ queryKey: ["admin-stats"] });
-    },
-    onError: () => Alert.alert("خطأ", "تعذر إنهاء الطلب"),
-  });
+  function invalidateRequestLists() {
+    qc.invalidateQueries({ queryKey: ["admin-requests"] });
+    qc.invalidateQueries({ queryKey: ["admin-archived-requests"] });
+    qc.invalidateQueries({ queryKey: ["admin-stats"] });
+  }
+
+  function archiveRequest(id: number) {
+    deleteReqMutation.mutate(
+      { id },
+      {
+        onSuccess: () => {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          invalidateRequestLists();
+        },
+        onError: () => Alert.alert("خطأ", "تعذر أرشفة الطلب"),
+      },
+    );
+  }
+
+  function completeRequest(id: number) {
+    endReqMutation.mutate(
+      { id, data: {} },
+      {
+        onSuccess: () => {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          invalidateRequestLists();
+        },
+        onError: () => Alert.alert("خطأ", "تعذر إنهاء الطلب"),
+      },
+    );
+  }
+
+  function restoreRequest(id: number) {
+    restoreReqMutation.mutate(
+      { id },
+      {
+        onSuccess: () => {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          invalidateRequestLists();
+        },
+        onError: () => Alert.alert("خطأ", "تعذر استعادة الطلب"),
+      },
+    );
+  }
+
+  async function showRequestHistory(id: number) {
+    try {
+      const events = await listRequestLifecycleEvents(id);
+      const summary = events
+        .slice(0, 8)
+        .map((event) => `${fmtCreatedAt(event.createdAt)} — ${event.action}`)
+        .join("\n");
+      Alert.alert("سجل الطلب", summary || "لا توجد أحداث مسجلة لهذا الطلب.");
+    } catch {
+      Alert.alert("خطأ", "تعذر تحميل سجل الطلب");
+    }
+  }
 
   const markReadMutation = useMutation({
     mutationFn: async (id: number) => {
@@ -254,7 +301,7 @@ export default function AdminDashboard() {
               onPress={() =>
                 Alert.alert("إنهاء الطلب", "سيتم إنهاء هذا الطلب وإخفاؤه عن المساعدين.", [
                   { text: "رجوع", style: "cancel" },
-                  { text: "إنهاء", onPress: () => endReqMutation.mutate(item.id) },
+                  { text: "إنهاء", onPress: () => completeRequest(item.id) },
                 ])
               }
               disabled={endReqMutation.isPending}
@@ -266,9 +313,9 @@ export default function AdminDashboard() {
           )}
           <TouchableOpacity
             onPress={() =>
-              Alert.alert("حذف الطلب", "سيتم حذف الطلب نهائياً ولا يمكن التراجع.", [
+              Alert.alert("أرشفة الطلب", "سيُنقل الطلب إلى الأرشيف ويمكن للمدير استعادته لاحقاً.", [
                 { text: "إلغاء", style: "cancel" },
-                { text: "حذف", style: "destructive", onPress: () => deleteReqMutation.mutate(item.id) },
+                { text: "أرشفة", style: "destructive", onPress: () => archiveRequest(item.id) },
               ])
             }
             style={s.deleteBtn}
@@ -276,7 +323,7 @@ export default function AdminDashboard() {
             hitSlop={8}
           >
             <Ionicons name="trash-outline" size={15} color="#DC2626" />
-            <Text style={s.deleteTxt}>حذف</Text>
+            <Text style={s.deleteTxt}>أرشفة</Text>
           </TouchableOpacity>
         </View>
         <View style={s.reqMeta}>
@@ -312,6 +359,43 @@ export default function AdminDashboard() {
       </View>
     );
   };
+
+  const renderArchivedRequest = ({ item }: { item: HelpRequest }) => (
+    <View style={s.reqCard}>
+      <View style={s.reqTop}>
+        <Text style={s.reqAmount}>{item.offeredAmount} ر.ع.</Text>
+        <Text style={s.reqCat}>{catLabel(item.category)}</Text>
+      </View>
+      <Text style={s.reqDetails} numberOfLines={2}>{item.details}</Text>
+      <Text style={s.metaTxt}>
+        تمت الأرشفة: {fmtCreatedAt(item.deletedAt)}
+      </Text>
+      <View style={s.reqActions}>
+        <TouchableOpacity
+          onPress={() => showRequestHistory(item.id)}
+          style={s.endBtn}
+          hitSlop={8}
+        >
+          <Ionicons name="time-outline" size={15} color={colors.primary} />
+          <Text style={s.endTxt}>عرض السجل</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() =>
+            Alert.alert("استعادة الطلب", "سيعود الطلب إلى القوائم النشطة وفق حالته السابقة.", [
+              { text: "إلغاء", style: "cancel" },
+              { text: "استعادة", onPress: () => restoreRequest(item.id) },
+            ])
+          }
+          style={s.endBtn}
+          disabled={restoreReqMutation.isPending}
+          hitSlop={8}
+        >
+          <Ionicons name="refresh-outline" size={15} color={colors.primary} />
+          <Text style={s.endTxt}>استعادة</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
 
   const renderNotification = ({ item }: { item: AdminNotification }) => (
     <TouchableOpacity
@@ -369,8 +453,16 @@ export default function AdminDashboard() {
     </TouchableOpacity>
   );
 
-  const isLoading = activeTab === "requests" ? reqLoading : notifLoading;
-  const isRefetching = activeTab === "requests" ? reqRefetching : notifRefetching;
+  const isLoading = activeTab === "requests"
+    ? reqLoading
+    : activeTab === "notifications"
+      ? notifLoading
+      : archiveLoading;
+  const isRefetching = activeTab === "requests"
+    ? reqRefetching
+    : activeTab === "notifications"
+      ? notifRefetching
+      : archiveRefetching;
 
   return (
     <View style={s.container}>
@@ -418,6 +510,21 @@ export default function AdminDashboard() {
               />
               <Text style={[s.tabTxt, activeTab === "requests" && s.tabTxtActive]}>
                 الطلبات
+              </Text>
+            </View>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[s.tab, activeTab === "archive" && s.tabActive]}
+            onPress={() => { Haptics.selectionAsync(); setActiveTab("archive"); }}
+          >
+            <View style={s.tabInner}>
+              <Ionicons
+                name="archive-outline"
+                size={16}
+                color={activeTab === "archive" ? colors.primary : colors.mutedForeground}
+              />
+              <Text style={[s.tabTxt, activeTab === "archive" && s.tabTxtActive]}>
+                الأرشيف
               </Text>
             </View>
           </TouchableOpacity>
@@ -496,7 +603,7 @@ export default function AdminDashboard() {
             </View>
           }
         />
-      ) : (
+      ) : activeTab === "notifications" ? (
         <FlatList
           data={notificationItems}
           keyExtractor={i => String(i.id)}
@@ -524,6 +631,30 @@ export default function AdminDashboard() {
             <View style={s.empty}>
               <Ionicons name="notifications-off-outline" size={56} color={colors.border} />
               <Text style={s.emptyTxt}>لا توجد إشعارات</Text>
+            </View>
+          }
+        />
+      ) : (
+        <FlatList
+          data={archivedRequestItems}
+          keyExtractor={i => String(i.id)}
+          renderItem={renderArchivedRequest}
+          contentContainerStyle={s.listContent}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefetching}
+              onRefresh={() => refetchArchived()}
+              tintColor={colors.primary}
+            />
+          }
+          ListHeaderComponent={
+            <Text style={s.sectionTitle}>الطلبات المؤرشفة</Text>
+          }
+          ListEmptyComponent={
+            <View style={s.empty}>
+              <Ionicons name="archive-outline" size={56} color={colors.border} />
+              <Text style={s.emptyTxt}>لا توجد طلبات مؤرشفة</Text>
             </View>
           }
         />

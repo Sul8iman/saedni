@@ -14,11 +14,11 @@ import {
   getListRequestsQueryKey,
   useLogin,
   useDeleteUser,
+  useListServiceAreas,
 } from "@workspace/api-client-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { CATEGORY_MAP } from "@/lib/categories";
-import { AREAS } from "@/lib/categories";
 import { BottomNav } from "@/components/BottomNav";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -348,6 +348,8 @@ export default function UsersManagement() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const pageSize = 50;
+  const { data: serviceAreas } = useListServiceAreas();
+  const areaOptions = serviceAreas?.filter((area) => area.isActive).map((area) => area.name) ?? [];
 
   const listParams = {
     ...(userType ? { userType } : {}),
@@ -393,11 +395,15 @@ export default function UsersManagement() {
               <option value="inactive">معطّل</option>
             </select>
           </div>
+          <p className="text-xs font-semibold text-muted-foreground">المنطقة</p>
           <div className="flex flex-wrap gap-1.5">
-            <button type="button" onClick={() => { setSelectedAreas([]); setPage(1); }} className={`rounded-full px-2.5 py-1 text-xs ${selectedAreas.length === 0 ? "bg-primary text-white" : "bg-muted text-muted-foreground"}`}>
+            <button type="button" onClick={() => { setSelectedAreas([]); setIncludeNoArea(false); setPage(1); }} className={`rounded-full px-2.5 py-1 text-xs ${selectedAreas.length === 0 && !includeNoArea ? "bg-primary text-white" : "bg-muted text-muted-foreground"}`}>
               كل المناطق
             </button>
-            {AREAS.map((item) => (
+            <button type="button" onClick={() => { setIncludeNoArea((current) => !current); setPage(1); }} className={`rounded-full px-2.5 py-1 text-xs ${includeNoArea ? "bg-primary text-white" : "bg-muted text-muted-foreground"}`}>
+              بدون منطقة محددة
+            </button>
+            {areaOptions.map((item) => (
               <label key={item} className={`cursor-pointer rounded-full px-2.5 py-1 text-xs ${selectedAreas.includes(item) ? "bg-primary text-white" : "bg-muted text-muted-foreground"}`}>
                 <input
                   type="checkbox"
@@ -412,10 +418,6 @@ export default function UsersManagement() {
               </label>
             ))}
           </div>
-          <label className="flex items-center gap-2 text-sm text-muted-foreground">
-            <input type="checkbox" checked={includeNoArea} onChange={(event) => { setIncludeNoArea(event.target.checked); setPage(1); }} />
-            إظهار المساعدين بلا مناطق خدمة
-          </label>
         </div>
         {isLoading && Array.from({ length: 5 }).map((_, i) => (
           <Skeleton key={i} className="h-16 w-full rounded-2xl" />
@@ -436,6 +438,11 @@ export default function UsersManagement() {
               <div className="flex-1 min-w-0">
                 <p className={`font-semibold text-sm ${!active ? "text-muted-foreground" : ""}`}>{u.name}</p>
                 <p className="text-xs text-muted-foreground">{u.phone} · {USER_TYPE_LABELS[u.userType]}</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {u.userType === "helper"
+                    ? (u.serviceAreas?.length ? u.serviceAreas.join("، ") : "بدون مناطق خدمة")
+                    : (u.area || "بدون منطقة محددة")}
+                </p>
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
                 {!active && (

@@ -10,8 +10,8 @@ import {
 import { isAdminActor, requireRequestActor } from "../lib/request-access";
 import {
   ACTIVE_SERVICE_AREAS,
-  hasConfiguredServiceArea,
   isActiveServiceArea,
+  matchesUserAreaFilter,
   parsePreferredAreas,
   validatePreferredAreas,
 } from "../lib/service-areas";
@@ -73,13 +73,7 @@ router.get("/users", async (req, res): Promise<void> => {
     if (params.isActive !== undefined && (!user.isBlocked) !== params.isActive) return false;
     if (search && !`${user.name} ${user.phone}`.toLowerCase().includes(search)) return false;
 
-    const configuredAreas = parsePreferredAreas(user.preferredAreas);
-    const hasAreaMatch = selectedAreas.some((area) => configuredAreas.includes(area));
-    const noAreaMatch = params.includeNoArea === true && !hasConfiguredServiceArea(user.preferredAreas);
-    if (selectedAreas.length > 0 || params.includeNoArea === true) {
-      if (!hasAreaMatch && !noAreaMatch) return false;
-    }
-    return true;
+    return matchesUserAreaFilter(user, selectedAreas, params.includeNoArea === true);
   });
   const page = params.page ?? 1;
   const pageSize = params.pageSize ?? 100;

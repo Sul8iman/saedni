@@ -46,6 +46,38 @@ export function helperServesArea(value: string | null | undefined, area: string)
   return parsePreferredAreas(value).includes(area);
 }
 
+export type UserAreaFilterRecord = {
+  userType: string;
+  area?: string | null;
+  preferredAreas?: string | null;
+};
+
+export function getUserAreaValues(user: UserAreaFilterRecord): string[] {
+  if (user.userType === "helper") {
+    return parsePreferredAreas(user.preferredAreas);
+  }
+  return typeof user.area === "string" && user.area.length > 0 ? [user.area] : [];
+}
+
+export function userHasConfiguredActiveArea(user: UserAreaFilterRecord): boolean {
+  if (user.userType === "helper") {
+    return hasConfiguredServiceArea(user.preferredAreas);
+  }
+  return isActiveServiceArea(user.area);
+}
+
+export function matchesUserAreaFilter(
+  user: UserAreaFilterRecord,
+  selectedAreas: string[],
+  includeNoArea: boolean,
+): boolean {
+  if (selectedAreas.length === 0 && !includeNoArea) return true;
+
+  const hasAreaMatch = selectedAreas.some((area) => getUserAreaValues(user).includes(area));
+  const noAreaMatch = includeNoArea && !userHasConfiguredActiveArea(user);
+  return hasAreaMatch || noAreaMatch;
+}
+
 export function validatePreferredAreas(value: unknown): string[] | null {
   if (!Array.isArray(value)) return null;
   const areas = [...new Set(value)];

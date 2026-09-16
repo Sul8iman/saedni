@@ -46,6 +46,16 @@ export function helperServesArea(value: string | null | undefined, area: string)
   return parsePreferredAreas(value).includes(area);
 }
 
+/**
+ * Express query parsing returns one repeated query parameter as a string and
+ * multiple repeated values as an array. Normalize both forms before the
+ * generated array schema validates the request.
+ */
+export function normalizeAreaQuery(value: unknown): unknown[] | undefined {
+  if (value === undefined) return undefined;
+  return Array.isArray(value) ? value : [value];
+}
+
 export type UserAreaFilterRecord = {
   userType: string;
   area?: string | null;

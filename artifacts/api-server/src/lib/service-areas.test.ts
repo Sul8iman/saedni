@@ -5,6 +5,7 @@ import {
   hasConfiguredServiceArea,
   helperServesArea,
   matchesUserAreaFilter,
+  normalizeBooleanQuery,
   normalizeAreaQuery,
   parsePreferredAreas,
   validatePreferredAreas,
@@ -32,6 +33,12 @@ test("normalizes one repeated area query value to the same shape as multiple val
   assert.deepEqual(normalizeAreaQuery("بوشر"), ["بوشر"]);
   assert.deepEqual(normalizeAreaQuery(["بوشر", "الخوض"]), ["بوشر", "الخوض"]);
   assert.equal(normalizeAreaQuery(undefined), undefined);
+});
+
+test("normalizes explicit query boolean strings before schema coercion", () => {
+  assert.equal(normalizeBooleanQuery("true"), true);
+  assert.equal(normalizeBooleanQuery("false"), false);
+  assert.equal(normalizeBooleanQuery(undefined), undefined);
 });
 
 test("accepts only non-empty selections from the active catalog", () => {

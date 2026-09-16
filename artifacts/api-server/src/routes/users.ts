@@ -12,6 +12,7 @@ import {
   ACTIVE_SERVICE_AREAS,
   isActiveServiceArea,
   matchesUserAreaFilter,
+  normalizeBooleanQuery,
   normalizeAreaQuery,
   parsePreferredAreas,
   validatePreferredAreas,
@@ -64,6 +65,7 @@ router.get("/users", async (req, res): Promise<void> => {
   const parsed = ListUsersQueryParams.safeParse({
     ...req.query,
     area: normalizeAreaQuery(req.query.area),
+    isActive: normalizeBooleanQuery(req.query.isActive),
   });
   const params = parsed.success ? parsed.data : {};
 

@@ -56,6 +56,16 @@ export function normalizeAreaQuery(value: unknown): unknown[] | undefined {
   return Array.isArray(value) ? value : [value];
 }
 
+/**
+ * Query-string booleans arrive as strings. Boolean("false") is true, so
+ * normalize the explicit values before the generated query schema coerces them.
+ */
+export function normalizeBooleanQuery(value: unknown): unknown {
+  if (value === "true" || value === true) return true;
+  if (value === "false" || value === false) return false;
+  return value;
+}
+
 export type UserAreaFilterRecord = {
   userType: string;
   area?: string | null;

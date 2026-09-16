@@ -7,9 +7,11 @@ import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useFocusEffect } from "expo-router";
 import { useColors } from "@/hooks/useColors";
 import { getAuthHeaders, useAuth } from "@/contexts/AuthContext";
 import { CATEGORIES, STATUS_INFO } from "@/constants/categories";
+import { requestQueryKeys } from "@/lib/request-query-keys";
 
 const BASE = process.env.EXPO_PUBLIC_DOMAIN ? `https://${process.env.EXPO_PUBLIC_DOMAIN}` : "";
 
@@ -39,15 +41,17 @@ interface ContactedHelper {
 
 function ContactedHelpersSection({
   requestId,
+  viewerId,
   colors,
   s,
 }: {
   requestId: number;
+  viewerId: number;
   colors: ReturnType<typeof useColors>;
   s: ReturnType<typeof makeStyles>;
 }) {
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ["contacted-helpers", requestId],
+    queryKey: requestQueryKeys.contactedHelpers(viewerId, requestId),
     queryFn: async () => {
       const response = await fetch(`${BASE}/api/requests/${requestId}/contacted-helpers`, {
         credentials: "include",
@@ -56,7 +60,7 @@ function ContactedHelpersSection({
       if (!response.ok) throw new Error("تعذر تحميل المساعدين المتواصلين");
       return response.json() as Promise<ContactedHelper[]>;
     },
-    enabled: requestId > 0,
+    enabled: requestId > 0 && viewerId > 0,
   });
 
   const openPhone = (phone: string) => {
@@ -157,11 +161,12 @@ function fmtScheduled(iso: string) {
 export default function CustomerMyRequestsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { user } = useAuth();
+  const { user, activeRole } = useAuth();
   const qc = useQueryClient();
+  const roleKey = activeRole ?? user?.userType ?? "customer";
 
   const { data, isLoading, refetch, isRefetching } = useQuery({
-    queryKey: ["my-requests", user?.id],
+    queryKey: requestQueryKeys.customer(user?.id ?? 0, roleKey),
     queryFn: async () => {
       if (!user) return [];
       const r = await fetch(`${BASE}/api/requests?customerId=${user.id}`, {
@@ -171,8 +176,14 @@ export default function CustomerMyRequestsScreen() {
       if (!r.ok) throw new Error("تعذر تحميل الطلبات");
       return r.json() as Promise<HelpRequest[]>;
     },
-    enabled: !!user,
+    enabled: !!user && roleKey === "customer",
   });
+
+  useFocusEffect(
+    React.useCallback(() => {
+      if (user) void refetch();
+    }, [refetch, user]),
+  );
 
   const endMutation = useMutation({
     mutationFn: ({ id, helpCompleted, completedHelperId, ratingStars }: {
@@ -355,7 +366,12 @@ export default function CustomerMyRequestsScreen() {
           )}
         </View>
 
-        <ContactedHelpersSection requestId={item.id} colors={colors} s={s} />
+        <ContactedHelpersSection
+          requestId={item.id}
+          viewerId={user?.id ?? 0}
+          colors={colors}
+          s={s}
+        />
 
         {isActive && (
           <TouchableOpacity

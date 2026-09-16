@@ -6,10 +6,12 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
+import { useFocusEffect } from "expo-router";
 import { useColors } from "@/hooks/useColors";
 import { getAuthHeaders, useAuth } from "@/contexts/AuthContext";
 import { CATEGORIES, AREAS } from "@/constants/categories";
 import { useHelperPushRegistration } from "@/hooks/usePushNotifications";
+import { requestQueryKeys } from "@/lib/request-query-keys";
 
 const BASE = process.env.EXPO_PUBLIC_DOMAIN ? `https://${process.env.EXPO_PUBLIC_DOMAIN}` : "";
 
@@ -78,7 +80,7 @@ function openCall(phone: string) {
 export default function HelperRequestsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { user } = useAuth();
+  const { user, activeRole } = useAuth();
   const isBlocked = user?.isBlocked || user?.isActive === false;
 
   // Register for push notifications once when the helper is active
@@ -87,6 +89,7 @@ export default function HelperRequestsScreen() {
   const [catFilter, setCatFilter] = useState("all");
   const [areaFilter, setAreaFilter] = useState("all");
   const [contactingId, setContactingId] = useState<number | null>(null);
+  const roleKey = activeRole ?? user?.userType ?? "helper";
 
   async function contactAndOpen(item: HelpRequest, method: "phone" | "whatsapp") {
     if (!item.customerPhone) {
@@ -115,24 +118,28 @@ export default function HelperRequestsScreen() {
   }
 
   const { data: allData, isLoading, refetch, isRefetching } = useQuery({
-    queryKey: ["available-requests"],
+    queryKey: requestQueryKeys.helperAvailable(user?.id ?? 0, roleKey, areaFilter, catFilter),
     queryFn: async () => {
-      const r = await fetch(`${BASE}/api/requests?status=available`, {
+      const query = new URLSearchParams({ status: "available" });
+      if (catFilter !== "all") query.set("category", catFilter);
+      if (areaFilter !== "all") query.set("area", areaFilter);
+      const r = await fetch(`${BASE}/api/requests?${query.toString()}`, {
         credentials: "include",
         headers: await getAuthHeaders(),
       });
       if (!r.ok) throw new Error("تعذر تحميل الطلبات");
       return r.json() as Promise<HelpRequest[]>;
     },
-    enabled: !isBlocked,
+    enabled: !!user && !isBlocked && roleKey === "helper",
   });
 
-  // Client-side dual filter
-  const data = (allData ?? []).filter(item => {
-    const catMatch = catFilter === "all" || item.category === catFilter;
-    const areaMatch = areaFilter === "all" || item.area === areaFilter;
-    return catMatch && areaMatch;
-  });
+  useFocusEffect(
+    React.useCallback(() => {
+      if (user && !isBlocked) void refetch();
+    }, [isBlocked, refetch, user]),
+  );
+
+  const data = allData ?? [];
 
   const catLabel = (v: string) => CATEGORIES.find(c => c.value === v)?.label ?? v;
   const s = makeStyles(colors, insets.bottom);

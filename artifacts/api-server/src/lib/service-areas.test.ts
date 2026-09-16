@@ -5,6 +5,7 @@ import {
   hasConfiguredServiceArea,
   helperServesArea,
   matchesUserAreaFilter,
+  normalizeAreaQuery,
   parsePreferredAreas,
   validatePreferredAreas,
 } from "./service-areas.ts";
@@ -25,6 +26,12 @@ test("deduplicates legacy areas without activating unsupported locations", () =>
   assert.deepEqual(parsePreferredAreas('["بوشر","بوشر","صور",""]'), ["بوشر", "صور"]);
   assert.equal(hasConfiguredServiceArea('["صور"]'), false);
   assert.equal(helperServesArea('["بوشر","بوشر"]', "بوشر"), true);
+});
+
+test("normalizes one repeated area query value to the same shape as multiple values", () => {
+  assert.deepEqual(normalizeAreaQuery("بوشر"), ["بوشر"]);
+  assert.deepEqual(normalizeAreaQuery(["بوشر", "الخوض"]), ["بوشر", "الخوض"]);
+  assert.equal(normalizeAreaQuery(undefined), undefined);
 });
 
 test("accepts only non-empty selections from the active catalog", () => {

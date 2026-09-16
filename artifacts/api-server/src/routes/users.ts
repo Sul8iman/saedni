@@ -12,6 +12,7 @@ import {
   ACTIVE_SERVICE_AREAS,
   isActiveServiceArea,
   matchesUserAreaFilter,
+  normalizeAreaQuery,
   parsePreferredAreas,
   validatePreferredAreas,
 } from "../lib/service-areas";
@@ -60,7 +61,10 @@ router.get("/users", async (req, res): Promise<void> => {
     return;
   }
 
-  const parsed = ListUsersQueryParams.safeParse(req.query);
+  const parsed = ListUsersQueryParams.safeParse({
+    ...req.query,
+    area: normalizeAreaQuery(req.query.area),
+  });
   const params = parsed.success ? parsed.data : {};
 
   const rows = await db

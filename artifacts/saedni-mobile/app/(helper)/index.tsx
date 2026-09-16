@@ -89,7 +89,10 @@ export default function HelperRequestsScreen() {
   const [contactingId, setContactingId] = useState<number | null>(null);
 
   async function contactAndOpen(item: HelpRequest, method: "phone" | "whatsapp") {
-    if (!item.customerPhone) return;
+    if (!item.customerPhone) {
+      Alert.alert("تعذر التواصل", "رقم العميل غير متوفر لهذا الطلب");
+      return;
+    }
     setContactingId(item.id);
     try {
       const response = await fetch(`${BASE}/api/requests/${item.id}/contact`, {

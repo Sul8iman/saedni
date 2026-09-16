@@ -1,6 +1,6 @@
 import React, { useCallback } from "react";
 import {
-  View, Text, FlatList, TouchableOpacity, StyleSheet,
+  View, Text, FlatList, TouchableOpacity, StyleSheet, Linking,
   ActivityIndicator, RefreshControl, Alert,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
@@ -26,6 +26,106 @@ interface HelpRequest {
   customerPhone?: string | null;
   helpCompleted?: boolean | null;
   completedHelperId?: number | null;
+}
+
+interface ContactedHelper {
+  helperId: number;
+  helperName?: string | null;
+  rating?: number | null;
+  ratingCount: number;
+  contactMethod: "phone" | "whatsapp";
+  contactPhone: string;
+}
+
+function ContactedHelpersSection({
+  requestId,
+  colors,
+  s,
+}: {
+  requestId: number;
+  colors: ReturnType<typeof useColors>;
+  s: ReturnType<typeof makeStyles>;
+}) {
+  const { data, isLoading, isError, refetch } = useQuery({
+    queryKey: ["contacted-helpers", requestId],
+    queryFn: async () => {
+      const response = await fetch(`${BASE}/api/requests/${requestId}/contacted-helpers`, {
+        credentials: "include",
+        headers: await getAuthHeaders(),
+      });
+      if (!response.ok) throw new Error("تعذر تحميل المساعدين المتواصلين");
+      return response.json() as Promise<ContactedHelper[]>;
+    },
+    enabled: requestId > 0,
+  });
+
+  const openPhone = (phone: string) => {
+    void Linking.openURL(`tel:${phone}`);
+  };
+  const openWhatsApp = (phone: string) => {
+    void Linking.openURL(`https://wa.me/${phone}`);
+  };
+  const ratingLabel = (helper: ContactedHelper) =>
+    helper.ratingCount === 0
+      ? "جديد"
+      : `★ ${helper.rating?.toFixed(1) ?? "—"} · ${helper.ratingCount} تقييم`;
+
+  return (
+    <View style={s.contactedSection}>
+      <View style={s.contactedSectionHeader}>
+        <Ionicons name="people-outline" size={16} color={colors.primary} />
+        <Text style={s.contactedSectionTitle}>المساعدون المتواصلون</Text>
+      </View>
+      {isLoading ? (
+        <View style={s.contactedStatus}>
+          <ActivityIndicator size="small" color={colors.primary} />
+          <Text style={s.contactedStatusText}>جارٍ تحميل القائمة...</Text>
+        </View>
+      ) : isError ? (
+        <TouchableOpacity style={s.contactedError} onPress={() => void refetch()}>
+          <Ionicons name="refresh-outline" size={15} color={colors.destructive} />
+          <Text style={s.contactedErrorText}>تعذر تحميل القائمة — اضغط لإعادة المحاولة</Text>
+        </TouchableOpacity>
+      ) : data && data.length > 0 ? (
+        data.map((helper) => (
+          <View key={helper.helperId} style={s.contactedCard}>
+            <View style={s.contactedCardTop}>
+              <View style={s.contactedIdentity}>
+                <Text style={s.contactedName}>{helper.helperName ?? "مساعد"}</Text>
+                <Text style={s.contactedPhone}>{helper.contactPhone}</Text>
+              </View>
+              <View style={s.contactedMeta}>
+                <Text style={s.contactedMethod}>
+                  {helper.contactMethod === "whatsapp" ? "واتساب" : "اتصال"}
+                </Text>
+                <Text style={s.contactedRating}>{ratingLabel(helper)}</Text>
+              </View>
+            </View>
+            <View style={s.contactedActions}>
+              <TouchableOpacity
+                style={[s.contactedAction, s.contactedCallAction]}
+                onPress={() => openPhone(helper.contactPhone)}
+                accessibilityLabel={`اتصال بـ ${helper.helperName ?? "المساعد"}`}
+              >
+                <Ionicons name="call-outline" size={16} color={colors.primary} />
+                <Text style={[s.contactedActionText, { color: colors.primary }]}>اتصال</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[s.contactedAction, s.contactedWhatsAppAction]}
+                onPress={() => openWhatsApp(helper.contactPhone)}
+                accessibilityLabel={`واتساب ${helper.helperName ?? "المساعد"}`}
+              >
+                <Ionicons name="logo-whatsapp" size={16} color="#fff" />
+                <Text style={[s.contactedActionText, { color: "#fff" }]}>واتساب</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        ))
+      ) : (
+        <Text style={s.contactedEmpty}>لم يتواصل أي مساعد مع هذا الطلب</Text>
+      )}
+    </View>
+  );
 }
 
 function fmtDate(iso: string | null | undefined): string {
@@ -119,16 +219,34 @@ export default function CustomerMyRequestsScreen() {
         headers: await getAuthHeaders(),
       });
       if (!response.ok) throw new Error("تعذر تحميل المساعدين الذين تواصلوا معك");
-      const helpers = await response.json() as Array<{ helperId: number; helperName?: string | null }>;
+      const helpers = await response.json() as ContactedHelper[];
       if (helpers.length === 0) {
-        Alert.alert("لا يمكن إنهاء الطلب", "يجب أن يتواصل معك مساعد قبل تسجيل إتمام المساعدة");
+        Alert.alert(
+          "لم يتواصل أي مساعد",
+          "يمكنك تسجيل أنك لم تتلقَ مساعدة لهذا الطلب.",
+          [
+            { text: "إلغاء", style: "cancel" },
+            {
+              text: "لم أتلقَ مساعدة",
+              onPress: () => endMutation.mutate({ id, helpCompleted: false }),
+            },
+          ],
+        );
         return;
       }
+      const ratingLabel = (helper: ContactedHelper) =>
+        helper.ratingCount === 0
+          ? "جديد"
+          : `★ ${helper.rating?.toFixed(1) ?? "—"} · ${helper.ratingCount} تقييم`;
       Alert.alert(
         "من المساعد الذي أنجز الطلب؟",
         "",
         helpers.map((helper) => ({
-          text: helper.helperName ?? `مساعد ${helper.helperId}`,
+          text: [
+            helper.helperName ?? `مساعد ${helper.helperId}`,
+            helper.contactPhone,
+            ratingLabel(helper),
+          ].join(" · "),
           onPress: () => chooseRating(id, helper.helperId),
         })),
         { cancelable: true },
@@ -236,6 +354,8 @@ export default function CustomerMyRequestsScreen() {
             </View>
           )}
         </View>
+
+        <ContactedHelpersSection requestId={item.id} colors={colors} s={s} />
 
         {isActive && (
           <TouchableOpacity
@@ -349,6 +469,48 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
     feedbackYes: { backgroundColor: "#D1FAE5" },
     feedbackNo:  { backgroundColor: "#FEE2E2" },
     feedbackTxt: { fontSize: 12, fontWeight: "700" },
+
+    contactedSection: { gap: 8, marginBottom: 14 },
+    contactedSectionHeader: {
+      flexDirection: "row-reverse", alignItems: "center", gap: 6,
+      paddingHorizontal: 2,
+    },
+    contactedSectionTitle: { fontSize: 14, color: c.foreground, fontWeight: "800" },
+    contactedStatus: {
+      minHeight: 42, borderRadius: 10, backgroundColor: c.muted,
+      flexDirection: "row-reverse", alignItems: "center", justifyContent: "center", gap: 7,
+      paddingHorizontal: 10,
+    },
+    contactedStatusText: { fontSize: 12, color: c.mutedForeground, fontWeight: "600" },
+    contactedError: {
+      minHeight: 42, borderRadius: 10, backgroundColor: "#FEF2F2",
+      flexDirection: "row-reverse", alignItems: "center", justifyContent: "center", gap: 6,
+      paddingHorizontal: 10,
+    },
+    contactedErrorText: { fontSize: 12, color: c.destructive, fontWeight: "600", textAlign: "center" },
+    contactedCard: {
+      borderWidth: 1, borderColor: c.border, borderRadius: 12,
+      backgroundColor: c.background, padding: 11, gap: 10,
+    },
+    contactedCardTop: { flexDirection: "row-reverse", alignItems: "flex-start", gap: 8 },
+    contactedIdentity: { flex: 1, alignItems: "flex-end", gap: 3 },
+    contactedName: { fontSize: 14, color: c.foreground, fontWeight: "800", textAlign: "right" },
+    contactedPhone: { fontSize: 13, color: c.mutedForeground, textAlign: "right" },
+    contactedMeta: { alignItems: "flex-start", gap: 3 },
+    contactedMethod: { fontSize: 11, color: c.primary, fontWeight: "700" },
+    contactedRating: { fontSize: 11, color: c.mutedForeground, fontWeight: "600" },
+    contactedActions: { flexDirection: "row-reverse", gap: 8 },
+    contactedAction: {
+      flex: 1, minHeight: 36, borderRadius: 8,
+      flexDirection: "row-reverse", alignItems: "center", justifyContent: "center", gap: 5,
+    },
+    contactedCallAction: { borderWidth: 1, borderColor: c.border, backgroundColor: c.secondary },
+    contactedWhatsAppAction: { backgroundColor: "#25D366" },
+    contactedActionText: { fontSize: 12, fontWeight: "800" },
+    contactedEmpty: {
+      fontSize: 12, color: c.mutedForeground, textAlign: "right",
+      backgroundColor: c.muted, borderRadius: 10, padding: 10,
+    },
 
     endBtn: {
       borderWidth: 1.5, borderColor: c.border, borderRadius: 10,

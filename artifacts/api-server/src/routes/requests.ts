@@ -802,6 +802,13 @@ router.patch("/requests/:id/complete", async (req, res): Promise<void> => {
       .where(and(eq(requestsTable.id, params.data.id), isNull(requestsTable.deletedAt)));
     if (!lockedRequest) return { kind: "not_found" as const };
     if (lockedRequest.status === "completed" || lockedRequest.status === "cancelled") {
+      if (helpCompleted === true && completedHelperId != null && ratingStars != null) {
+        const [existingRating] = await tx
+          .select({ id: helperRatingsTable.id })
+          .from(helperRatingsTable)
+          .where(eq(helperRatingsTable.requestId, lockedRequest.id));
+        if (existingRating) return { kind: "already_rated" as const };
+      }
       return { kind: "conflict" as const };
     }
     if (!isAdminActor(actor) && lockedRequest.customerId !== actor.id) {
@@ -826,12 +833,17 @@ router.patch("/requests/:id/complete", async (req, res): Promise<void> => {
           .from(helperRatingsTable)
           .where(eq(helperRatingsTable.requestId, lockedRequest.id));
         if (existingRating) return { kind: "already_rated" as const };
-        await tx.insert(helperRatingsTable).values({
+        const [insertedRating] = await tx
+          .insert(helperRatingsTable)
+          .values({
           requestId: lockedRequest.id,
           customerId: lockedRequest.customerId,
           helperId: completedHelperId,
           stars: ratingStars,
-        });
+          })
+          .onConflictDoNothing({ target: helperRatingsTable.requestId })
+          .returning({ id: helperRatingsTable.id });
+        if (!insertedRating) return { kind: "already_rated" as const };
         ratingInserted = true;
       }
     }

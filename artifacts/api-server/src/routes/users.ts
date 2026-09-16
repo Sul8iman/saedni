@@ -1,8 +1,9 @@
 import { Router, type IRouter } from "express";
-import { avg, count, eq } from "drizzle-orm";
+import { and, avg, count, eq } from "drizzle-orm";
 import { db, helperRatingsTable, usersTable } from "@workspace/db";
 import {
   GetUserParams,
+  ListUserAreaCountsQueryParams,
   UpdateUserParams,
   UpdateUserBody,
   ListUsersQueryParams,
@@ -10,6 +11,7 @@ import {
 import { isAdminActor, requireRequestActor } from "../lib/request-access";
 import {
   ACTIVE_SERVICE_AREAS,
+  countHelpersByArea,
   isActiveServiceArea,
   matchesUserAreaFilter,
   normalizeBooleanQuery,
@@ -51,6 +53,70 @@ async function safeUser(user: typeof usersTable.$inferSelect) {
 
 router.get("/service-areas", async (_req, res): Promise<void> => {
   res.json(ACTIVE_SERVICE_AREAS.map((area) => ({ ...area, isActive: true })));
+});
+
+// GET /users/area-counts
+router.get("/users/area-counts", async (req, res): Promise<void> => {
+  const actor = await requireRequestActor(req, res);
+  if (!actor) return;
+  if (!isAdminActor(actor)) {
+    res.status(403).json({ error: "هذه العملية متاحة للمدير فقط" });
+    return;
+  }
+
+  const parsed = ListUserAreaCountsQueryParams.safeParse(req.query);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  const statusFilter = parsed.data.status;
+  const statusCondition = statusFilter === "active"
+    ? eq(usersTable.isBlocked, false)
+    : statusFilter === "blocked"
+      ? eq(usersTable.isBlocked, true)
+      : undefined;
+  const customerWhere = statusCondition
+    ? and(eq(usersTable.userType, "customer"), statusCondition)
+    : eq(usersTable.userType, "customer");
+  const helperWhere = statusCondition
+    ? and(eq(usersTable.userType, "helper"), statusCondition)
+    : eq(usersTable.userType, "helper");
+
+  const [customerRows, helperRows] = await Promise.all([
+    db
+      .select({ area: usersTable.area, count: count() })
+      .from(usersTable)
+      .where(customerWhere)
+      .groupBy(usersTable.area),
+    db
+      .select({ id: usersTable.id, preferredAreas: usersTable.preferredAreas })
+      .from(usersTable)
+      .where(helperWhere),
+  ]);
+
+  const helperCounts = countHelpersByArea(helperRows);
+  const customerCounts = new Map(
+    customerRows
+      .filter((row) => row.area !== null && isActiveServiceArea(row.area))
+      .map((row) => [row.area as string, Number(row.count)]),
+  );
+  const totalCustomerCount = customerRows.reduce((total, row) => total + Number(row.count), 0);
+  const noAreaCustomerCount = customerRows
+    .filter((row) => !isActiveServiceArea(row.area))
+    .reduce((total, row) => total + Number(row.count), 0);
+
+  res.json({
+    areas: ACTIVE_SERVICE_AREAS.map(({ name }) => ({
+      area: name,
+      helperCount: helperCounts.counts.get(name) ?? 0,
+      customerCount: customerCounts.get(name) ?? 0,
+    })),
+    totalHelperCount: helperCounts.totalCount,
+    totalCustomerCount,
+    noAreaHelperCount: helperCounts.noAreaCount,
+    noAreaCustomerCount,
+  });
 });
 
 // GET /users

@@ -255,7 +255,7 @@ router.get("/requests", async (req, res): Promise<void> => {
     .select()
     .from(requestsTable)
     .where(and(...conditions))
-    .orderBy(requestsTable.createdAt);
+    .orderBy(desc(requestsTable.createdAt), desc(requestsTable.id));
 
   let actorVisibleRows = rows;
   if (isHelper && !isAdminActor(actor)) {

@@ -166,6 +166,42 @@ export const ListServiceAreasResponse = zod.array(ListServiceAreasResponseItem)
 
 
 /**
+ * @summary List admin user counts by service area
+ */
+export const listUserAreaCountsQueryStatusDefault = `all`;
+
+export const ListUserAreaCountsQueryParams = zod.object({
+  "status": zod.enum(['all', 'active', 'blocked']).default(listUserAreaCountsQueryStatusDefault)
+})
+
+export const listUserAreaCountsResponseAreasItemHelperCountMin = 0;
+
+export const listUserAreaCountsResponseAreasItemCustomerCountMin = 0;
+
+export const listUserAreaCountsResponseTotalHelperCountMin = 0;
+
+export const listUserAreaCountsResponseTotalCustomerCountMin = 0;
+
+export const listUserAreaCountsResponseNoAreaHelperCountMin = 0;
+
+export const listUserAreaCountsResponseNoAreaCustomerCountMin = 0;
+
+
+
+export const ListUserAreaCountsResponse = zod.object({
+  "areas": zod.array(zod.object({
+  "area": zod.string(),
+  "helperCount": zod.number().min(listUserAreaCountsResponseAreasItemHelperCountMin),
+  "customerCount": zod.number().min(listUserAreaCountsResponseAreasItemCustomerCountMin)
+})),
+  "totalHelperCount": zod.number().min(listUserAreaCountsResponseTotalHelperCountMin),
+  "totalCustomerCount": zod.number().min(listUserAreaCountsResponseTotalCustomerCountMin),
+  "noAreaHelperCount": zod.number().min(listUserAreaCountsResponseNoAreaHelperCountMin),
+  "noAreaCustomerCount": zod.number().min(listUserAreaCountsResponseNoAreaCustomerCountMin)
+})
+
+
+/**
  * @summary List help requests
  */
 export const ListRequestsQueryParams = zod.object({

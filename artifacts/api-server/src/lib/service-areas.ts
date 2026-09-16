@@ -46,6 +46,39 @@ export function helperServesArea(value: string | null | undefined, area: string)
   return parsePreferredAreas(value).includes(area);
 }
 
+export type HelperAreaCountRecord = {
+  id: number;
+  preferredAreas?: string | null;
+};
+
+export function countHelpersByArea(rows: HelperAreaCountRecord[]): {
+  totalCount: number;
+  noAreaCount: number;
+  counts: Map<string, number>;
+} {
+  const helperIds = new Set<number>();
+  const noAreaIds = new Set<number>();
+  const areaHelperIds = new Map<string, Set<number>>();
+
+  for (const row of rows) {
+    helperIds.add(row.id);
+    const validAreas = new Set(parsePreferredAreas(row.preferredAreas).filter(isActiveServiceArea));
+    if (validAreas.size === 0) noAreaIds.add(row.id);
+
+    for (const area of validAreas) {
+      const ids = areaHelperIds.get(area) ?? new Set<number>();
+      ids.add(row.id);
+      areaHelperIds.set(area, ids);
+    }
+  }
+
+  return {
+    totalCount: helperIds.size,
+    noAreaCount: noAreaIds.size,
+    counts: new Map([...areaHelperIds].map(([area, ids]) => [area, ids.size])),
+  };
+}
+
 /**
  * Express query parsing returns one repeated query parameter as a string and
  * multiple repeated values as an array. Normalize both forms before the

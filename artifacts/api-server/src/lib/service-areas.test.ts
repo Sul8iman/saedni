@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   ACTIVE_SERVICE_AREAS,
+  countHelpersByArea,
   hasConfiguredServiceArea,
   helperServesArea,
   matchesUserAreaFilter,
@@ -27,6 +28,21 @@ test("deduplicates legacy areas without activating unsupported locations", () =>
   assert.deepEqual(parsePreferredAreas('["بوشر","بوشر","صور",""]'), ["بوشر", "صور"]);
   assert.equal(hasConfiguredServiceArea('["صور"]'), false);
   assert.equal(helperServesArea('["بوشر","بوشر"]', "بوشر"), true);
+});
+
+test("counts each helper once per valid area and separates helpers without areas", () => {
+  const result = countHelpersByArea([
+    { id: 1, preferredAreas: JSON.stringify(["بوشر", "بوشر", "الخوض"]) },
+    { id: 2, preferredAreas: JSON.stringify(["بوشر", "صور"]) },
+    { id: 3, preferredAreas: JSON.stringify(["صور"]) },
+    { id: 4, preferredAreas: "not-json" },
+  ]);
+
+  assert.equal(result.totalCount, 4);
+  assert.equal(result.noAreaCount, 2);
+  assert.equal(result.counts.get("بوشر"), 2);
+  assert.equal(result.counts.get("الخوض"), 1);
+  assert.equal(result.counts.has("صور"), false);
 });
 
 test("normalizes one repeated area query value to the same shape as multiple values", () => {

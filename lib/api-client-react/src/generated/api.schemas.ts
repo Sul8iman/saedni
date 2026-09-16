@@ -263,6 +263,26 @@ export interface ServiceArea {
   sortOrder: number;
 }
 
+export interface UserAreaCount {
+  area: string;
+  /** @minimum 0 */
+  helperCount: number;
+  /** @minimum 0 */
+  customerCount: number;
+}
+
+export interface UserAreaCounts {
+  areas: UserAreaCount[];
+  /** @minimum 0 */
+  totalHelperCount: number;
+  /** @minimum 0 */
+  totalCustomerCount: number;
+  /** @minimum 0 */
+  noAreaHelperCount: number;
+  /** @minimum 0 */
+  noAreaCustomerCount: number;
+}
+
 export type RequestContactInputContactMethod = typeof RequestContactInputContactMethod[keyof typeof RequestContactInputContactMethod];
 
 
@@ -389,6 +409,19 @@ export interface AdminNotification {
   isRead: boolean;
   createdAt: string;
 }
+
+export type ListUserAreaCountsParams = {
+status?: ListUserAreaCountsStatus;
+};
+
+export type ListUserAreaCountsStatus = typeof ListUserAreaCountsStatus[keyof typeof ListUserAreaCountsStatus];
+
+
+export const ListUserAreaCountsStatus = {
+  all: 'all',
+  active: 'active',
+  blocked: 'blocked',
+} as const;
 
 export type ListRequestsParams = {
 category?: string;

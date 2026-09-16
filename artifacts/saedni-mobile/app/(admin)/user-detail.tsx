@@ -28,6 +28,7 @@ interface UserDetail {
   helperActivationCodeActive?: boolean | null;
   helperActivationCodeCreatedAt?: string | null;
   helperActivationCodeUsedAt?: string | null;
+  serviceAreas?: string[];
   createdAt: string;
   lastLogin?: string | null;
 }
@@ -155,6 +156,7 @@ export default function UserDetailScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       qc.invalidateQueries({ queryKey: ["admin-user-detail", userId] });
       qc.invalidateQueries({ queryKey: ["admin-users"] });
+      qc.invalidateQueries({ queryKey: ["/api/users/area-counts"] });
     },
     onError: () => Alert.alert("خطأ", "تعذر تحديث حالة المستخدم"),
   });
@@ -195,6 +197,7 @@ export default function UserDetailScreen() {
     onSuccess: () => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       qc.invalidateQueries({ queryKey: ["admin-users"] });
+      qc.invalidateQueries({ queryKey: ["/api/users/area-counts"] });
       router.back();
     },
     onError: () => Alert.alert("خطأ", "تعذر تعطيل المستخدم"),
@@ -340,8 +343,14 @@ export default function UserDetailScreen() {
                 valueColor={user.isVerified ? colors.primary : "#F59E0B"}
               />
             )}
-            {user.area ? (
-              <InfoRow icon="location-outline" label="المنطقة" value={user.area} />
+            {isHelper ? (
+              <InfoRow
+                icon="location-outline"
+                label="مناطق الخدمة"
+                value={user.serviceAreas?.length ? user.serviceAreas.join("، ") : "بدون مناطق خدمة"}
+              />
+            ) : user.userType === "customer" ? (
+              <InfoRow icon="location-outline" label="المنطقة" value={user.area ?? "بدون منطقة محددة"} />
             ) : null}
             <InfoRow icon="calendar-outline" label="تاريخ التسجيل" value={fmtDate(user.createdAt)} />
             <InfoRow icon="time-outline" label="آخر تسجيل دخول" value={fmtDate(user.lastLogin)} />

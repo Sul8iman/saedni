@@ -31,6 +31,7 @@ import type {
   HelpRequestInput,
   HelpRequestUpdate,
   ListRequestsParams,
+  ListUserAreaCountsParams,
   ListUsersParams,
   LoginInput,
   OtpRequestResponse,
@@ -43,6 +44,7 @@ import type {
   SuccessResponse,
   UpdateRequestStatusInput,
   User,
+  UserAreaCounts,
   UserUpdate,
   VerifyHelperInput,
   VerifyOtpInput
@@ -633,6 +635,90 @@ export function useListServiceAreas<TData = Awaited<ReturnType<typeof listServic
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getListServiceAreasQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getListUserAreaCountsUrl = (params?: ListUserAreaCountsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/users/area-counts?${stringifiedParams}` : `/api/users/area-counts`
+}
+
+/**
+ * @summary List admin user counts by service area
+ */
+export const listUserAreaCounts = async (params?: ListUserAreaCountsParams, options?: RequestInit): Promise<UserAreaCounts> => {
+
+  return customFetch<UserAreaCounts>(getListUserAreaCountsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListUserAreaCountsQueryKey = (params?: ListUserAreaCountsParams,) => {
+    return [
+    `/api/users/area-counts`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListUserAreaCountsQueryOptions = <TData = Awaited<ReturnType<typeof listUserAreaCounts>>, TError = ErrorType<void>>(params?: ListUserAreaCountsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listUserAreaCounts>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListUserAreaCountsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listUserAreaCounts>>> = ({ signal }) => listUserAreaCounts(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listUserAreaCounts>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListUserAreaCountsQueryResult = NonNullable<Awaited<ReturnType<typeof listUserAreaCounts>>>
+export type ListUserAreaCountsQueryError = ErrorType<void>
+
+
+/**
+ * @summary List admin user counts by service area
+ */
+
+export function useListUserAreaCounts<TData = Awaited<ReturnType<typeof listUserAreaCounts>>, TError = ErrorType<void>>(
+ params?: ListUserAreaCountsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listUserAreaCounts>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListUserAreaCountsQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

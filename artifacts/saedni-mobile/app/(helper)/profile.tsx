@@ -7,7 +7,7 @@ import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useColors } from "@/hooks/useColors";
 import { getAuthHeaders, useAuth } from "@/contexts/AuthContext";
 import { CATEGORIES, AREAS } from "@/constants/categories";
@@ -22,6 +22,7 @@ export default function HelperProfileScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const qc = useQueryClient();
   const { user, logout, setUser } = useAuth();
   const isVerified = user?.isVerified ?? false;
   const { data: profile } = useQuery({
@@ -68,6 +69,7 @@ export default function HelperProfileScreen() {
     onSuccess: (updated) => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setUser({ ...user!, helperInterests: JSON.stringify(selCats), preferredAreas: JSON.stringify(selAreas) });
+      qc.invalidateQueries({ queryKey: ["/api/users/area-counts"] });
       Alert.alert("تم الحفظ", "تم حفظ اهتماماتك بنجاح");
     },
     onError: () => Alert.alert("خطأ", "تعذر حفظ الاهتمامات"),

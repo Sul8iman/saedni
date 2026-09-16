@@ -163,6 +163,28 @@ paths:
                 items:
                   $ref: "#/components/schemas/ServiceArea"
 
+  /users/area-counts:
+    get:
+      operationId: listUserAreaCounts
+      tags: [users]
+      summary: List admin user counts by service area
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [all, active, blocked]
+            default: all
+      responses:
+        "200":
+          description: User counts by active service area
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserAreaCounts"
+        "403":
+          description: Admin access required
+
   /requests:
     get:
       operationId: listRequests
@@ -977,6 +999,40 @@ components:
           type: boolean
         sortOrder:
           type: integer
+
+    UserAreaCount:
+      type: object
+      required: [area, helperCount, customerCount]
+      properties:
+        area:
+          type: string
+        helperCount:
+          type: integer
+          minimum: 0
+        customerCount:
+          type: integer
+          minimum: 0
+
+    UserAreaCounts:
+      type: object
+      required: [areas, totalHelperCount, totalCustomerCount, noAreaHelperCount, noAreaCustomerCount]
+      properties:
+        areas:
+          type: array
+          items:
+            $ref: "#/components/schemas/UserAreaCount"
+        totalHelperCount:
+          type: integer
+          minimum: 0
+        totalCustomerCount:
+          type: integer
+          minimum: 0
+        noAreaHelperCount:
+          type: integer
+          minimum: 0
+        noAreaCustomerCount:
+          type: integer
+          minimum: 0
 
     RequestContactInput:
       type: object

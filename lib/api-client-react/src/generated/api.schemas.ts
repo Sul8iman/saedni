@@ -323,7 +323,8 @@ export const ContactedHelperContactMethod = {
 } as const;
 
 export interface ContactedHelper {
-  helperId: number;
+  /** @nullable */
+  helperId: number | null;
   /** @nullable */
   helperName: string | null;
   /** @nullable */

@@ -19,6 +19,23 @@ const router: IRouter = Router();
 
 const ACTIVE_STATUSES = ["available", "accepted", "in_progress"] as const;
 type AdminFilters = { areas: string[]; category?: string; search?: string; from?: Date; to?: Date };
+
+function postgresForeignKeyViolation(error: unknown): { constraint?: string } | null {
+  const seen = new Set<unknown>();
+  let current: unknown = error;
+  while (current && typeof current === "object" && !seen.has(current)) {
+    seen.add(current);
+    const candidate = current as { code?: unknown; constraint?: unknown; cause?: unknown };
+    if (candidate.code === "23503") {
+      return {
+        constraint: typeof candidate.constraint === "string" ? candidate.constraint : undefined,
+      };
+    }
+    current = candidate.cause;
+  }
+  return null;
+}
+
 function queryValues(value: unknown): string[] {
   const values = Array.isArray(value) ? value : value == null ? [] : [value];
   return values.filter((v): v is string => typeof v === "string" && v.trim().length > 0)
@@ -285,8 +302,9 @@ router.post("/admin/helpers/:id/regenerate-code", async (req, res): Promise<void
 });
 
 // DELETE /admin/users/:id/delete
-// Deactivates the account and archives customer-owned requests. It intentionally
-// never hard-deletes a user or request from the normal admin workflow.
+// Deletes only the selected user row. Historical rows are preserved; their
+// nullable user references are detached by the reviewed ON DELETE SET NULL
+// migration after missing identity snapshots are filled in this transaction.
 router.delete("/admin/users/:id/delete", async (req, res): Promise<void> => {
   const params = DeleteUserParams.safeParse(req.params);
   if (!params.success) {
@@ -294,93 +312,119 @@ router.delete("/admin/users/:id/delete", async (req, res): Promise<void> => {
     return;
   }
 
-  const currentUserId = (req as any).session?.userId;
-  if (currentUserId === params.data.id) {
-    res.status(403).json({ error: "لا يمكنك حذف حساب المدير" });
-    return;
-  }
+  const currentUserId = (req as any).session?.userId as number | undefined;
 
-  const archivedAt = new Date();
-  const result = await db.transaction(async (tx) => {
-    const [user] = await tx
-      .update(usersTable)
-      .set({
-        isBlocked: true,
-        isVerified: false,
-        authToken: null,
-        helperActivationCodeActive: false,
-      })
-      .where(eq(usersTable.id, params.data.id))
-      .returning();
+  try {
+    const result = await db.transaction(async (tx) => {
+      const [actor] = await tx
+        .select({
+          id: usersTable.id,
+          userType: usersTable.userType,
+          isVerified: usersTable.isVerified,
+          isBlocked: usersTable.isBlocked,
+        })
+        .from(usersTable)
+        .where(eq(usersTable.id, currentUserId ?? -1))
+        .for("update");
+      if (!actor || actor.userType !== "admin" || !actor.isVerified || actor.isBlocked) {
+        return { kind: "forbidden" as const };
+      }
 
-    if (!user) return { user: null, archivedRequests: [], requeuedRequests: [] };
+      const [target] = await tx
+        .select({
+          id: usersTable.id,
+          userType: usersTable.userType,
+          name: usersTable.name,
+          phone: usersTable.phone,
+        })
+        .from(usersTable)
+        .where(eq(usersTable.id, params.data.id))
+        .for("update");
+      if (!target) return { kind: "not_found" as const };
+      if (actor.id === target.id) return { kind: "self" as const };
+      if (target.userType === "admin") return { kind: "admin" as const };
 
-    const archivedRequests = await tx
-      .update(requestsTable)
-      .set({
-        deletedAt: archivedAt,
-        deletedByUserId: currentUserId,
-        deletedReason: "account_deactivated",
-      })
-      .where(and(
-        eq(requestsTable.customerId, user.id),
-        isNull(requestsTable.deletedAt),
-      ))
-      .returning({ id: requestsTable.id, status: requestsTable.status });
+      await tx
+        .update(requestsTable)
+        .set({ customerNameSnapshot: target.name })
+        .where(and(eq(requestsTable.customerId, target.id), isNull(requestsTable.customerNameSnapshot)));
+      await tx
+        .update(requestsTable)
+        .set({ customerPhoneSnapshot: target.phone })
+        .where(and(eq(requestsTable.customerId, target.id), isNull(requestsTable.customerPhoneSnapshot)));
+      await tx
+        .update(requestsTable)
+        .set({ completedHelperNameSnapshot: target.name })
+        .where(and(eq(requestsTable.completedHelperId, target.id), isNull(requestsTable.completedHelperNameSnapshot)));
+      await tx
+        .update(requestsTable)
+        .set({ completedHelperPhoneSnapshot: target.phone })
+        .where(and(eq(requestsTable.completedHelperId, target.id), isNull(requestsTable.completedHelperPhoneSnapshot)));
 
-    if (archivedRequests.length > 0) {
-      await tx.insert(requestLifecycleEventsTable).values(
-        archivedRequests.map((request) => ({
-          requestId: request.id,
-          action: "soft_deleted",
-          actorUserId: currentUserId,
-          actorRole: "admin",
-          reason: "account_deactivated",
-          metadata: JSON.stringify({ status: request.status }),
-        })),
-      );
+      await tx
+        .update(requestContactsTable)
+        .set({ helperNameSnapshot: target.name })
+        .where(and(eq(requestContactsTable.helperId, target.id), isNull(requestContactsTable.helperNameSnapshot)));
+      await tx
+        .update(requestContactsTable)
+        .set({ customerNameSnapshot: target.name })
+        .where(and(eq(requestContactsTable.customerId, target.id), isNull(requestContactsTable.customerNameSnapshot)));
+      await tx
+        .update(requestContactsTable)
+        .set({ customerPhoneSnapshot: target.phone })
+        .where(and(eq(requestContactsTable.customerId, target.id), isNull(requestContactsTable.customerPhoneSnapshot)));
+
+      await tx
+        .update(helperRatingsTable)
+        .set({ helperNameSnapshot: target.name })
+        .where(and(eq(helperRatingsTable.helperId, target.id), isNull(helperRatingsTable.helperNameSnapshot)));
+      await tx
+        .update(helperRatingsTable)
+        .set({ customerNameSnapshot: target.name })
+        .where(and(eq(helperRatingsTable.customerId, target.id), isNull(helperRatingsTable.customerNameSnapshot)));
+
+      const [deleted] = await tx
+        .delete(usersTable)
+        .where(eq(usersTable.id, target.id))
+        .returning({ id: usersTable.id });
+      if (!deleted) return { kind: "not_found" as const };
+      return { kind: "deleted" as const, target };
+    });
+
+    if (result.kind === "forbidden") {
+      res.status(403).json({ error: "هذه العملية متاحة للمدير فقط" });
+      return;
+    }
+    if (result.kind === "not_found") {
+      res.status(404).json({ error: "المستخدم غير موجود" });
+      return;
+    }
+    if (result.kind === "self") {
+      res.status(403).json({ error: "لا يمكنك حذف حسابك" });
+      return;
+    }
+    if (result.kind === "admin") {
+      res.status(403).json({ error: "لا يمكنك حذف حساب مدير آخر" });
+      return;
     }
 
-    const requeuedRequests = await tx
-      .update(requestsTable)
-      .set({ helperId: null, status: "available" })
-      .where(and(
-        eq(requestsTable.helperId, user.id),
-        isNull(requestsTable.deletedAt),
-        inArray(requestsTable.status, ["accepted", "in_progress"]),
-      ))
-      .returning({ id: requestsTable.id, status: requestsTable.status });
-
-    if (requeuedRequests.length > 0) {
-      await tx.insert(requestLifecycleEventsTable).values(
-        requeuedRequests.map((request) => ({
-          requestId: request.id,
-          action: "status_changed",
-          actorUserId: currentUserId,
-          actorRole: "admin",
-          reason: "helper_account_deactivated",
-          metadata: JSON.stringify({ fromStatus: request.status, toStatus: "available" }),
-        })),
-      );
-    }
-
-    return { user, archivedRequests, requeuedRequests };
-  });
-
-  if (!result.user) {
-    res.status(404).json({ error: "المستخدم غير موجود" });
+    req.log.info({ userId: result.target.id }, "admin: account deleted; historical rows preserved");
+    res.sendStatus(204);
     return;
+  } catch (error: unknown) {
+    const databaseError = postgresForeignKeyViolation(error);
+    if (databaseError) {
+      req.log.warn(
+        { userId: params.data.id, constraint: databaseError.constraint },
+        "admin: account deletion blocked by a foreign-key constraint",
+      );
+      res.status(409).json({
+        error: "لا يمكن حذف هذا الحساب لوجود سجلات تواصل أو تقييمات مرتبطة به",
+      });
+      return;
+    }
+    throw error;
   }
-
-  req.log.info(
-    {
-      userId: result.user.id,
-      archivedRequests: result.archivedRequests.length,
-      requeuedRequests: result.requeuedRequests.length,
-    },
-    "admin: account deactivated, customer requests archived, helper work requeued",
-  );
-  res.sendStatus(204);
 });
 
 // GET /admin/notifications

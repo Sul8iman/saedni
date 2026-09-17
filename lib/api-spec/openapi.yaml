@@ -1135,7 +1135,7 @@ components:
       required: [helperId, helperName, rating, ratingCount, contactMethod, contactPhone, firstContactedAt, lastContactedAt]
       properties:
         helperId:
-          type: integer
+          type: ["integer", "null"]
         helperName:
           type: ["string", "null"]
         profileImageUrl:

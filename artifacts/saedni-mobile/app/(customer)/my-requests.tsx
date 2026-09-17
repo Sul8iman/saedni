@@ -31,7 +31,7 @@ interface HelpRequest {
 }
 
 interface ContactedHelper {
-  helperId: number;
+  helperId: number | null;
   helperName?: string | null;
   rating?: number | null;
   ratingCount: number;
@@ -92,7 +92,7 @@ function ContactedHelpersSection({
         </TouchableOpacity>
       ) : data && data.length > 0 ? (
         data.map((helper) => (
-          <View key={helper.helperId} style={s.contactedCard}>
+          <View key={`${requestId}-${helper.helperId ?? "deleted"}`} style={s.contactedCard}>
             <View style={s.contactedCardTop}>
               <View style={s.contactedIdentity}>
                 <Text style={s.contactedName}>{helper.helperName ?? "مساعد"}</Text>
@@ -230,7 +230,9 @@ export default function CustomerMyRequestsScreen() {
         headers: await getAuthHeaders(),
       });
       if (!response.ok) throw new Error("تعذر تحميل المساعدين الذين تواصلوا معك");
-      const helpers = await response.json() as ContactedHelper[];
+      const helpers = (await response.json() as ContactedHelper[]).filter(
+        (helper): helper is ContactedHelper & { helperId: number } => helper.helperId !== null,
+      );
       if (helpers.length === 0) {
         Alert.alert(
           "لم يتواصل أي مساعد",

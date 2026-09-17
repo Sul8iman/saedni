@@ -85,16 +85,28 @@ test("soft-deleted requests are hidden from default listings", () => {
   assert.equal(isVisibleInDefaultRequestList({ deletedAt: new Date() }), false);
 });
 
-test("normal request and account-deactivation routes do not hard-delete request rows", async () => {
+test("account deletion removes only the user and never mutates request rows", async () => {
   const [requestSource, adminSource] = await Promise.all([
     readFile(new URL("../routes/requests.ts", import.meta.url), "utf8"),
     readFile(new URL("../routes/admin.ts", import.meta.url), "utf8"),
   ]);
   assert.doesNotMatch(requestSource, /\.delete\(requestsTable\)/);
-  assert.doesNotMatch(adminSource, /\.delete\(requestsTable\)/);
   assert.match(requestSource, /\.update\(requestsTable\)/);
   assert.match(requestSource, /soft_deleted/);
-  assert.match(adminSource, /account_deactivated/);
+  const deleteStart = adminSource.indexOf("// DELETE /admin/users/:id/delete");
+  const deleteEnd = adminSource.indexOf("// GET /admin/notifications", deleteStart);
+  assert.ok(deleteStart >= 0 && deleteEnd > deleteStart);
+  const deleteSource = adminSource.slice(deleteStart, deleteEnd);
+  assert.match(deleteSource, /\.delete\(usersTable\)/);
+  assert.match(deleteSource, /requestsTable/);
+  assert.match(deleteSource, /requestContactsTable/);
+  assert.match(deleteSource, /helperRatingsTable/);
+  assert.doesNotMatch(deleteSource, /\.delete\(requestsTable\)/);
+  assert.doesNotMatch(deleteSource, /status:\s*["']/);
+  assert.match(deleteSource, /userType === "admin"/);
+  assert.match(adminSource, /code === "23503"/);
+  assert.match(deleteSource, /postgresForeignKeyViolation/);
+  assert.match(deleteSource, /لا يمكن حذف هذا الحساب لوجود سجلات تواصل أو تقييمات مرتبطة به/);
 });
 
 test("audit metadata strips authentication secrets and OTPs", () => {

@@ -16,6 +16,7 @@ import {
   useListUserAreaCounts,
   useListUsers,
 } from "@workspace/api-client-react";
+import { accountDeletionErrorMessage } from "@/lib/account-deletion";
 
 const BASE = `https://${process.env.EXPO_PUBLIC_DOMAIN ?? "saedni.onrender.com"}`;
 
@@ -98,7 +99,10 @@ export default function AdminUsersScreen() {
         credentials: "include",
         body: JSON.stringify({ action }),
       });
-      if (!r.ok) throw new Error();
+      if (!r.ok) {
+        const body = await r.json().catch(() => ({}));
+        throw new Error(accountDeletionErrorMessage(r.status, (body as { error?: unknown }).error));
+      }
     },
     onSuccess: () => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -121,8 +125,9 @@ export default function AdminUsersScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       qc.invalidateQueries({ queryKey: ["admin-users"] });
       qc.invalidateQueries({ queryKey: ["/api/users/area-counts"] });
+      Alert.alert("تم حذف الحساب", "تم حذف الحساب بنجاح.");
     },
-    onError: () => Alert.alert("خطأ", "تعذر تعطيل المستخدم"),
+    onError: (error: Error) => Alert.alert("خطأ", error.message),
   });
 
   const s = makeStyles(colors, insets.bottom);
@@ -225,9 +230,9 @@ export default function AdminUsersScreen() {
           <TouchableOpacity
             style={s.deleteBtn}
             onPress={() =>
-              Alert.alert("تعطيل الحساب", `سيتم تعطيل ${item.name} وأرشفة طلباته. لن تُحذف البيانات نهائياً.`, [
+              Alert.alert("حذف الحساب", `سيتم حذف حساب ${item.name} نهائياً مع الاحتفاظ بكل الطلبات والسجلات التاريخية. هل تريد المتابعة؟`, [
                 { text: "إلغاء", style: "cancel" },
-                { text: "تعطيل", style: "destructive", onPress: () => deleteMutation.mutate(item.id) },
+                { text: "حذف الحساب", style: "destructive", onPress: () => deleteMutation.mutate(item.id) },
               ])
             }
             hitSlop={4}

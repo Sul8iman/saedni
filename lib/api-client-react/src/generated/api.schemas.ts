@@ -40,6 +40,8 @@ export interface User {
   isVerified?: boolean;
   isBlocked?: boolean;
   /** @nullable */
+  deletedAt?: string | null;
+  /** @nullable */
   lastLogin?: string | null;
   /** @nullable */
   otpCode?: string | null;
@@ -72,8 +74,17 @@ export interface RegisterInput {
   preferredAreas?: string[];
 }
 
+export type LoginInputUserType = typeof LoginInputUserType[keyof typeof LoginInputUserType];
+
+
+export const LoginInputUserType = {
+  customer: 'customer',
+  helper: 'helper',
+} as const;
+
 export interface LoginInput {
   phone: string;
+  userType: LoginInputUserType;
 }
 
 export interface VerifyOtpInput {
@@ -383,6 +394,29 @@ export interface AdminStats {
   cancelledRequests: number;
 }
 
+/**
+ * Zero-safe aggregate metrics; no personal data is included.
+ */
+export interface AdminStatistics { [key: string]: unknown }
+
+export interface AdminActiveRequestsResponse {
+  items: HelpRequest[];
+  total: number;
+  page: number;
+  pageSize: number;
+  activeCount: number;
+}
+
+export interface AdminArchiveRequestsResponse {
+  items: HelpRequest[];
+  total: number;
+  helpedCount: number;
+  notHelpedCount: number;
+  archiveCount: number;
+  page: number;
+  pageSize: number;
+}
+
 export type VerifyHelperInputAction = typeof VerifyHelperInputAction[keyof typeof VerifyHelperInputAction];
 
 
@@ -446,5 +480,90 @@ page?: number;
  * @maximum 100
  */
 pageSize?: number;
+};
+
+export type GetAdminStatisticsParams = {
+period?: GetAdminStatisticsPeriod;
+from?: string;
+to?: string;
+area?: string[];
+category?: string;
+};
+
+export type GetAdminStatisticsPeriod = typeof GetAdminStatisticsPeriod[keyof typeof GetAdminStatisticsPeriod];
+
+
+export const GetAdminStatisticsPeriod = {
+  '7d': '7d',
+  '30d': '30d',
+  month: 'month',
+  all: 'all',
+} as const;
+
+export type ListAdminActiveRequestsParams = {
+area?: string[];
+category?: string;
+search?: string;
+from?: string;
+to?: string;
+/**
+ * @minimum 1
+ */
+page?: number;
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+pageSize?: number;
+};
+
+export type ListAdminArchiveRequestsParams = {
+area?: string[];
+result?: ListAdminArchiveRequestsResult;
+category?: string;
+search?: string;
+from?: string;
+to?: string;
+/**
+ * @minimum 1
+ */
+page?: number;
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+pageSize?: number;
+};
+
+export type ListAdminArchiveRequestsResult = typeof ListAdminArchiveRequestsResult[keyof typeof ListAdminArchiveRequestsResult];
+
+
+export const ListAdminArchiveRequestsResult = {
+  helped: 'helped',
+  not_helped: 'not_helped',
+  all: 'all',
+} as const;
+
+export type DeleteUserBodyConfirmation = typeof DeleteUserBodyConfirmation[keyof typeof DeleteUserBodyConfirmation];
+
+
+export const DeleteUserBodyConfirmation = {
+  حذف: 'حذف',
+} as const;
+
+export type DeleteUserBody = {
+  confirmation: DeleteUserBodyConfirmation;
+};
+
+export type DeleteUser200DeletionMode = typeof DeleteUser200DeletionMode[keyof typeof DeleteUser200DeletionMode];
+
+
+export const DeleteUser200DeletionMode = {
+  permanent: 'permanent',
+  anonymized: 'anonymized',
+} as const;
+
+export type DeleteUser200 = {
+  deletionMode: DeleteUser200DeletionMode;
 };
 

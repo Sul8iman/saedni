@@ -21,15 +21,23 @@ import type {
 
 import type {
   AcceptRequestInput,
+  AdminActiveRequestsResponse,
+  AdminArchiveRequestsResponse,
   AdminLoginInput,
   AdminNotification,
+  AdminStatistics,
   AdminStats,
   AuthResponse,
   ContactedHelper,
+  DeleteUser200,
+  DeleteUserBody,
+  GetAdminStatisticsParams,
   HealthStatus,
   HelpRequest,
   HelpRequestInput,
   HelpRequestUpdate,
+  ListAdminActiveRequestsParams,
+  ListAdminArchiveRequestsParams,
   ListRequestsParams,
   ListUserAreaCountsParams,
   ListUsersParams,
@@ -219,7 +227,7 @@ export const getLoginUrl = () => {
 }
 
 /**
- * @summary Request OTP login (phone only)
+ * @summary Request OTP login for a selected account type
  */
 export const login = async (loginInput?: LoginInput, options?: RequestInit): Promise<OtpRequestResponse> => {
 
@@ -268,7 +276,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type LoginMutationError = ErrorType<void>
 
     /**
- * @summary Request OTP login (phone only)
+ * @summary Request OTP login for a selected account type
  */
 export const useLogin = <TError = ErrorType<void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof login>>, TError,{data?: BodyType<LoginInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
@@ -1858,6 +1866,282 @@ export function useGetAdminStats<TData = Awaited<ReturnType<typeof getAdminStats
 
 
 
+export const getGetAdminStatisticsUrl = (params?: GetAdminStatisticsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    const explodeParameters = ["area"];
+
+    if (Array.isArray(value) && explodeParameters.includes(key)) {
+      value.forEach((v) => {
+        normalizedParams.append(key, v === null ? 'null' : v.toString());
+      });
+      return;
+    }
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/admin/statistics?${stringifiedParams}` : `/api/admin/statistics`
+}
+
+/**
+ * @summary Aggregate administrator dashboard metrics
+ */
+export const getAdminStatistics = async (params?: GetAdminStatisticsParams, options?: RequestInit): Promise<AdminStatistics> => {
+
+  return customFetch<AdminStatistics>(getGetAdminStatisticsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAdminStatisticsQueryKey = (params?: GetAdminStatisticsParams,) => {
+    return [
+    `/api/admin/statistics`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetAdminStatisticsQueryOptions = <TData = Awaited<ReturnType<typeof getAdminStatistics>>, TError = ErrorType<void>>(params?: GetAdminStatisticsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminStatistics>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAdminStatisticsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminStatistics>>> = ({ signal }) => getAdminStatistics(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAdminStatistics>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAdminStatisticsQueryResult = NonNullable<Awaited<ReturnType<typeof getAdminStatistics>>>
+export type GetAdminStatisticsQueryError = ErrorType<void>
+
+
+/**
+ * @summary Aggregate administrator dashboard metrics
+ */
+
+export function useGetAdminStatistics<TData = Awaited<ReturnType<typeof getAdminStatistics>>, TError = ErrorType<void>>(
+ params?: GetAdminStatisticsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminStatistics>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAdminStatisticsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getListAdminActiveRequestsUrl = (params?: ListAdminActiveRequestsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    const explodeParameters = ["area"];
+
+    if (Array.isArray(value) && explodeParameters.includes(key)) {
+      value.forEach((v) => {
+        normalizedParams.append(key, v === null ? 'null' : v.toString());
+      });
+      return;
+    }
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/admin/requests/active?${stringifiedParams}` : `/api/admin/requests/active`
+}
+
+/**
+ * @summary List active requests for administrators
+ */
+export const listAdminActiveRequests = async (params?: ListAdminActiveRequestsParams, options?: RequestInit): Promise<AdminActiveRequestsResponse> => {
+
+  return customFetch<AdminActiveRequestsResponse>(getListAdminActiveRequestsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAdminActiveRequestsQueryKey = (params?: ListAdminActiveRequestsParams,) => {
+    return [
+    `/api/admin/requests/active`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListAdminActiveRequestsQueryOptions = <TData = Awaited<ReturnType<typeof listAdminActiveRequests>>, TError = ErrorType<unknown>>(params?: ListAdminActiveRequestsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminActiveRequests>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAdminActiveRequestsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAdminActiveRequests>>> = ({ signal }) => listAdminActiveRequests(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAdminActiveRequests>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListAdminActiveRequestsQueryResult = NonNullable<Awaited<ReturnType<typeof listAdminActiveRequests>>>
+export type ListAdminActiveRequestsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List active requests for administrators
+ */
+
+export function useListAdminActiveRequests<TData = Awaited<ReturnType<typeof listAdminActiveRequests>>, TError = ErrorType<unknown>>(
+ params?: ListAdminActiveRequestsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminActiveRequests>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListAdminActiveRequestsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getListAdminArchiveRequestsUrl = (params?: ListAdminArchiveRequestsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    const explodeParameters = ["area"];
+
+    if (Array.isArray(value) && explodeParameters.includes(key)) {
+      value.forEach((v) => {
+        normalizedParams.append(key, v === null ? 'null' : v.toString());
+      });
+      return;
+    }
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/admin/requests/archive?${stringifiedParams}` : `/api/admin/requests/archive`
+}
+
+/**
+ * @summary List completed requests for administrators
+ */
+export const listAdminArchiveRequests = async (params?: ListAdminArchiveRequestsParams, options?: RequestInit): Promise<AdminArchiveRequestsResponse> => {
+
+  return customFetch<AdminArchiveRequestsResponse>(getListAdminArchiveRequestsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAdminArchiveRequestsQueryKey = (params?: ListAdminArchiveRequestsParams,) => {
+    return [
+    `/api/admin/requests/archive`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListAdminArchiveRequestsQueryOptions = <TData = Awaited<ReturnType<typeof listAdminArchiveRequests>>, TError = ErrorType<unknown>>(params?: ListAdminArchiveRequestsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminArchiveRequests>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAdminArchiveRequestsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAdminArchiveRequests>>> = ({ signal }) => listAdminArchiveRequests(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAdminArchiveRequests>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListAdminArchiveRequestsQueryResult = NonNullable<Awaited<ReturnType<typeof listAdminArchiveRequests>>>
+export type ListAdminArchiveRequestsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List completed requests for administrators
+ */
+
+export function useListAdminArchiveRequests<TData = Awaited<ReturnType<typeof listAdminArchiveRequests>>, TError = ErrorType<unknown>>(
+ params?: ListAdminArchiveRequestsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminArchiveRequests>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListAdminArchiveRequestsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
 export const getListDeletedRequestsUrl = () => {
 
 
@@ -2163,16 +2447,18 @@ export const getDeleteUserUrl = (id: number,) => {
 }
 
 /**
- * @summary Deactivate a user and archive their customer requests
+ * @summary Delete or anonymize a user without changing historical records
  */
-export const deleteUser = async (id: number, options?: RequestInit): Promise<void> => {
+export const deleteUser = async (id: number,
+    deleteUserBody: DeleteUserBody, options?: RequestInit): Promise<DeleteUser200> => {
 
-  return customFetch<void>(getDeleteUserUrl(id),
+  return customFetch<DeleteUser200>(getDeleteUserUrl(id),
   {
     ...options,
-    method: 'DELETE'
-
-
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      deleteUserBody,)
   }
 );}
 
@@ -2180,8 +2466,8 @@ export const deleteUser = async (id: number, options?: RequestInit): Promise<voi
 
 
 export const getDeleteUserMutationOptions = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteUser>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof deleteUser>>, TError,{id: number}, TContext> => {
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteUser>>, TError,{id: number;data: BodyType<DeleteUserBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteUser>>, TError,{id: number;data: BodyType<DeleteUserBody>}, TContext> => {
 
 const mutationKey = ['deleteUser'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
@@ -2193,10 +2479,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteUser>>, {id: number}> = (props) => {
-          const {id} = props ?? {};
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteUser>>, {id: number;data: BodyType<DeleteUserBody>}> = (props) => {
+          const {id,data} = props ?? {};
 
-          return  deleteUser(id,requestOptions)
+          return  deleteUser(id,data,requestOptions)
         }
 
 
@@ -2207,18 +2493,18 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type DeleteUserMutationResult = NonNullable<Awaited<ReturnType<typeof deleteUser>>>
-
+    export type DeleteUserMutationBody = BodyType<DeleteUserBody>
     export type DeleteUserMutationError = ErrorType<unknown>
 
     /**
- * @summary Deactivate a user and archive their customer requests
+ * @summary Delete or anonymize a user without changing historical records
  */
 export const useDeleteUser = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteUser>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteUser>>, TError,{id: number;data: BodyType<DeleteUserBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof deleteUser>>,
         TError,
-        {id: number},
+        {id: number;data: BodyType<DeleteUserBody>},
         TContext
       > => {
       return useMutation(getDeleteUserMutationOptions(options));

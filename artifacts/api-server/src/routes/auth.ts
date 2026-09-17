@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { and, eq, isNull, lt, or } from "drizzle-orm";
+import { and, eq, isNull, lt, or, sql } from "drizzle-orm";
 import { createHmac, randomUUID } from "crypto";
 import { db, usersTable, adminNotificationsTable } from "@workspace/db";
 import { RegisterBody, LoginBody, VerifyOtpBody, AdminLoginBody } from "@workspace/api-zod";
@@ -9,6 +9,7 @@ import { buildNewUserAdminEvent } from "../lib/admin-event-notifications";
 import { notifyAdminEvent } from "../lib/admin-event-store";
 import { isActiveServiceArea, validatePreferredAreas } from "../lib/service-areas";
 import { isUserBlocked } from "../lib/auth-security";
+import { normalizeOmanPhone } from "../lib/phone-normalization";
 
 const router: IRouter = Router();
 
@@ -29,6 +30,23 @@ function generate6DigitCode(): string {
 function maskPhone(phone: string): string {
   if (phone.length <= 6) return "***";
   return phone.slice(0, 3) + "****" + phone.slice(-3);
+}
+
+function phoneLookupCondition(phone: string) {
+  const normalized = normalizeOmanPhone(phone);
+  if (!normalized) return null;
+
+  // Compact the stored value at query time so historical values such as
+  // local, country-code, +country-code, 00country-code, spaced, or hyphenated
+  // forms remain discoverable without rewriting production data.
+  return sql`regexp_replace(${usersTable.phone}, '[^0-9]', '', 'g') = ${normalized}`;
+}
+
+async function findUserByPhone(phone: string) {
+  const condition = phoneLookupCondition(phone);
+  if (!condition) return undefined;
+  const [user] = await db.select().from(usersTable).where(condition);
+  return user;
 }
 
 function parseRoles(rolesJson: string | null, userType: string): string[] {
@@ -90,7 +108,7 @@ function safeUser(user: typeof usersTable.$inferSelect) {
   return {
     ...safe,
     roles: parseRoles(safe.roles, safe.userType),
-    isActive: !safe.isBlocked,
+    isActive: !safe.isBlocked && safe.deletedAt === null,
     createdAt: safe.createdAt.toISOString(),
     lastLogin: safe.lastLogin?.toISOString() ?? null,
     otpCreatedAt: safe.otpCreatedAt?.toISOString() ?? null,
@@ -225,6 +243,11 @@ router.post("/auth/register", async (req, res): Promise<void> => {
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
 
   const { name, phone, userType, area, preferredAreas } = parsed.data;
+  const normalizedPhone = normalizeOmanPhone(phone);
+  if (!normalizedPhone) {
+    res.status(400).json({ error: "رقم الهاتف غير صحيح" });
+    return;
+  }
 
   if (userType === "customer" && area !== undefined && area !== null && !isActiveServiceArea(area)) {
     res.status(400).json({ error: "المنطقة غير متاحة للاختيار الجديد" });
@@ -238,7 +261,7 @@ router.post("/auth/register", async (req, res): Promise<void> => {
     }
   }
 
-  const [existing] = await db.select().from(usersTable).where(eq(usersTable.phone, phone));
+  const existing = await findUserByPhone(normalizedPhone);
 
   if (existing) {
     const existingRoles = parseRoles(existing.roles, existing.userType);
@@ -262,13 +285,13 @@ router.post("/auth/register", async (req, res): Promise<void> => {
       .where(eq(usersTable.id, existing.id));
 
     req.log.info(
-      { userId: existing.id, newRole: userType, maskedPhone: maskPhone(phone) },
+      { userId: existing.id, newRole: userType, maskedPhone: maskPhone(normalizedPhone) },
       "Dual role added; WhatsApp OTP requested",
     );
 
-    const result = await sendWhatsAppOtp(phone, otp, userType);
+    const result = await sendWhatsAppOtp(normalizedPhone, otp, userType);
     if (!result.success) {
-      await createWhatsAppFailureNotification({ userId: existing.id, userName: existing.name, phone, userType, error: result.error });
+      await createWhatsAppFailureNotification({ userId: existing.id, userName: existing.name, phone: normalizedPhone, userType, error: result.error });
     }
     res.status(201).json({
       message: "تم إضافة الدور الجديد لحسابك. سيتم إرسال رمز التحقق عبر واتساب",
@@ -282,7 +305,7 @@ router.post("/auth/register", async (req, res): Promise<void> => {
   // New customers and helpers both receive a six-digit WhatsApp OTP.
   const otp = generate6DigitCode();
   const [user] = await db.insert(usersTable).values({
-    name, phone, passwordHash: "", userType,
+    name, phone: normalizedPhone, passwordHash: "", userType,
     roles: JSON.stringify([userType]),
     area: userType === "customer" ? area ?? null : null,
     preferredAreas: userType === "helper" ? JSON.stringify(validatePreferredAreas(preferredAreas)) : null,
@@ -290,7 +313,7 @@ router.post("/auth/register", async (req, res): Promise<void> => {
   }).returning();
 
   req.log.info(
-    { userId: user.id, userType, maskedPhone: maskPhone(phone) },
+    { userId: user.id, userType, maskedPhone: maskPhone(normalizedPhone) },
     `${userType} registered (unverified); WhatsApp OTP requested`,
   );
 
@@ -303,9 +326,9 @@ router.post("/auth/register", async (req, res): Promise<void> => {
     }),
   );
 
-  const result = await sendWhatsAppOtp(phone, otp, userType);
+  const result = await sendWhatsAppOtp(normalizedPhone, otp, userType);
   if (!result.success) {
-    await createWhatsAppFailureNotification({ userId: user.id, userName: name, phone, userType, error: result.error });
+    await createWhatsAppFailureNotification({ userId: user.id, userName: name, phone: normalizedPhone, userType, error: result.error });
   }
   res.status(201).json({ message: "تم إنشاء الحساب. سيتم إرسال رمز التحقق عبر واتساب", isVerified: false, otpDelivery: "whatsapp" });
 });
@@ -316,31 +339,38 @@ router.post("/auth/login", async (req, res): Promise<void> => {
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
 
   const { phone } = parsed.data;
+  const normalizedPhone = normalizeOmanPhone(phone);
+  if (!normalizedPhone) {
+    res.status(400).json({ error: "رقم الهاتف غير صحيح" });
+    return;
+  }
 
-  if (phone === ADMIN_PHONE) {
+  if (normalizedPhone === normalizeOmanPhone(ADMIN_PHONE)) {
     res.json({ message: "أدخل رمز المدير للمتابعة", isAdmin: true });
     return;
   }
 
-  const [user] = await db.select().from(usersTable).where(eq(usersTable.phone, phone));
+  const user = await findUserByPhone(normalizedPhone);
   if (!user) { res.status(404).json({ error: "رقم الهاتف غير مسجل" }); return; }
 
   if (isUserBlocked(user)) {
-    res.status(403).json({ error: "تم تعطيل حسابك، يرجى التواصل مع الإدارة" });
+    res.status(403).json({
+      error: user.deletedAt ? "تم حذف الحساب" : "تم تعطيل حسابك، يرجى التواصل مع الإدارة",
+    });
     return;
   }
 
   req.log.info(
-    { userId: user.id, userType: user.userType, maskedPhone: maskPhone(phone), isVerified: user.isVerified },
+    { userId: user.id, userType: user.userType, maskedPhone: maskPhone(normalizedPhone), isVerified: user.isVerified },
     "OTP/code generated for login",
   );
 
   const otp = generate6DigitCode();
   await db.update(usersTable).set({ otpCode: otp, otpCreatedAt: new Date() }).where(eq(usersTable.id, user.id));
 
-  const result = await sendWhatsAppOtp(phone, otp, user.userType);
+  const result = await sendWhatsAppOtp(normalizedPhone, otp, user.userType);
   if (!result.success) {
-    await createWhatsAppFailureNotification({ userId: user.id, userName: user.name, phone, userType: user.userType, error: result.error });
+    await createWhatsAppFailureNotification({ userId: user.id, userName: user.name, phone: normalizedPhone, userType: user.userType, error: result.error });
   }
   res.json({
     message: user.isVerified
@@ -357,14 +387,21 @@ router.post("/auth/admin-login", async (req, res): Promise<void> => {
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
 
   const { phone, pin } = parsed.data;
+  const normalizedPhone = normalizeOmanPhone(phone);
+  if (!normalizedPhone) {
+    res.status(400).json({ error: "رقم الهاتف غير صحيح" });
+    return;
+  }
 
-  if (phone !== ADMIN_PHONE) { res.status(404).json({ error: "رقم الهاتف غير مسجل" }); return; }
+  if (normalizedPhone !== normalizeOmanPhone(ADMIN_PHONE)) { res.status(404).json({ error: "رقم الهاتف غير مسجل" }); return; }
   if (pin !== ADMIN_PIN) { res.status(403).json({ error: "رمز المدير غير صحيح" }); return; }
 
-  const [user] = await db.select().from(usersTable).where(eq(usersTable.phone, phone));
+  const user = await findUserByPhone(normalizedPhone);
   if (!user) { res.status(404).json({ error: "رقم الهاتف غير مسجل" }); return; }
   if (isUserBlocked(user)) {
-    res.status(403).json({ error: "تم تعطيل حسابك، يرجى التواصل مع الإدارة" });
+    res.status(403).json({
+      error: user.deletedAt ? "تم حذف الحساب" : "تم تعطيل حسابك، يرجى التواصل مع الإدارة",
+    });
     return;
   }
 
@@ -389,13 +426,18 @@ router.post("/auth/verify-otp", async (req, res): Promise<void> => {
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
 
   const { phone, otp } = parsed.data;
+  const normalizedPhone = normalizeOmanPhone(phone);
+  if (!normalizedPhone) {
+    res.status(400).json({ error: "رقم الهاتف غير صحيح" });
+    return;
+  }
 
-  if (phone === ADMIN_PHONE) {
+  if (normalizedPhone === normalizeOmanPhone(ADMIN_PHONE)) {
     res.status(403).json({ error: "يرجى استخدام رمز المدير للدخول" });
     return;
   }
 
-  const [user] = await db.select().from(usersTable).where(eq(usersTable.phone, phone));
+  const user = await findUserByPhone(normalizedPhone);
   if (!user) { res.status(404).json({ error: "رقم الهاتف غير مسجل" }); return; }
 
   if (isUserBlocked(user)) {
@@ -480,7 +522,10 @@ router.get("/auth/me", async (req, res): Promise<void> => {
   if (!user) { res.status(401).json({ error: "المستخدم غير موجود" }); return; }
 
   if (isUserBlocked(user)) {
-    res.status(403).json({ error: "تم تعطيل حسابك، يرجى التواصل مع الإدارة", isActive: false });
+    res.status(403).json({
+      error: user.deletedAt ? "تم حذف الحساب" : "تم تعطيل حسابك، يرجى التواصل مع الإدارة",
+      isActive: false,
+    });
     return;
   }
 

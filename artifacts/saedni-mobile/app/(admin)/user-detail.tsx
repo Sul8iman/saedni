@@ -11,6 +11,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useColors } from "@/hooks/useColors";
 import { getAuthHeaders } from "@/contexts/AuthContext";
 import { CATEGORIES, STATUS_INFO } from "@/constants/categories";
+import { accountDeletionErrorMessage } from "@/lib/account-deletion";
 
 const BASE = `https://${process.env.EXPO_PUBLIC_DOMAIN ?? "saedni.onrender.com"}`;
 
@@ -192,15 +193,20 @@ export default function UserDetailScreen() {
         credentials: "include",
         headers: await getAuthHeaders(),
       });
-      if (!r.ok) throw new Error();
+      if (!r.ok) {
+        const body = await r.json().catch(() => ({}));
+        throw new Error(accountDeletionErrorMessage(r.status, (body as { error?: unknown }).error));
+      }
     },
     onSuccess: () => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       qc.invalidateQueries({ queryKey: ["admin-users"] });
       qc.invalidateQueries({ queryKey: ["/api/users/area-counts"] });
-      router.back();
+      Alert.alert("تم حذف الحساب", "تم حذف الحساب بنجاح.", [
+        { text: "حسناً", onPress: () => router.back() },
+      ]);
     },
-    onError: () => Alert.alert("خطأ", "تعذر تعطيل المستخدم"),
+    onError: (error: Error) => Alert.alert("خطأ", error.message),
   });
 
   const s = makeStyles(colors, insets.bottom);
@@ -434,14 +440,14 @@ export default function UserDetailScreen() {
                 style={[s.actionBtn, user.isActive ? s.actionBtnDeactivate : s.actionBtnActivate]}
                 onPress={() =>
                   Alert.alert(
-                    user.isActive ? "تعطيل المستخدم" : "تفعيل المستخدم",
+                    user.isActive ? "تعطيل الحساب" : "تفعيل الحساب",
                     user.isActive
                       ? `هل تريد تعطيل حساب ${user.name}؟`
                       : `هل تريد تفعيل حساب ${user.name}؟`,
                     [
                       { text: "إلغاء", style: "cancel" },
                       {
-                        text: user.isActive ? "تعطيل" : "تفعيل",
+                        text: user.isActive ? "تعطيل الحساب" : "تفعيل الحساب",
                         onPress: () => toggleActiveMutation.mutate(!user.isActive),
                       },
                     ]
@@ -455,22 +461,22 @@ export default function UserDetailScreen() {
                   color={user.isActive ? "#DC2626" : colors.primary}
                 />
                 <Text style={[s.actionBtnTxt, { color: user.isActive ? "#DC2626" : colors.primary }]}>
-                  {user.isActive ? "تعطيل المستخدم" : "تفعيل المستخدم"}
+                  {user.isActive ? "تعطيل الحساب" : "تفعيل الحساب"}
                 </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 style={s.actionBtnDelete}
                 onPress={() =>
-                  Alert.alert("تعطيل المستخدم", `سيتم تعطيل حساب ${user.name} وأرشفة طلباته. لن تُحذف البيانات نهائياً.`, [
+                    Alert.alert("حذف الحساب", `سيتم حذف حساب ${user.name} نهائياً مع الاحتفاظ بكل الطلبات والسجلات التاريخية. هل تريد المتابعة؟`, [
                     { text: "إلغاء", style: "cancel" },
-                    { text: "تعطيل", style: "destructive", onPress: () => deleteMutation.mutate() },
+                    { text: "حذف الحساب", style: "destructive", onPress: () => deleteMutation.mutate() },
                   ])
                 }
                 disabled={deleteMutation.isPending}
               >
                 <Ionicons name="trash-outline" size={18} color="#DC2626" />
-                <Text style={s.deleteTxt}>تعطيل المستخدم</Text>
+                <Text style={s.deleteTxt}>حذف الحساب</Text>
               </TouchableOpacity>
             </View>
           </View>

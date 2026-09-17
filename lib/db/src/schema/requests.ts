@@ -17,8 +17,12 @@ export const requestsTable = pgTable("requests", {
   helpCompleted: boolean("help_completed"),                               // true/false/null (null = no feedback yet)
   completedAt: timestamp("completed_at", { withTimezone: true }),        // when customer pressed إنهاء الطلب
   completedHelperId: integer("completed_helper_id").references(() => usersTable.id, {
-    onDelete: "restrict",
+    onDelete: "set null",
   }),
+  customerNameSnapshot: text("customer_name_snapshot"),
+  customerPhoneSnapshot: text("customer_phone_snapshot"),
+  completedHelperNameSnapshot: text("completed_helper_name_snapshot"),
+  completedHelperPhoneSnapshot: text("completed_helper_phone_snapshot"),
   deletedAt: timestamp("deleted_at", { withTimezone: true }),
   deletedByUserId: integer("deleted_by_user_id"),
   deletedReason: text("deleted_reason"),

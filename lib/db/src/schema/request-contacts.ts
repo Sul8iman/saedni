@@ -10,12 +10,15 @@ export const requestContactsTable = pgTable(
     requestId: integer("request_id").notNull().references(() => requestsTable.id, {
       onDelete: "cascade",
     }),
-    helperId: integer("helper_id").notNull().references(() => usersTable.id, {
-      onDelete: "restrict",
+    helperId: integer("helper_id").references(() => usersTable.id, {
+      onDelete: "set null",
     }),
-    customerId: integer("customer_id").notNull().references(() => usersTable.id, {
-      onDelete: "restrict",
+    customerId: integer("customer_id").references(() => usersTable.id, {
+      onDelete: "set null",
     }),
+    helperNameSnapshot: text("helper_name_snapshot"),
+    customerNameSnapshot: text("customer_name_snapshot"),
+    customerPhoneSnapshot: text("customer_phone_snapshot"),
     contactMethod: text("contact_method").notNull(),
     contactPhone: text("contact_phone").notNull(),
     firstContactedAt: timestamp("first_contacted_at", { withTimezone: true }).notNull().defaultNow(),

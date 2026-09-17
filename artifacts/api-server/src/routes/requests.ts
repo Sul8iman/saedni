@@ -154,6 +154,13 @@ export async function enrichRequest(
   options: { includeContact?: boolean } = {},
 ) {
   const ids = [request.customerId, request.helperId, request.completedHelperId].filter(Boolean) as number[];
+  const {
+    customerNameSnapshot,
+    customerPhoneSnapshot,
+    completedHelperNameSnapshot,
+    completedHelperPhoneSnapshot,
+    ...requestWithoutSnapshots
+  } = request;
   const users =
     ids.length > 0
       ? await db
@@ -162,18 +169,25 @@ export async function enrichRequest(
           .where(inArray(usersTable.id, ids))
       : [];
   const userMap = Object.fromEntries(users.map((user) => [user.id, user]));
+  const helperId = request.completedHelperId ?? request.helperId;
 
   return {
-    ...request,
+    ...requestWithoutSnapshots,
     createdAt: request.createdAt.toISOString(),
     completedAt: request.completedAt?.toISOString() ?? null,
     deletedAt: request.deletedAt?.toISOString() ?? null,
-    customerName: options.includeContact ? (userMap[request.customerId]?.name ?? null) : null,
-    customerPhone: options.includeContact ? (userMap[request.customerId]?.phone ?? null) : null,
-    helperName: options.includeContact && (request.completedHelperId ?? request.helperId)
-      ? (userMap[request.completedHelperId ?? request.helperId!]?.name ?? null) : null,
-    helperPhone: options.includeContact && (request.completedHelperId ?? request.helperId)
-      ? (userMap[request.completedHelperId ?? request.helperId!]?.phone ?? null) : null,
+    customerName: options.includeContact
+      ? (userMap[request.customerId]?.name ?? customerNameSnapshot ?? null)
+      : null,
+    customerPhone: options.includeContact
+      ? (userMap[request.customerId]?.phone ?? customerPhoneSnapshot ?? null)
+      : null,
+    helperName: options.includeContact && helperId
+      ? (userMap[helperId]?.name ?? completedHelperNameSnapshot ?? null)
+      : options.includeContact ? completedHelperNameSnapshot ?? null : null,
+    helperPhone: options.includeContact && helperId
+      ? (userMap[helperId]?.phone ?? completedHelperPhoneSnapshot ?? null)
+      : options.includeContact ? completedHelperPhoneSnapshot ?? null : null,
   };
 }
 
@@ -317,7 +331,12 @@ router.post("/requests", async (req, res): Promise<void> => {
   const row = await db.transaction(async (tx) => {
     const [created] = await tx
       .insert(requestsTable)
-      .values({ ...parsed.data, status: "available" })
+      .values({
+        ...parsed.data,
+        status: "available",
+        customerNameSnapshot: customer.name,
+        customerPhoneSnapshot: customer.phone,
+      })
       .returning();
     await tx.insert(requestLifecycleEventsTable).values(buildRequestLifecycleEventValues({
       requestId: created.id,
@@ -579,7 +598,10 @@ router.patch("/requests/:id/accept", async (req, res): Promise<void> => {
     return;
   }
   const [helper] = await db
-    .select({ preferredAreas: usersTable.preferredAreas })
+    .select({
+      name: usersTable.name,
+      preferredAreas: usersTable.preferredAreas,
+    })
     .from(usersTable)
     .where(eq(usersTable.id, actor.id));
   if (!helperServesArea(helper?.preferredAreas, existing.area)) {
@@ -651,15 +673,22 @@ router.post("/requests/:id/contact", async (req, res): Promise<void> => {
   }
 
   const [helper] = await db
-    .select({ preferredAreas: usersTable.preferredAreas })
+    .select({
+      name: usersTable.name,
+      preferredAreas: usersTable.preferredAreas,
+    })
     .from(usersTable)
     .where(eq(usersTable.id, actor.id));
+  if (!helper) {
+    res.status(404).json({ error: "المساعد غير موجود" });
+    return;
+  }
   if (!helperServesArea(helper?.preferredAreas, existing.area)) {
     res.status(403).json({ error: "لا يمكنك الوصول إلى طلب خارج مناطق خدمتك" });
     return;
   }
   const [customer] = await db
-    .select({ phone: usersTable.phone })
+    .select({ name: usersTable.name, phone: usersTable.phone })
     .from(usersTable)
     .where(eq(usersTable.id, existing.customerId));
   if (!customer) {
@@ -674,6 +703,9 @@ router.post("/requests/:id/contact", async (req, res): Promise<void> => {
       requestId: existing.id,
       helperId: actor.id,
       customerId: existing.customerId,
+      helperNameSnapshot: helper.name,
+      customerNameSnapshot: customer.name,
+      customerPhoneSnapshot: customer.phone,
       contactMethod: parsed.data.contactMethod,
       contactPhone: normalizePhone(customer.phone),
       firstContactedAt: now,
@@ -718,33 +750,39 @@ router.get("/requests/:id/contacted-helpers", async (req, res): Promise<void> =>
     .select()
     .from(requestContactsTable)
     .where(eq(requestContactsTable.requestId, request.id));
-  const helperIds = contacts.map((contact) => contact.helperId);
-  if (helperIds.length === 0) {
+  if (contacts.length === 0) {
     res.json([]);
     return;
   }
-  const helpers = await db
-    .select({ id: usersTable.id, name: usersTable.name, rating: usersTable.rating })
-    .from(usersTable)
-    .where(inArray(usersTable.id, helperIds));
-  const ratingRows = await db
-    .select({
-      helperId: helperRatingsTable.helperId,
-      average: avg(helperRatingsTable.stars),
-      count: count(),
-    })
-    .from(helperRatingsTable)
-    .where(inArray(helperRatingsTable.helperId, helperIds))
-    .groupBy(helperRatingsTable.helperId);
+  const helperIds = contacts
+    .map((contact) => contact.helperId)
+    .filter((helperId): helperId is number => helperId !== null);
+  const helpers = helperIds.length > 0
+    ? await db
+        .select({ id: usersTable.id, name: usersTable.name, rating: usersTable.rating })
+        .from(usersTable)
+        .where(inArray(usersTable.id, helperIds))
+    : [];
+  const ratingRows = helperIds.length > 0
+    ? await db
+        .select({
+          helperId: helperRatingsTable.helperId,
+          average: avg(helperRatingsTable.stars),
+          count: count(),
+        })
+        .from(helperRatingsTable)
+        .where(inArray(helperRatingsTable.helperId, helperIds))
+        .groupBy(helperRatingsTable.helperId)
+    : [];
   const helperMap = new Map(helpers.map((helper) => [helper.id, helper]));
   const ratingMap = new Map(ratingRows.map((row) => [row.helperId, row]));
 
   res.json(contacts.map((contact) => {
-    const helper = helperMap.get(contact.helperId);
-    const aggregate = ratingMap.get(contact.helperId);
+    const helper = contact.helperId === null ? undefined : helperMap.get(contact.helperId);
+    const aggregate = contact.helperId === null ? undefined : ratingMap.get(contact.helperId);
     return {
       helperId: contact.helperId,
-      helperName: helper?.name ?? null,
+      helperName: helper?.name ?? contact.helperNameSnapshot ?? null,
       rating: aggregate?.average == null ? helper?.rating ?? null : Number(aggregate.average),
       ratingCount: Number(aggregate?.count ?? 0),
       contactMethod: contact.contactMethod,
@@ -829,6 +867,16 @@ router.patch("/requests/:id/complete", async (req, res): Promise<void> => {
         ));
       if (!contact) return { kind: "helper_not_contacted" as const };
 
+      const [customerSnapshot] = await tx
+        .select({ name: usersTable.name })
+        .from(usersTable)
+        .where(eq(usersTable.id, lockedRequest.customerId));
+      const [helperSnapshot] = await tx
+        .select({ name: usersTable.name, phone: usersTable.phone })
+        .from(usersTable)
+        .where(eq(usersTable.id, completedHelperId));
+      if (!customerSnapshot || !helperSnapshot) return { kind: "helper_not_contacted" as const };
+
       if (ratingStars != null) {
         const [existingRating] = await tx
           .select({ id: helperRatingsTable.id })
@@ -841,6 +889,8 @@ router.patch("/requests/:id/complete", async (req, res): Promise<void> => {
           requestId: lockedRequest.id,
           customerId: lockedRequest.customerId,
           helperId: completedHelperId,
+            customerNameSnapshot: customerSnapshot.name,
+            helperNameSnapshot: helperSnapshot.name,
           stars: ratingStars,
           })
           .onConflictDoNothing({ target: helperRatingsTable.requestId })
@@ -850,6 +900,15 @@ router.patch("/requests/:id/complete", async (req, res): Promise<void> => {
       }
     }
 
+    let completedHelperSnapshot: { name: string; phone: string } | undefined;
+    if (helpCompleted === true && completedHelperId != null) {
+      [completedHelperSnapshot] = await tx
+        .select({ name: usersTable.name, phone: usersTable.phone })
+        .from(usersTable)
+        .where(eq(usersTable.id, completedHelperId));
+      if (!completedHelperSnapshot) return { kind: "helper_not_contacted" as const };
+    }
+
     const [completed] = await tx
       .update(requestsTable)
       .set({
@@ -857,6 +916,8 @@ router.patch("/requests/:id/complete", async (req, res): Promise<void> => {
         completedAt: new Date(),
         helpCompleted: helpCompleted ?? null,
         completedHelperId: helpCompleted === true ? completedHelperId ?? null : null,
+        completedHelperNameSnapshot: completedHelperSnapshot?.name ?? null,
+        completedHelperPhoneSnapshot: completedHelperSnapshot?.phone ?? null,
       })
       .where(and(
         eq(requestsTable.id, lockedRequest.id),

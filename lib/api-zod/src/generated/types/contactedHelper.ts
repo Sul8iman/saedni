@@ -8,7 +8,8 @@
 import type { ContactedHelperContactMethod } from './contactedHelperContactMethod';
 
 export interface ContactedHelper {
-  helperId: number;
+  /** @nullable */
+  helperId: number | null;
   /** @nullable */
   helperName: string | null;
   /** @nullable */

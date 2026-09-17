@@ -479,7 +479,7 @@ export const ListContactedHelpersParams = zod.object({
 })
 
 export const ListContactedHelpersResponseItem = zod.object({
-  "helperId": zod.number(),
+  "helperId": zod.number().nullable(),
   "helperName": zod.string().nullable(),
   "profileImageUrl": zod.string().nullish(),
   "rating": zod.number().nullable(),

@@ -31,8 +31,8 @@ if (Platform.OS === "android") {
 }
 
 // Patch global fetch to include session cookies on every request
-const _origFetch = global.fetch;
-global.fetch = (input: RequestInfo | URL, init?: RequestInit) =>
+const _origFetch = globalThis.fetch;
+globalThis.fetch = (input: RequestInfo | URL, init?: RequestInit) =>
   _origFetch(input, { credentials: "include", ...init });
 
 // Point the API client to the Replit domain for absolute URLs

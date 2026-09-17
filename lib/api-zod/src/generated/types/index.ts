@@ -64,3 +64,4 @@ export * from './userUserType';
 export * from './verifyHelperInput';
 export * from './verifyHelperInputAction';
 export * from './verifyOtpInput';
+export * from './verifyOtpInputUserType';

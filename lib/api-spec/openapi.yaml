@@ -901,12 +901,15 @@ components:
 
     VerifyOtpInput:
       type: object
-      required: [phone, otp]
+      required: [phone, otp, userType]
       properties:
         phone:
           type: string
         otp:
           type: string
+        userType:
+          type: string
+          enum: [customer, helper]
 
     AdminLoginInput:
       type: object

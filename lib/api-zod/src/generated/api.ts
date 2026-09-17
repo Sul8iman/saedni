@@ -87,7 +87,8 @@ export const AdminLoginResponse = zod.object({
  */
 export const VerifyOtpBody = zod.object({
   "phone": zod.string(),
-  "otp": zod.string()
+  "otp": zod.string(),
+  "userType": zod.enum(['customer', 'helper'])
 })
 
 export const verifyOtpResponseUserRatingCountMin = 0;

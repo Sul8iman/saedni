@@ -25,6 +25,8 @@ export interface User {
   isVerified?: boolean;
   isBlocked?: boolean;
   /** @nullable */
+  deletedAt?: Date | null;
+  /** @nullable */
   lastLogin?: string | null;
   /** @nullable */
   otpCode?: string | null;

@@ -7,12 +7,21 @@
  */
 
 export * from './acceptRequestInput';
+export * from './adminActiveRequestsResponse';
+export * from './adminArchiveRequestsResponse';
 export * from './adminLoginInput';
 export * from './adminNotification';
+export * from './adminStatistics';
 export * from './adminStats';
 export * from './authResponse';
 export * from './contactedHelper';
 export * from './contactedHelperContactMethod';
+export * from './deleteUser200';
+export * from './deleteUser200DeletionMode';
+export * from './deleteUserBody';
+export * from './deleteUserBodyConfirmation';
+export * from './getAdminStatisticsParams';
+export * from './getAdminStatisticsPeriod';
 export * from './healthStatus';
 export * from './helpRequest';
 export * from './helpRequestCategory';
@@ -22,11 +31,15 @@ export * from './helpRequestInputTimeType';
 export * from './helpRequestStatus';
 export * from './helpRequestTimeType';
 export * from './helpRequestUpdate';
+export * from './listAdminActiveRequestsParams';
+export * from './listAdminArchiveRequestsParams';
+export * from './listAdminArchiveRequestsResult';
 export * from './listRequestsParams';
 export * from './listUserAreaCountsParams';
 export * from './listUserAreaCountsStatus';
 export * from './listUsersParams';
 export * from './loginInput';
+export * from './loginInputUserType';
 export * from './otpRequestResponse';
 export * from './otpRequestResponseOtpDelivery';
 export * from './registerInput';

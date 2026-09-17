@@ -29,10 +29,11 @@ export const RegisterBody = zod.object({
 
 
 /**
- * @summary Request OTP login (phone only)
+ * @summary Request OTP login for a selected account type
  */
 export const LoginBody = zod.object({
-  "phone": zod.string()
+  "phone": zod.string(),
+  "userType": zod.enum(['customer', 'helper'])
 })
 
 export const LoginResponse = zod.object({
@@ -68,6 +69,7 @@ export const AdminLoginResponse = zod.object({
   "isActive": zod.boolean(),
   "isVerified": zod.boolean().optional(),
   "isBlocked": zod.boolean().optional(),
+  "deletedAt": zod.coerce.date().nullish(),
   "lastLogin": zod.string().nullish(),
   "otpCode": zod.string().nullish(),
   "otpCreatedAt": zod.string().nullish(),
@@ -104,6 +106,7 @@ export const VerifyOtpResponse = zod.object({
   "isActive": zod.boolean(),
   "isVerified": zod.boolean().optional(),
   "isBlocked": zod.boolean().optional(),
+  "deletedAt": zod.coerce.date().nullish(),
   "lastLogin": zod.string().nullish(),
   "otpCode": zod.string().nullish(),
   "otpCreatedAt": zod.string().nullish(),
@@ -134,6 +137,7 @@ export const GetMeResponse = zod.object({
   "isActive": zod.boolean(),
   "isVerified": zod.boolean().optional(),
   "isBlocked": zod.boolean().optional(),
+  "deletedAt": zod.coerce.date().nullish(),
   "lastLogin": zod.string().nullish(),
   "otpCode": zod.string().nullish(),
   "otpCreatedAt": zod.string().nullish(),
@@ -557,6 +561,7 @@ export const ListUsersResponseItem = zod.object({
   "isActive": zod.boolean(),
   "isVerified": zod.boolean().optional(),
   "isBlocked": zod.boolean().optional(),
+  "deletedAt": zod.coerce.date().nullish(),
   "lastLogin": zod.string().nullish(),
   "otpCode": zod.string().nullish(),
   "otpCreatedAt": zod.string().nullish(),
@@ -591,6 +596,7 @@ export const GetUserResponse = zod.object({
   "isActive": zod.boolean(),
   "isVerified": zod.boolean().optional(),
   "isBlocked": zod.boolean().optional(),
+  "deletedAt": zod.coerce.date().nullish(),
   "lastLogin": zod.string().nullish(),
   "otpCode": zod.string().nullish(),
   "otpCreatedAt": zod.string().nullish(),
@@ -633,6 +639,7 @@ export const UpdateUserResponse = zod.object({
   "isActive": zod.boolean(),
   "isVerified": zod.boolean().optional(),
   "isBlocked": zod.boolean().optional(),
+  "deletedAt": zod.coerce.date().nullish(),
   "lastLogin": zod.string().nullish(),
   "otpCode": zod.string().nullish(),
   "otpCreatedAt": zod.string().nullish(),
@@ -655,6 +662,121 @@ export const GetAdminStatsResponse = zod.object({
   "activeRequests": zod.number(),
   "completedRequests": zod.number(),
   "cancelledRequests": zod.number()
+})
+
+
+/**
+ * @summary Aggregate administrator dashboard metrics
+ */
+export const GetAdminStatisticsQueryParams = zod.object({
+  "period": zod.enum(['7d', '30d', 'month', 'all']).optional(),
+  "from": zod.date().optional(),
+  "to": zod.date().optional(),
+  "area": zod.array(zod.coerce.string()).optional(),
+  "category": zod.coerce.string().optional()
+})
+
+export const GetAdminStatisticsResponse = zod.record(zod.string(), zod.unknown()).describe('Zero-safe aggregate metrics; no personal data is included.')
+
+
+/**
+ * @summary List active requests for administrators
+ */
+
+export const listAdminActiveRequestsQueryPageSizeMax = 100;
+
+
+
+export const ListAdminActiveRequestsQueryParams = zod.object({
+  "area": zod.array(zod.coerce.string()).optional(),
+  "category": zod.coerce.string().optional(),
+  "search": zod.coerce.string().optional(),
+  "from": zod.date().optional(),
+  "to": zod.date().optional(),
+  "page": zod.coerce.number().min(1).optional(),
+  "pageSize": zod.coerce.number().min(1).max(listAdminActiveRequestsQueryPageSizeMax).optional()
+})
+
+export const ListAdminActiveRequestsResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.number(),
+  "customerId": zod.number(),
+  "helperId": zod.number().nullish(),
+  "category": zod.enum(['transport', 'delivery', 'government', 'shopping', 'home_services', 'labor']),
+  "details": zod.string(),
+  "area": zod.string(),
+  "timeType": zod.enum(['now', 'scheduled']),
+  "scheduledDateTime": zod.string().nullish(),
+  "offeredAmount": zod.number(),
+  "status": zod.enum(['available', 'accepted', 'in_progress', 'completed', 'cancelled']),
+  "helpCompleted": zod.boolean().nullish(),
+  "completedHelperId": zod.number().nullish(),
+  "completedAt": zod.string().nullish(),
+  "deletedAt": zod.string().nullish(),
+  "deletedByUserId": zod.number().nullish(),
+  "deletedReason": zod.string().nullish(),
+  "createdAt": zod.string(),
+  "customerName": zod.string().nullish(),
+  "customerPhone": zod.string().nullish(),
+  "helperName": zod.string().nullish(),
+  "helperPhone": zod.string().nullish()
+})),
+  "total": zod.number(),
+  "page": zod.number(),
+  "pageSize": zod.number(),
+  "activeCount": zod.number()
+})
+
+
+/**
+ * @summary List completed requests for administrators
+ */
+
+export const listAdminArchiveRequestsQueryPageSizeMax = 100;
+
+
+
+export const ListAdminArchiveRequestsQueryParams = zod.object({
+  "area": zod.array(zod.coerce.string()).optional(),
+  "result": zod.enum(['helped', 'not_helped', 'all']).optional(),
+  "category": zod.coerce.string().optional(),
+  "search": zod.coerce.string().optional(),
+  "from": zod.date().optional(),
+  "to": zod.date().optional(),
+  "page": zod.coerce.number().min(1).optional(),
+  "pageSize": zod.coerce.number().min(1).max(listAdminArchiveRequestsQueryPageSizeMax).optional()
+})
+
+export const ListAdminArchiveRequestsResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.number(),
+  "customerId": zod.number(),
+  "helperId": zod.number().nullish(),
+  "category": zod.enum(['transport', 'delivery', 'government', 'shopping', 'home_services', 'labor']),
+  "details": zod.string(),
+  "area": zod.string(),
+  "timeType": zod.enum(['now', 'scheduled']),
+  "scheduledDateTime": zod.string().nullish(),
+  "offeredAmount": zod.number(),
+  "status": zod.enum(['available', 'accepted', 'in_progress', 'completed', 'cancelled']),
+  "helpCompleted": zod.boolean().nullish(),
+  "completedHelperId": zod.number().nullish(),
+  "completedAt": zod.string().nullish(),
+  "deletedAt": zod.string().nullish(),
+  "deletedByUserId": zod.number().nullish(),
+  "deletedReason": zod.string().nullish(),
+  "createdAt": zod.string(),
+  "customerName": zod.string().nullish(),
+  "customerPhone": zod.string().nullish(),
+  "helperName": zod.string().nullish(),
+  "helperPhone": zod.string().nullish()
+})),
+  "total": zod.number(),
+  "helpedCount": zod.number(),
+  "notHelpedCount": zod.number(),
+  "archiveCount": zod.number(),
+  "page": zod.number(),
+  "pageSize": zod.number()
 })
 
 
@@ -765,6 +887,7 @@ export const VerifyHelperResponse = zod.object({
   "isActive": zod.boolean(),
   "isVerified": zod.boolean().optional(),
   "isBlocked": zod.boolean().optional(),
+  "deletedAt": zod.coerce.date().nullish(),
   "lastLogin": zod.string().nullish(),
   "otpCode": zod.string().nullish(),
   "otpCreatedAt": zod.string().nullish(),
@@ -777,10 +900,18 @@ export const VerifyHelperResponse = zod.object({
 
 
 /**
- * @summary Deactivate a user and archive their customer requests
+ * @summary Delete or anonymize a user without changing historical records
  */
 export const DeleteUserParams = zod.object({
   "id": zod.coerce.number()
+})
+
+export const DeleteUserBody = zod.object({
+  "confirmation": zod.enum(['حذف'])
+})
+
+export const DeleteUserResponse = zod.object({
+  "deletionMode": zod.enum(['permanent', 'anonymized'])
 })
 
 

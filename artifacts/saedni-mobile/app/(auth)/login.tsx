@@ -13,6 +13,7 @@ import { useAuth, type AuthUser } from "@/contexts/AuthContext";
 import ArabicText from "@/components/ArabicText";
 
 type Step = "phone" | "otp" | "pin";
+type AccountType = "customer" | "helper";
 
 // Production backend — EXPO_PUBLIC_DOMAIN is baked in at EAS build time;
 // fall back to Render so dev/web builds also work.
@@ -67,6 +68,7 @@ export default function LoginScreen() {
 
   const [step, setStep] = useState<Step>("phone");
   const [phone, setPhone] = useState("");
+  const [accountType, setAccountType] = useState<AccountType>("customer");
   const [otp, setOtp] = useState("");
   const [pin, setPin] = useState("");
   const [isUnverified, setIsUnverified] = useState(false);
@@ -81,7 +83,7 @@ export default function LoginScreen() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
-      body: JSON.stringify({ phone: phone.trim() }),
+      body: JSON.stringify({ phone: phone.trim(), userType: accountType }),
     });
 
     setLoading(false);
@@ -202,6 +204,24 @@ export default function LoginScreen() {
             <>
               <ArabicText style={s.cardTitle}>تسجيل الدخول</ArabicText>
               <ArabicText style={s.subLabel}>سنرسل رمز التحقق عبر واتساب بعد إدخال رقمك</ArabicText>
+              <ArabicText style={s.fieldLabel}>نوع الحساب</ArabicText>
+              <View style={s.accountTypeRow}>
+                {([
+                  { value: "customer" as const, label: "عميل" },
+                  { value: "helper" as const, label: "مساعد" },
+                ]).map((option) => (
+                  <TouchableOpacity
+                    key={option.value}
+                    style={[s.accountTypeBtn, accountType === option.value && s.accountTypeBtnActive]}
+                    onPress={() => setAccountType(option.value)}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={[s.accountTypeTxt, accountType === option.value && s.accountTypeTxtActive]}>
+                      {option.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
               <ArabicText style={s.fieldLabel}>رقم الهاتف</ArabicText>
               <TextInput
                 style={s.input}
@@ -355,6 +375,18 @@ const makeStyles = (c: ReturnType<typeof useColors>) =>
     },
     subLabel: { fontSize: 13, color: c.mutedForeground, textAlign: "right", marginBottom: 12 },
     subLabelBold: { fontWeight: "700", color: c.foreground },
+    accountTypeRow: {
+      flexDirection: "row-reverse", gap: 10, marginBottom: 16,
+    },
+    accountTypeBtn: {
+      flex: 1, borderWidth: 1.5, borderColor: c.border, borderRadius: 12,
+      paddingVertical: 12, alignItems: "center", backgroundColor: c.background,
+    },
+    accountTypeBtnActive: {
+      borderColor: c.primary, backgroundColor: c.secondary,
+    },
+    accountTypeTxt: { fontSize: 15, fontWeight: "600", color: c.mutedForeground },
+    accountTypeTxtActive: { color: c.primary, fontWeight: "700" },
     input: {
       borderWidth: 1.5, borderColor: c.border, borderRadius: 12,
       paddingHorizontal: 16, paddingVertical: 14,

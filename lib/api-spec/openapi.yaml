@@ -57,7 +57,7 @@ paths:
     post:
       operationId: login
       tags: [auth]
-      summary: Request OTP login (phone only)
+      summary: Request OTP login for a selected account type
       requestBody:
         required: false
         content:
@@ -569,6 +569,72 @@ paths:
               schema:
                 $ref: "#/components/schemas/AdminStats"
 
+  /admin/statistics:
+    get:
+      operationId: getAdminStatistics
+      tags: [admin]
+      summary: Aggregate administrator dashboard metrics
+      parameters:
+        - {name: period, in: query, schema: {type: string, enum: [7d, 30d, month, all]}}
+        - {name: from, in: query, schema: {type: string, format: date-time}}
+        - {name: to, in: query, schema: {type: string, format: date-time}}
+        - name: area
+          in: query
+          style: form
+          explode: true
+          schema: {type: array, items: {type: string}}
+        - {name: category, in: query, schema: {type: string}}
+      responses:
+        "200":
+          description: Aggregate statistics
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/AdminStatistics"}
+        "400": {description: Invalid filters}
+        "401": {description: Authentication required}
+        "403": {description: Admin required}
+
+  /admin/requests/active:
+    get:
+      operationId: listAdminActiveRequests
+      tags: [admin]
+      summary: List active requests for administrators
+      parameters:
+        - {name: area, in: query, style: form, explode: true, schema: {type: array, items: {type: string}}}
+        - {name: category, in: query, schema: {type: string}}
+        - {name: search, in: query, schema: {type: string}}
+        - {name: from, in: query, schema: {type: string, format: date-time}}
+        - {name: to, in: query, schema: {type: string, format: date-time}}
+        - {name: page, in: query, schema: {type: integer, minimum: 1}}
+        - {name: pageSize, in: query, schema: {type: integer, minimum: 1, maximum: 100}}
+      responses:
+        "200":
+          description: Active requests page
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/AdminActiveRequestsResponse"}
+
+  /admin/requests/archive:
+    get:
+      operationId: listAdminArchiveRequests
+      tags: [admin]
+      summary: List completed requests for administrators
+      parameters:
+        - {name: area, in: query, style: form, explode: true, schema: {type: array, items: {type: string}}}
+        - {name: result, in: query, schema: {type: string, enum: [helped, not_helped, all]}}
+        - {name: category, in: query, schema: {type: string}}
+        - {name: search, in: query, schema: {type: string}}
+        - {name: from, in: query, schema: {type: string, format: date-time}}
+        - {name: to, in: query, schema: {type: string, format: date-time}}
+        - {name: page, in: query, schema: {type: integer, minimum: 1}}
+        - {name: pageSize, in: query, schema: {type: integer, minimum: 1, maximum: 100}}
+      responses:
+        "200":
+          description: Completed requests page
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/AdminArchiveRequestsResponse"}
+
   /admin/requests/deleted:
     get:
       operationId: listDeletedRequests
@@ -671,16 +737,36 @@ paths:
     delete:
       operationId: deleteUser
       tags: [admin]
-      summary: Deactivate a user and archive their customer requests
+      summary: Delete or anonymize a user without changing historical records
       parameters:
         - name: id
           in: path
           required: true
           schema:
             type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [confirmation]
+              properties:
+                confirmation:
+                  type: string
+                  enum: [حذف]
       responses:
-        "204":
-          description: Deactivated and archived
+        "200":
+          description: Deleted or anonymized
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [deletionMode]
+                properties:
+                  deletionMode:
+                    type: string
+                    enum: [permanent, anonymized]
 
   /admin/notifications:
     get:
@@ -763,6 +849,9 @@ components:
           type: boolean
         isBlocked:
           type: boolean
+        deletedAt:
+          type: ["string", "null"]
+          format: date-time
         lastLogin:
           type: ["string", "null"]
         otpCode:
@@ -802,10 +891,13 @@ components:
 
     LoginInput:
       type: object
-      required: [phone]
+      required: [phone, userType]
       properties:
         phone:
           type: string
+        userType:
+          type: string
+          enum: [customer, helper]
 
     VerifyOtpInput:
       type: object
@@ -1131,6 +1223,33 @@ components:
           type: integer
         cancelledRequests:
           type: integer
+
+    AdminStatistics:
+      type: object
+      additionalProperties: true
+      description: Zero-safe aggregate metrics; no personal data is included.
+
+    AdminActiveRequestsResponse:
+      type: object
+      required: [items, total, page, pageSize, activeCount]
+      properties:
+        items: {type: array, items: {$ref: "#/components/schemas/HelpRequest"}}
+        total: {type: integer}
+        page: {type: integer}
+        pageSize: {type: integer}
+        activeCount: {type: integer}
+
+    AdminArchiveRequestsResponse:
+      type: object
+      required: [items, total, helpedCount, notHelpedCount, archiveCount, page, pageSize]
+      properties:
+        items: {type: array, items: {$ref: "#/components/schemas/HelpRequest"}}
+        total: {type: integer}
+        helpedCount: {type: integer}
+        notHelpedCount: {type: integer}
+        archiveCount: {type: integer}
+        page: {type: integer}
+        pageSize: {type: integer}
 
     VerifyHelperInput:
       type: object

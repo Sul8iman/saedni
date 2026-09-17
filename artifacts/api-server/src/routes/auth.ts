@@ -7,6 +7,8 @@ import { logger } from "../lib/logger";
 import { sendHelperWelcomeTemplate, sendWhatsAppOtp } from "../lib/whatsapp";
 import { buildNewUserAdminEvent } from "../lib/admin-event-notifications";
 import { notifyAdminEvent } from "../lib/admin-event-store";
+import { isActiveServiceArea, validatePreferredAreas } from "../lib/service-areas";
+import { isUserBlocked } from "../lib/auth-security";
 import { normalizeOmanPhone } from "../lib/phone-normalization";
 
 const router: IRouter = Router();
@@ -37,14 +39,39 @@ function phoneLookupCondition(phone: string) {
   // Compact the stored value at query time so historical values such as
   // local, country-code, +country-code, 00country-code, spaced, or hyphenated
   // forms remain discoverable without rewriting production data.
-  return sql`regexp_replace(${usersTable.phone}, '[^0-9]', '', 'g') = ${normalized}`;
+  return sql`right(regexp_replace(${usersTable.phone}, '[^0-9]', '', 'g'), 8) = ${normalized.slice(-8)}`;
 }
 
-async function findUserByPhone(phone: string) {
+async function findUserByPhone(phone: string, userType?: string) {
   const condition = phoneLookupCondition(phone);
   if (!condition) return undefined;
-  const [user] = await db.select().from(usersTable).where(condition);
+  const where = userType ? and(condition, eq(usersTable.userType, userType)) : condition;
+  const [user] = await db.select().from(usersTable).where(where);
   return user;
+}
+
+async function findLoginUserByPhone(phone: string, userType: "customer" | "helper") {
+  const condition = phoneLookupCondition(phone);
+  if (!condition) {
+    return {
+      user: undefined,
+      totalNormalizedPhoneMatches: 0,
+      selectedAccountTypeMatches: 0,
+    };
+  }
+
+  const selectedCondition = and(condition, eq(usersTable.userType, userType));
+  const [totalResult, selectedResult, [user]] = await Promise.all([
+    db.select({ count: sql<number>`count(*)` }).from(usersTable).where(condition),
+    db.select({ count: sql<number>`count(*)` }).from(usersTable).where(selectedCondition),
+    db.select().from(usersTable).where(selectedCondition),
+  ]);
+
+  return {
+    user,
+    totalNormalizedPhoneMatches: Number(totalResult[0]?.count ?? 0),
+    selectedAccountTypeMatches: Number(selectedResult[0]?.count ?? 0),
+  };
 }
 
 function parseRoles(rolesJson: string | null, userType: string): string[] {
@@ -106,7 +133,7 @@ function safeUser(user: typeof usersTable.$inferSelect) {
   return {
     ...safe,
     roles: parseRoles(safe.roles, safe.userType),
-    isActive: !safe.isBlocked,
+    isActive: !safe.isBlocked && safe.deletedAt === null,
     createdAt: safe.createdAt.toISOString(),
     lastLogin: safe.lastLogin?.toISOString() ?? null,
     otpCreatedAt: safe.otpCreatedAt?.toISOString() ?? null,
@@ -240,11 +267,23 @@ router.post("/auth/register", async (req, res): Promise<void> => {
   const parsed = RegisterBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
 
-  const { name, phone, userType } = parsed.data;
+  const { name, phone, userType, area, preferredAreas } = parsed.data;
   const normalizedPhone = normalizeOmanPhone(phone);
   if (!normalizedPhone) {
     res.status(400).json({ error: "رقم الهاتف غير صحيح" });
     return;
+  }
+
+  if (userType === "customer" && area !== undefined && area !== null && !isActiveServiceArea(area)) {
+    res.status(400).json({ error: "المنطقة غير متاحة للاختيار الجديد" });
+    return;
+  }
+  if (userType === "helper") {
+    const areas = validatePreferredAreas(preferredAreas);
+    if (!areas) {
+      res.status(400).json({ error: "اختر منطقة خدمة واحدة على الأقل من مناطق مسقط" });
+      return;
+    }
   }
 
   const existing = await findUserByPhone(normalizedPhone);
@@ -261,7 +300,13 @@ router.post("/auth/register", async (req, res): Promise<void> => {
     // Adding either customer or helper access uses the same WhatsApp OTP flow.
     const otp = generate6DigitCode();
     await db.update(usersTable)
-      .set({ roles: JSON.stringify(updatedRoles), otpCode: otp, otpCreatedAt: new Date() })
+      .set({
+        roles: JSON.stringify(updatedRoles),
+        ...(userType === "customer" ? { area: area ?? null } : {}),
+        ...(userType === "helper" ? { preferredAreas: JSON.stringify(validatePreferredAreas(preferredAreas)) } : {}),
+        otpCode: otp,
+        otpCreatedAt: new Date(),
+      })
       .where(eq(usersTable.id, existing.id));
 
     req.log.info(
@@ -287,6 +332,8 @@ router.post("/auth/register", async (req, res): Promise<void> => {
   const [user] = await db.insert(usersTable).values({
     name, phone: normalizedPhone, passwordHash: "", userType,
     roles: JSON.stringify([userType]),
+    area: userType === "customer" ? area ?? null : null,
+    preferredAreas: userType === "helper" ? JSON.stringify(validatePreferredAreas(preferredAreas)) : null,
     isVerified: false, isBlocked: false, otpCode: otp, otpCreatedAt: new Date(),
   }).returning();
 
@@ -316,7 +363,7 @@ router.post("/auth/login", async (req, res): Promise<void> => {
   const parsed = LoginBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
 
-  const { phone } = parsed.data;
+  const { phone, userType } = parsed.data;
   const normalizedPhone = normalizeOmanPhone(phone);
   if (!normalizedPhone) {
     res.status(400).json({ error: "رقم الهاتف غير صحيح" });
@@ -328,11 +375,26 @@ router.post("/auth/login", async (req, res): Promise<void> => {
     return;
   }
 
-  const user = await findUserByPhone(normalizedPhone);
+  const lookup = await findLoginUserByPhone(normalizedPhone, userType);
+  req.log.info(
+    {
+      normalizedDigitLength: normalizedPhone.slice(-8).length,
+      submittedAccountType: userType,
+      totalNormalizedPhoneMatches: lookup.totalNormalizedPhoneMatches,
+      selectedAccountTypeMatches: lookup.selectedAccountTypeMatches,
+      blocked: lookup.user ? isUserBlocked(lookup.user) : null,
+      verified: lookup.user?.isVerified ?? null,
+    },
+    "temporary auth lookup diagnostics",
+  );
+
+  const user = lookup.user;
   if (!user) { res.status(404).json({ error: "رقم الهاتف غير مسجل" }); return; }
 
-  if (user.isBlocked && user.isVerified) {
-    res.status(403).json({ error: "تم تعطيل حسابك، يرجى التواصل مع الإدارة" });
+  if (isUserBlocked(user)) {
+    res.status(403).json({
+      error: user.deletedAt ? "تم حذف الحساب" : "تم تعطيل حسابك، يرجى التواصل مع الإدارة",
+    });
     return;
   }
 
@@ -374,6 +436,12 @@ router.post("/auth/admin-login", async (req, res): Promise<void> => {
 
   const user = await findUserByPhone(normalizedPhone);
   if (!user) { res.status(404).json({ error: "رقم الهاتف غير مسجل" }); return; }
+  if (isUserBlocked(user)) {
+    res.status(403).json({
+      error: user.deletedAt ? "تم حذف الحساب" : "تم تعطيل حسابك، يرجى التواصل مع الإدارة",
+    });
+    return;
+  }
 
   const authToken = user.authToken ?? randomUUID();
 
@@ -410,7 +478,7 @@ router.post("/auth/verify-otp", async (req, res): Promise<void> => {
   const user = await findUserByPhone(normalizedPhone);
   if (!user) { res.status(404).json({ error: "رقم الهاتف غير مسجل" }); return; }
 
-  if (user.isBlocked && user.isVerified) {
+  if (isUserBlocked(user)) {
     res.status(403).json({ error: "تم تعطيل حسابك، يرجى التواصل مع الإدارة" });
     return;
   }
@@ -491,8 +559,11 @@ router.get("/auth/me", async (req, res): Promise<void> => {
   const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId));
   if (!user) { res.status(401).json({ error: "المستخدم غير موجود" }); return; }
 
-  if (user.isBlocked) {
-    res.status(403).json({ error: "تم تعطيل حسابك، يرجى التواصل مع الإدارة", isActive: false });
+  if (isUserBlocked(user)) {
+    res.status(403).json({
+      error: user.deletedAt ? "تم حذف الحساب" : "تم تعطيل حسابك، يرجى التواصل مع الإدارة",
+      isActive: false,
+    });
     return;
   }
 

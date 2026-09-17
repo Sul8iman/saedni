@@ -26,8 +26,8 @@ export interface AdminEventDispatchDependencies {
 }
 
 const CATEGORY_AR: Record<string, string> = {
-  transport: "نقل وتحميل",
-  delivery: "مشاوير وتوصيل",
+  transport: "شاحنة للنقل",
+  delivery: "مندوب توصيل",
   government: "معاملات ومراجعات",
   shopping: "شراء أغراض",
   home_services: "خدمات منزلية",

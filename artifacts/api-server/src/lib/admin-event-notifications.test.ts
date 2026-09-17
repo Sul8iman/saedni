@@ -59,7 +59,7 @@ test("builds a request notification without request details or customer phone in
   assert.equal(event.eventKey, "new_request:33");
   assert.equal(event.type, ADMIN_EVENT_TYPES.newRequest);
   assert.equal(event.title, "طلب جديد");
-  assert.equal(event.body, "طلب جديد: نقل وتحميل - بوشر");
+  assert.equal(event.body, "طلب جديد: شاحنة للنقل - بوشر");
   assert.equal(event.body.includes("96890000000"), false);
   assert.equal(event.body.includes("أحمد"), false);
 });

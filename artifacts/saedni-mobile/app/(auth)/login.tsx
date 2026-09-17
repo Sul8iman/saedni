@@ -13,8 +13,6 @@ import { useAuth, type AuthUser } from "@/contexts/AuthContext";
 import ArabicText from "@/components/ArabicText";
 
 type Step = "phone" | "otp" | "pin";
-type AccountType = "customer" | "helper";
-type LoginMode = "user" | "admin";
 
 // Production backend — EXPO_PUBLIC_DOMAIN is baked in at EAS build time;
 // fall back to Render so dev/web builds also work.
@@ -27,40 +25,6 @@ type ApiResult =
   | { ok: true; data: Record<string, unknown> }
   | { ok: false; kind: "network" | "timeout" | "client" | "server"; status?: number; message: string };
 
-const AUTH_ERROR_BY_STATUS: Record<number, string> = {
-  400: "بيانات غير صحيحة",
-  401: "بيانات الدخول غير صحيحة",
-  403: "الحساب معطل",
-  404: "رقم الهاتف غير مسجل",
-  429: "محاولات كثيرة، حاول لاحقًا",
-  500: "خطأ داخلي في الخادم",
-};
-
-const SAFE_API_ERRORS = new Set([
-  "رقم الهاتف غير صحيح",
-  "رقم الهاتف غير مسجل",
-  "تم تعطيل حسابك، يرجى التواصل مع الإدارة",
-  "تم حذف الحساب",
-  "رمز المدير غير صحيح",
-  "يرجى استخدام رمز المدير للدخول",
-  "رمز التحقق غير صحيح",
-  "انتهت صلاحية رمز التحقق، يرجى طلب رمز جديد",
-  "تعذر إرسال رمز التحقق، يرجى المحاولة مجدداً",
-]);
-
-function getSafeApiMessage(status: number, data: Record<string, unknown>): string {
-  const raw = typeof data.error === "string" ? data.error : "";
-  if (
-    raw.includes("userType") ||
-    raw.includes("account type") ||
-    (raw.includes("expected") && raw.includes("received"))
-  ) {
-    return "يرجى اختيار نوع الحساب";
-  }
-  if (SAFE_API_ERRORS.has(raw)) return raw;
-  return AUTH_ERROR_BY_STATUS[status] ?? "حدث خطأ، يرجى المحاولة مجدداً";
-}
-
 async function safeApiFetch(url: string, init: RequestInit): Promise<ApiResult> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
@@ -72,11 +36,11 @@ async function safeApiFetch(url: string, init: RequestInit): Promise<ApiResult> 
 
     if (res.ok) return { ok: true, data };
 
-    const msg = getSafeApiMessage(res.status, data);
+    const msg = typeof data.error === "string" ? data.error : "";
     if (res.status >= 500) {
-      return { ok: false, kind: "server", status: res.status, message: msg };
+      return { ok: false, kind: "server", status: res.status, message: msg || "خطأ في الخادم، يرجى المحاولة لاحقاً" };
     }
-    return { ok: false, kind: "client", status: res.status, message: msg };
+    return { ok: false, kind: "client", status: res.status, message: msg || "حدث خطأ، يرجى المحاولة مجدداً" };
   } catch (err: unknown) {
     clearTimeout(timer);
     if (err instanceof Error && err.name === "AbortError") {
@@ -92,10 +56,7 @@ export default function LoginScreen() {
   const { setSession } = useAuth();
 
   const [step, setStep] = useState<Step>("phone");
-  const [loginMode, setLoginMode] = useState<LoginMode>("user");
   const [phone, setPhone] = useState("");
-  const [accountType, setAccountType] = useState<AccountType | null>(null);
-  const [accountTypeError, setAccountTypeError] = useState("");
   const [otp, setOtp] = useState("");
   const [pin, setPin] = useState("");
   const [isUnverified, setIsUnverified] = useState(false);
@@ -103,17 +64,6 @@ export default function LoginScreen() {
 
   async function handlePhoneSubmit() {
     if (!phone.trim()) return;
-    if (loginMode === "admin") {
-      setPin("");
-      setStep("pin");
-      return;
-    }
-    if (!accountType) {
-      setAccountTypeError("يرجى اختيار نوع الحساب");
-      Alert.alert("نوع الحساب", "يرجى اختيار نوع الحساب");
-      return;
-    }
-    setAccountTypeError("");
     setLoading(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
@@ -121,7 +71,7 @@ export default function LoginScreen() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
-      body: JSON.stringify({ phone: phone.trim(), userType: accountType }),
+      body: JSON.stringify({ phone: phone.trim() }),
     });
 
     setLoading(false);
@@ -135,18 +85,17 @@ export default function LoginScreen() {
       return;
     }
 
-    setIsUnverified(result.data.isVerified === false);
-    setStep("otp");
+    const { data } = result;
+    if (data.isAdmin) {
+      setStep("pin");
+    } else {
+      setIsUnverified(data.isVerified === false);
+      setStep("otp");
+    }
   }
 
   async function handleOtpSubmit() {
     if (otp.length < 6) return;
-    if (!accountType) {
-      setStep("phone");
-      setAccountTypeError("يرجى اختيار نوع الحساب");
-      Alert.alert("نوع الحساب", "يرجى اختيار نوع الحساب");
-      return;
-    }
     setLoading(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
@@ -154,7 +103,7 @@ export default function LoginScreen() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
-      body: JSON.stringify({ phone: phone.trim(), otp, userType: accountType }),
+      body: JSON.stringify({ phone: phone.trim(), otp }),
     });
 
     setLoading(false);
@@ -241,46 +190,9 @@ export default function LoginScreen() {
           {/* ── Phone step ── */}
           {step === "phone" && (
             <>
-              <ArabicText style={s.cardTitle}>
-                {loginMode === "admin" ? "دخول المدير" : "تسجيل الدخول"}
-              </ArabicText>
-              <ArabicText style={s.subLabel}>
-                {loginMode === "admin"
-                  ? "أدخل رقم المدير ثم رمز PIN"
-                  : "سنرسل رمز التحقق عبر واتساب بعد إدخال رقمك"}
-              </ArabicText>
-              {loginMode === "user" && (
-                <>
-                  <ArabicText style={s.fieldLabel}>نوع الحساب</ArabicText>
-                  <View style={s.accountTypeRow}>
-                    {([
-                      { value: "customer" as const, label: "طالب مساعدة" },
-                      { value: "helper" as const, label: "مساعد" },
-                    ]).map((option) => (
-                      <TouchableOpacity
-                        key={option.value}
-                        testID={`account-type-${option.value}`}
-                        style={[s.accountTypeBtn, accountType === option.value && s.accountTypeBtnActive]}
-                        onPress={() => {
-                          setAccountType(option.value);
-                          setAccountTypeError("");
-                        }}
-                        activeOpacity={0.8}
-                      >
-                        <Text style={[s.accountTypeTxt, accountType === option.value && s.accountTypeTxtActive]}>
-                          {option.label}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                  {!!accountTypeError && (
-                    <ArabicText style={s.accountTypeError}>{accountTypeError}</ArabicText>
-                  )}
-                </>
-              )}
-              <ArabicText style={s.fieldLabel}>
-                {loginMode === "admin" ? "رقم هاتف المدير" : "رقم الهاتف"}
-              </ArabicText>
+              <ArabicText style={s.cardTitle}>تسجيل الدخول</ArabicText>
+              <ArabicText style={s.subLabel}>سنرسل رمز التحقق عبر واتساب بعد إدخال رقمك</ArabicText>
+              <ArabicText style={s.fieldLabel}>رقم الهاتف</ArabicText>
               <TextInput
                 style={s.input}
                 value={phone}
@@ -301,28 +213,12 @@ export default function LoginScreen() {
               >
                 {loading
                   ? <ActivityIndicator color={colors.primaryForeground} />
-                  : <Text style={s.primaryBtnTxt}>
-                      {loginMode === "admin" ? "التالي" : "إرسال الرمز"}
-                    </Text>}
+                  : <Text style={s.primaryBtnTxt}>التالي</Text>}
               </TouchableOpacity>
-              {loginMode === "user" && (
-                <TouchableOpacity onPress={() => router.push("/(auth)/register")} style={s.ghostBtn}>
-                  <Text style={s.ghostTxt}>
-                    ليس لديك حساب؟{" "}
-                    <Text style={s.ghostLink}>سجّل الآن</Text>
-                  </Text>
-                </TouchableOpacity>
-              )}
-              <TouchableOpacity
-                onPress={() => {
-                  setLoginMode(loginMode === "user" ? "admin" : "user");
-                  setAccountTypeError("");
-                  setStep("phone");
-                }}
-                style={s.ghostBtn}
-              >
+              <TouchableOpacity onPress={() => router.push("/(auth)/register")} style={s.ghostBtn}>
                 <Text style={s.ghostTxt}>
-                  {loginMode === "user" ? "دخول المدير" : "دخول طالب المساعدة أو المساعد"}
+                  ليس لديك حساب؟{" "}
+                  <Text style={s.ghostLink}>سجّل الآن</Text>
                 </Text>
               </TouchableOpacity>
             </>
@@ -449,21 +345,6 @@ const makeStyles = (c: ReturnType<typeof useColors>) =>
     },
     subLabel: { fontSize: 13, color: c.mutedForeground, textAlign: "right", marginBottom: 12 },
     subLabelBold: { fontWeight: "700", color: c.foreground },
-    accountTypeRow: {
-      flexDirection: "row-reverse", gap: 10, marginBottom: 16,
-    },
-    accountTypeBtn: {
-      flex: 1, borderWidth: 1.5, borderColor: c.border, borderRadius: 12,
-      paddingVertical: 12, alignItems: "center", backgroundColor: c.background,
-    },
-    accountTypeBtnActive: {
-      borderColor: c.primary, backgroundColor: c.secondary,
-    },
-    accountTypeError: {
-      color: c.destructive, fontSize: 13, textAlign: "right", marginTop: -8, marginBottom: 12,
-    },
-    accountTypeTxt: { fontSize: 15, fontWeight: "600", color: c.mutedForeground },
-    accountTypeTxtActive: { color: c.primary, fontWeight: "700" },
     input: {
       borderWidth: 1.5, borderColor: c.border, borderRadius: 12,
       paddingHorizontal: 16, paddingVertical: 14,

@@ -29,11 +29,10 @@ export const RegisterBody = zod.object({
 
 
 /**
- * @summary Request OTP login for a selected account type
+ * @summary Request OTP login (phone only)
  */
 export const LoginBody = zod.object({
-  "phone": zod.string(),
-  "userType": zod.enum(['customer', 'helper'])
+  "phone": zod.string()
 })
 
 export const LoginResponse = zod.object({
@@ -69,7 +68,6 @@ export const AdminLoginResponse = zod.object({
   "isActive": zod.boolean(),
   "isVerified": zod.boolean().optional(),
   "isBlocked": zod.boolean().optional(),
-  "deletedAt": zod.coerce.date().nullish(),
   "lastLogin": zod.string().nullish(),
   "otpCode": zod.string().nullish(),
   "otpCreatedAt": zod.string().nullish(),
@@ -87,8 +85,7 @@ export const AdminLoginResponse = zod.object({
  */
 export const VerifyOtpBody = zod.object({
   "phone": zod.string(),
-  "otp": zod.string(),
-  "userType": zod.enum(['customer', 'helper'])
+  "otp": zod.string()
 })
 
 export const verifyOtpResponseUserRatingCountMin = 0;
@@ -107,7 +104,6 @@ export const VerifyOtpResponse = zod.object({
   "isActive": zod.boolean(),
   "isVerified": zod.boolean().optional(),
   "isBlocked": zod.boolean().optional(),
-  "deletedAt": zod.coerce.date().nullish(),
   "lastLogin": zod.string().nullish(),
   "otpCode": zod.string().nullish(),
   "otpCreatedAt": zod.string().nullish(),
@@ -138,7 +134,6 @@ export const GetMeResponse = zod.object({
   "isActive": zod.boolean(),
   "isVerified": zod.boolean().optional(),
   "isBlocked": zod.boolean().optional(),
-  "deletedAt": zod.coerce.date().nullish(),
   "lastLogin": zod.string().nullish(),
   "otpCode": zod.string().nullish(),
   "otpCreatedAt": zod.string().nullish(),
@@ -562,7 +557,6 @@ export const ListUsersResponseItem = zod.object({
   "isActive": zod.boolean(),
   "isVerified": zod.boolean().optional(),
   "isBlocked": zod.boolean().optional(),
-  "deletedAt": zod.coerce.date().nullish(),
   "lastLogin": zod.string().nullish(),
   "otpCode": zod.string().nullish(),
   "otpCreatedAt": zod.string().nullish(),
@@ -597,7 +591,6 @@ export const GetUserResponse = zod.object({
   "isActive": zod.boolean(),
   "isVerified": zod.boolean().optional(),
   "isBlocked": zod.boolean().optional(),
-  "deletedAt": zod.coerce.date().nullish(),
   "lastLogin": zod.string().nullish(),
   "otpCode": zod.string().nullish(),
   "otpCreatedAt": zod.string().nullish(),
@@ -640,7 +633,6 @@ export const UpdateUserResponse = zod.object({
   "isActive": zod.boolean(),
   "isVerified": zod.boolean().optional(),
   "isBlocked": zod.boolean().optional(),
-  "deletedAt": zod.coerce.date().nullish(),
   "lastLogin": zod.string().nullish(),
   "otpCode": zod.string().nullish(),
   "otpCreatedAt": zod.string().nullish(),
@@ -888,7 +880,6 @@ export const VerifyHelperResponse = zod.object({
   "isActive": zod.boolean(),
   "isVerified": zod.boolean().optional(),
   "isBlocked": zod.boolean().optional(),
-  "deletedAt": zod.coerce.date().nullish(),
   "lastLogin": zod.string().nullish(),
   "otpCode": zod.string().nullish(),
   "otpCreatedAt": zod.string().nullish(),
@@ -901,18 +892,10 @@ export const VerifyHelperResponse = zod.object({
 
 
 /**
- * @summary Delete or anonymize a user without changing historical records
+ * @summary Deactivate a user and archive their customer requests
  */
 export const DeleteUserParams = zod.object({
   "id": zod.coerce.number()
-})
-
-export const DeleteUserBody = zod.object({
-  "confirmation": zod.enum(['حذف'])
-})
-
-export const DeleteUserResponse = zod.object({
-  "deletionMode": zod.enum(['permanent', 'anonymized'])
 })
 
 

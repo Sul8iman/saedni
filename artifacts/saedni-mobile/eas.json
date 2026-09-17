@@ -36,6 +36,7 @@
     },
     "android-production": {
       "extends": "production",
+      "node": "22.14.0",
       "corepack": true,
       "pnpm": "11.24.0",
       "android": {

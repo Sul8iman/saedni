@@ -33,6 +33,14 @@
         "buildType": "app-bundle",
         "autoIncrement": "versionCode"
       }
+    },
+    "android-production": {
+      "extends": "production",
+      "corepack": true,
+      "pnpm": "11.24.0",
+      "android": {
+        "buildType": "app-bundle"
+      }
     }
   },
   "submit": {

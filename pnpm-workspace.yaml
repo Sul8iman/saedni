@@ -74,6 +74,13 @@ onlyBuiltDependencies:
   - msw
   - unrs-resolver
 
+ignoredBuiltDependencies:
+  - dtrace-provider
+
+allowBuilds:
+  esbuild: true
+  dtrace-provider: false
+
 overrides:
   # replit uses linux-x64 only, we can exclude all other platforms
   "esbuild>@esbuild/darwin-arm64": "-"

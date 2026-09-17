@@ -14,7 +14,6 @@ export const usersTable = pgTable("users", {
   rating: real("rating"),
   isVerified: boolean("is_verified").notNull().default(false),
   isBlocked: boolean("is_blocked").notNull().default(false),
-  deletedAt: timestamp("deleted_at", { withTimezone: true }),
   lastLogin: timestamp("last_login", { withTimezone: true }),
   otpCode: text("otp_code"),
   otpCreatedAt: timestamp("otp_created_at", { withTimezone: true }),

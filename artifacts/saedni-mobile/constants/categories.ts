@@ -1,6 +1,6 @@
 export const CATEGORIES = [
-  { value: "transport",     label: "نقل وتحميل",        icon: "car-outline"            },
-  { value: "delivery",      label: "مشاوير وتوصيل",    icon: "navigate-circle-outline" },
+  { value: "delivery",      label: "مندوب توصيل",      icon: "mci:account-tie-outline" },
+  { value: "transport",     label: "شاحنة للنقل",       icon: "mci:truck-outline"       },
   { value: "government",    label: "معاملات ومراجعات", icon: "document-text-outline"   },
   { value: "shopping",      label: "شراء أغراض",        icon: "bag-outline"             },
   { value: "home_services", label: "خدمات منزلية",      icon: "hammer-outline"          },

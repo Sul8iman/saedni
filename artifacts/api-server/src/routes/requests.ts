@@ -45,8 +45,8 @@ import { helperServesArea, isActiveServiceArea, parsePreferredAreas } from "../l
 const router: IRouter = Router();
 
 const CATEGORY_AR: Record<string, string> = {
-  transport: "نقل وتحميل",
-  delivery: "مشاوير وتوصيل",
+  transport: "شاحنة للنقل",
+  delivery: "مندوب توصيل",
   government: "معاملات ومراجعات",
   shopping: "شراء أغراض",
   home_services: "خدمات منزلية",
@@ -149,11 +149,11 @@ async function sendNewRequestNotifications(
   }
 }
 
-async function enrichRequest(
+export async function enrichRequest(
   request: typeof requestsTable.$inferSelect,
   options: { includeContact?: boolean } = {},
 ) {
-  const ids = [request.customerId, request.helperId].filter(Boolean) as number[];
+  const ids = [request.customerId, request.helperId, request.completedHelperId].filter(Boolean) as number[];
   const users =
     ids.length > 0
       ? await db
@@ -170,8 +170,10 @@ async function enrichRequest(
     deletedAt: request.deletedAt?.toISOString() ?? null,
     customerName: options.includeContact ? (userMap[request.customerId]?.name ?? null) : null,
     customerPhone: options.includeContact ? (userMap[request.customerId]?.phone ?? null) : null,
-    helperName: options.includeContact && request.helperId ? (userMap[request.helperId]?.name ?? null) : null,
-    helperPhone: options.includeContact && request.helperId ? (userMap[request.helperId]?.phone ?? null) : null,
+    helperName: options.includeContact && (request.completedHelperId ?? request.helperId)
+      ? (userMap[request.completedHelperId ?? request.helperId!]?.name ?? null) : null,
+    helperPhone: options.includeContact && (request.completedHelperId ?? request.helperId)
+      ? (userMap[request.completedHelperId ?? request.helperId!]?.phone ?? null) : null,
   };
 }
 

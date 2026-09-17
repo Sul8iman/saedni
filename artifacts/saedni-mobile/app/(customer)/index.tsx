@@ -15,6 +15,7 @@ import { getAuthHeaders, useAuth } from "@/contexts/AuthContext";
 import { CATEGORIES, AREAS } from "@/constants/categories";
 import type { CategoryValue } from "@/constants/categories";
 import ArabicText from "@/components/ArabicText";
+import CategoryIcon from "@/components/CategoryIcon";
 import { mergeRequestsById, requestQueryKeys } from "@/lib/request-query-keys";
 
 const BASE = process.env.EXPO_PUBLIC_DOMAIN ? `https://${process.env.EXPO_PUBLIC_DOMAIN}` : "";
@@ -202,8 +203,8 @@ export default function CustomerHomeScreen() {
                   disabled={!!isBlocked}
                 >
                   <View style={[s.catIconWrap, category === cat.value && s.catIconWrapActive]}>
-                    <Ionicons
-                      name={cat.icon as any}
+                    <CategoryIcon
+                      name={cat.icon}
                       size={26}
                       color={category === cat.value ? colors.primary : colors.mutedForeground}
                     />

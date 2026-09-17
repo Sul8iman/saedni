@@ -87,9 +87,18 @@ export interface LoginInput {
   userType: LoginInputUserType;
 }
 
+export type VerifyOtpInputUserType = typeof VerifyOtpInputUserType[keyof typeof VerifyOtpInputUserType];
+
+
+export const VerifyOtpInputUserType = {
+  customer: 'customer',
+  helper: 'helper',
+} as const;
+
 export interface VerifyOtpInput {
   phone: string;
   otp: string;
+  userType: VerifyOtpInputUserType;
 }
 
 export interface AdminLoginInput {

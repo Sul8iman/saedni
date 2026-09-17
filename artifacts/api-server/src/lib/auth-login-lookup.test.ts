@@ -43,4 +43,34 @@ test("role-specific login resolves historical phone formats when both roles shar
     /and\(condition, eq\(usersTable\.userType, userType\)\)/,
     "the production lookup must include the submitted account type",
   );
+
+  const verifyRoute = source.slice(source.indexOf('router.post("/auth/verify-otp"'));
+  assert.match(
+    verifyRoute,
+    /const \{ phone, otp, userType \} = parsed\.data/,
+    "OTP verification must read the selected account type",
+  );
+  assert.match(
+    verifyRoute,
+    /findUserByPhone\(normalizedPhone, userType\)/,
+    "OTP verification must resolve the selected account type",
+  );
+
+  const mobileSource = await readFile(
+    new URL("../../../saedni-mobile/app/(auth)/login.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(mobileSource, /label: "طالب مساعدة"/);
+  assert.match(mobileSource, /label: "مساعد"/);
+  assert.match(
+    mobileSource,
+    /body: JSON\.stringify\(\{ phone: phone\.trim\(\), userType: accountType \}\)/,
+    "both regular login requests must carry the selected account type",
+  );
+  assert.match(
+    mobileSource,
+    /body: JSON\.stringify\(\{ phone: phone\.trim\(\), pin \}\)/,
+    "admin login must remain a phone + PIN request",
+  );
+  assert.match(mobileSource, /يرجى اختيار نوع الحساب/);
 });

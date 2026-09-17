@@ -463,7 +463,7 @@ router.post("/auth/verify-otp", async (req, res): Promise<void> => {
   const parsed = VerifyOtpBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
 
-  const { phone, otp } = parsed.data;
+  const { phone, otp, userType } = parsed.data;
   const normalizedPhone = normalizeOmanPhone(phone);
   if (!normalizedPhone) {
     res.status(400).json({ error: "رقم الهاتف غير صحيح" });
@@ -475,7 +475,7 @@ router.post("/auth/verify-otp", async (req, res): Promise<void> => {
     return;
   }
 
-  const user = await findUserByPhone(normalizedPhone);
+  const user = await findUserByPhone(normalizedPhone, userType);
   if (!user) { res.status(404).json({ error: "رقم الهاتف غير مسجل" }); return; }
 
   if (isUserBlocked(user)) {

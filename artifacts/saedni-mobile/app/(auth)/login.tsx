@@ -25,6 +25,15 @@ type ApiResult =
   | { ok: true; data: Record<string, unknown> }
   | { ok: false; kind: "network" | "timeout" | "client" | "server"; status?: number; message: string };
 
+const AUTH_ERROR_BY_STATUS: Record<number, string> = {
+  400: "بيانات غير صحيحة",
+  401: "بيانات الدخول غير صحيحة",
+  403: "الحساب معطل",
+  404: "رقم الهاتف غير مسجل",
+  429: "محاولات كثيرة، حاول لاحقًا",
+  500: "خطأ داخلي في الخادم",
+};
+
 async function safeApiFetch(url: string, init: RequestInit): Promise<ApiResult> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
@@ -37,10 +46,11 @@ async function safeApiFetch(url: string, init: RequestInit): Promise<ApiResult> 
     if (res.ok) return { ok: true, data };
 
     const msg = typeof data.error === "string" ? data.error : "";
+    const fallback = AUTH_ERROR_BY_STATUS[res.status] ?? "حدث خطأ، يرجى المحاولة مجدداً";
     if (res.status >= 500) {
-      return { ok: false, kind: "server", status: res.status, message: msg || "خطأ في الخادم، يرجى المحاولة لاحقاً" };
+      return { ok: false, kind: "server", status: res.status, message: msg || fallback };
     }
-    return { ok: false, kind: "client", status: res.status, message: msg || "حدث خطأ، يرجى المحاولة مجدداً" };
+    return { ok: false, kind: "client", status: res.status, message: msg || fallback };
   } catch (err: unknown) {
     clearTimeout(timer);
     if (err instanceof Error && err.name === "AbortError") {

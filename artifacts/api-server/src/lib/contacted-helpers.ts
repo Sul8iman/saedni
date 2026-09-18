@@ -32,6 +32,8 @@ export function presentContactedHelper(
     helperId: contact.helperId,
     helperName: helper?.name ?? contact.helperNameSnapshot ?? null,
     helperPhone: helper?.phone ?? null,
+    // Deprecated compatibility alias for published mobile builds.
+    contactPhone: helper?.phone ?? null,
     rating: aggregate?.average == null ? helper?.rating ?? null : Number(aggregate.average),
     ratingCount: Number(aggregate?.count ?? 0),
     contactMethod: contact.contactMethod,

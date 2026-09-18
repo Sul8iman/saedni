@@ -482,6 +482,7 @@ export const ListContactedHelpersResponseItem = zod.object({
   "helperId": zod.number().nullable(),
   "helperName": zod.string().nullable(),
   "helperPhone": zod.string().nullable().describe('The helper\'s current phone number, or null if the helper account was deleted.'),
+  "contactPhone": zod.string().nullable().describe('Deprecated legacy alias for helperPhone. It contains the helper\'s current users.phone value, or null if the helper account was deleted; it is never the customer\'s contact number.'),
   "profileImageUrl": zod.string().nullish(),
   "rating": zod.number().nullable(),
   "ratingCount": zod.number(),

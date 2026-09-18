@@ -36,7 +36,9 @@ test("uses the helper account phone after repeated contact and keeps the latest 
   assert.equal(new Set([result.helperId]).size, 1);
   assert.equal(result.helperName, "المساعد الحالي");
   assert.equal(result.helperPhone, helperPhone);
+  assert.equal(result.contactPhone, helperPhone);
   assert.notEqual(result.helperPhone, customerPhone);
+  assert.notEqual(result.contactPhone, customerPhone);
   assert.equal(result.contactMethod, "phone");
   assert.equal(result.contactedAt, lastContactedAt.toISOString());
 });
@@ -56,6 +58,7 @@ test("keeps the helper-name snapshot without exposing a customer phone after del
 
   assert.equal(result.helperName, "مساعد محذوف");
   assert.equal(result.helperPhone, null);
+  assert.equal(result.contactPhone, null);
 
   const routeSource = await readFile(new URL("../routes/requests.ts", import.meta.url), "utf8");
   const routeStart = routeSource.indexOf('router.get("/requests/:id/contacted-helpers"');
@@ -64,6 +67,8 @@ test("keeps the helper-name snapshot without exposing a customer phone after del
   assert.match(contactedHelpersRoute, /leftJoin\(usersTable,\s*eq\(usersTable\.id,\s*requestContactsTable\.helperId\)\)/);
   assert.match(contactedHelpersRoute, /phone:\s*usersTable\.phone/);
   assert.doesNotMatch(contactedHelpersRoute, /contactPhone:\s*contact\.contactPhone/);
+  const presentationSource = await readFile(new URL("./contacted-helpers.ts", import.meta.url), "utf8");
+  assert.match(presentationSource, /contactPhone:\s*helper\?\.phone\s*\?\?\s*null/);
 
   const contactStart = routeSource.indexOf('router.post("/requests/:id/contact"');
   assert.ok(contactStart >= 0);

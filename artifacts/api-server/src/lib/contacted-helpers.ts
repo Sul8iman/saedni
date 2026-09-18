@@ -24,6 +24,10 @@ export function presentContactedHelper(
   helper: ContactedHelperProfile | undefined,
   aggregate: ContactedHelperRating | undefined,
 ) {
+  if (contact.helperId !== null && (!helper || !helper.phone)) {
+    throw new Error(`Contacted helper ${contact.helperId} has no current account phone`);
+  }
+
   return {
     helperId: contact.helperId,
     helperName: helper?.name ?? contact.helperNameSnapshot ?? null,

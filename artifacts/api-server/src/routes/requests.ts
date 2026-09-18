@@ -759,23 +759,48 @@ router.get("/requests/:id/contacted-helpers", async (req, res): Promise<void> =>
     return;
   }
 
-  const contacts = await db
-    .select()
+  const contactedRows = await db
+    .select({
+      contactHelperId: requestContactsTable.helperId,
+      helperNameSnapshot: requestContactsTable.helperNameSnapshot,
+      contactMethod: requestContactsTable.contactMethod,
+      firstContactedAt: requestContactsTable.firstContactedAt,
+      lastContactedAt: requestContactsTable.lastContactedAt,
+      helperProfileId: usersTable.id,
+      helperName: usersTable.name,
+      helperPhone: usersTable.phone,
+      helperRating: usersTable.rating,
+    })
     .from(requestContactsTable)
+    .leftJoin(usersTable, eq(usersTable.id, requestContactsTable.helperId))
     .where(eq(requestContactsTable.requestId, request.id));
-  if (contacts.length === 0) {
+  if (contactedRows.length === 0) {
     res.json([]);
     return;
   }
-  const helperIds = contacts
-    .map((contact) => contact.helperId)
+  const invalidHelperReference = contactedRows.find((row) =>
+    row.contactHelperId !== null
+    && (
+      row.helperProfileId === null
+      || row.helperName === null
+      || row.helperPhone === null
+    ),
+  );
+  if (invalidHelperReference) {
+    logger.error(
+      {
+        requestId: request.id,
+        helperId: invalidHelperReference.contactHelperId,
+      },
+      "contacted helper references an account without a phone",
+    );
+    res.status(500).json({ error: "تعذر تحميل رقم المساعد" });
+    return;
+  }
+
+  const helperIds = contactedRows
+    .map((contact) => contact.contactHelperId)
     .filter((helperId): helperId is number => helperId !== null);
-  const helpers = helperIds.length > 0
-    ? await db
-        .select({ id: usersTable.id, name: usersTable.name, phone: usersTable.phone, rating: usersTable.rating })
-        .from(usersTable)
-        .where(inArray(usersTable.id, helperIds))
-    : [];
   const ratingRows = helperIds.length > 0
     ? await db
         .select({
@@ -787,14 +812,25 @@ router.get("/requests/:id/contacted-helpers", async (req, res): Promise<void> =>
         .where(inArray(helperRatingsTable.helperId, helperIds))
         .groupBy(helperRatingsTable.helperId)
     : [];
-  const helperMap = new Map(helpers.map((helper) => [helper.id, helper]));
   const ratingMap = new Map(ratingRows.map((row) => [row.helperId, row]));
 
-  res.json(contacts.map((contact) => {
-    const helper = contact.helperId === null ? undefined : helperMap.get(contact.helperId);
-    const aggregate = contact.helperId === null ? undefined : ratingMap.get(contact.helperId);
+  res.json(contactedRows.map((row) => {
+    const helper = row.contactHelperId === null
+      ? undefined
+      : {
+          name: row.helperName!,
+          phone: row.helperPhone!,
+          rating: row.helperRating,
+        };
+    const aggregate = row.contactHelperId === null ? undefined : ratingMap.get(row.contactHelperId);
     return presentContactedHelper(
-      { ...contact, contactMethod: contact.contactMethod as ContactMethod },
+      {
+        helperId: row.contactHelperId,
+        helperNameSnapshot: row.helperNameSnapshot,
+        contactMethod: row.contactMethod as ContactMethod,
+        firstContactedAt: row.firstContactedAt,
+        lastContactedAt: row.lastContactedAt,
+      },
       helper,
       aggregate
         ? { average: aggregate.average, count: aggregate.count }

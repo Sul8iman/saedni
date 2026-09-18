@@ -17,7 +17,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.saedni.app",
-      "buildNumber": "48",
+      "buildNumber": "49",
       "infoPlist": {
         "CFBundleDisplayName": "ساعدني",
         "NSLocationWhenInUseUsageDescription": "نحتاج موقعك لعرض الطلبات القريبة منك",
@@ -28,7 +28,7 @@
     },
     "android": {
       "package": "com.saedni.app",
-      "versionCode": 17,
+      "versionCode": 19,
       "supportsRtl": true,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/icon.png",

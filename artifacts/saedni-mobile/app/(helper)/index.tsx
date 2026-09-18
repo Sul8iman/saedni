@@ -67,14 +67,14 @@ const AREA_FILTERS = [
   ...AREAS.map(a => ({ value: a, label: a })),
 ];
 
-function openWhatsApp(phone: string) {
-  Linking.openURL(
+async function openWhatsApp(phone: string) {
+  await Linking.openURL(
     `https://wa.me/${phone}?text=${encodeURIComponent("مرحباً، رأيت طلبك في تطبيق ساعدني وأنا مستعد للمساعدة")}`
   );
 }
 
-function openCall(phone: string) {
-  Linking.openURL(`tel:${phone}`);
+async function openCall(phone: string) {
+  await Linking.openURL(`tel:${phone}`);
 }
 
 export default function HelperRequestsScreen() {
@@ -108,8 +108,11 @@ export default function HelperRequestsScreen() {
         const body = await response.json().catch(() => null);
         throw new Error(typeof body?.error === "string" ? body.error : "تعذر تسجيل التواصل");
       }
-      if (method === "whatsapp") openWhatsApp(item.customerPhone);
-      else openCall(item.customerPhone);
+      const contact = await response.json() as { contactPhone?: string };
+      const contactPhone = contact.contactPhone ?? item.customerPhone;
+      if (!contactPhone) throw new Error("رقم العميل غير متوفر لهذا الطلب");
+      if (method === "whatsapp") await openWhatsApp(contactPhone);
+      else await openCall(contactPhone);
     } catch (error) {
       Alert.alert("تعذر التواصل", error instanceof Error ? error.message : "حاول مرة أخرى");
     } finally {

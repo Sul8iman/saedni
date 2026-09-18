@@ -191,6 +191,16 @@ export async function enrichRequest(
   };
 }
 
+function shouldIncludeRequestContact(
+  actor: RequestActor,
+  request: typeof requestsTable.$inferSelect,
+): boolean {
+  return isAdminActor(actor)
+    || request.customerId === actor.id
+    || request.helperId === actor.id
+    || (actorHasRole(actor, "helper") && request.status === "available");
+}
+
 function requestNotFound(res: import("express").Response): void {
   res.status(404).json({ error: "الطلب غير موجود" });
 }
@@ -284,7 +294,7 @@ router.get("/requests", async (req, res): Promise<void> => {
 
   res.json(await Promise.all(actorVisibleRows.map((row) =>
     enrichRequest(row, {
-      includeContact: isAdminActor(actor) || row.customerId === actor.id || row.helperId === actor.id,
+      includeContact: shouldIncludeRequestContact(actor, row),
     }),
   )));
 });
@@ -384,7 +394,7 @@ router.get("/requests/:id", async (req, res): Promise<void> => {
     return;
   }
   res.json(await enrichRequest(row, {
-    includeContact: isAdminActor(actor) || row.customerId === actor.id || row.helperId === actor.id,
+    includeContact: shouldIncludeRequestContact(actor, row),
   }));
 });
 
@@ -691,7 +701,9 @@ router.post("/requests/:id/contact", async (req, res): Promise<void> => {
     .select({ name: usersTable.name, phone: usersTable.phone })
     .from(usersTable)
     .where(eq(usersTable.id, existing.customerId));
-  if (!customer) {
+  const customerName = customer?.name ?? existing.customerNameSnapshot;
+  const customerPhone = customer?.phone ?? existing.customerPhoneSnapshot;
+  if (!customerName || !customerPhone) {
     res.status(404).json({ error: "العميل غير موجود" });
     return;
   }
@@ -704,10 +716,10 @@ router.post("/requests/:id/contact", async (req, res): Promise<void> => {
       helperId: actor.id,
       customerId: existing.customerId,
       helperNameSnapshot: helper.name,
-      customerNameSnapshot: customer.name,
-      customerPhoneSnapshot: customer.phone,
+      customerNameSnapshot: customerName,
+      customerPhoneSnapshot: customerPhone,
       contactMethod: parsed.data.contactMethod,
-      contactPhone: normalizePhone(customer.phone),
+      contactPhone: normalizePhone(customerPhone),
       firstContactedAt: now,
       lastContactedAt: now,
     })
@@ -715,7 +727,7 @@ router.post("/requests/:id/contact", async (req, res): Promise<void> => {
       target: [requestContactsTable.requestId, requestContactsTable.helperId],
       set: {
         contactMethod: parsed.data.contactMethod,
-        contactPhone: normalizePhone(customer.phone),
+        contactPhone: normalizePhone(customerPhone),
         lastContactedAt: now,
       },
     })

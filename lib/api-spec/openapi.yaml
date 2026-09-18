@@ -1132,12 +1132,15 @@ components:
 
     ContactedHelper:
       type: object
-      required: [helperId, helperName, rating, ratingCount, contactMethod, contactPhone, firstContactedAt, lastContactedAt]
+      required: [helperId, helperName, helperPhone, rating, ratingCount, contactMethod, contactedAt]
       properties:
         helperId:
           type: ["integer", "null"]
         helperName:
           type: ["string", "null"]
+        helperPhone:
+          type: ["string", "null"]
+          description: The helper's current phone number, or null if the helper account was deleted.
         profileImageUrl:
           type: ["string", "null"]
         rating:
@@ -1147,9 +1150,9 @@ components:
         contactMethod:
           type: string
           enum: [phone, whatsapp]
-        contactPhone:
+        contactedAt:
           type: string
-          description: Returned only to the request owner or an authorized administrator.
+          description: The latest time this helper contacted the request.
         firstContactedAt:
           type: string
         lastContactedAt:

@@ -481,13 +481,14 @@ export const ListContactedHelpersParams = zod.object({
 export const ListContactedHelpersResponseItem = zod.object({
   "helperId": zod.number().nullable(),
   "helperName": zod.string().nullable(),
+  "helperPhone": zod.string().nullable().describe('The helper\'s current phone number, or null if the helper account was deleted.'),
   "profileImageUrl": zod.string().nullish(),
   "rating": zod.number().nullable(),
   "ratingCount": zod.number(),
   "contactMethod": zod.enum(['phone', 'whatsapp']),
-  "contactPhone": zod.string().describe('Returned only to the request owner or an authorized administrator.'),
-  "firstContactedAt": zod.string(),
-  "lastContactedAt": zod.string()
+  "contactedAt": zod.string().describe('The latest time this helper contacted the request.'),
+  "firstContactedAt": zod.string().optional(),
+  "lastContactedAt": zod.string().optional()
 })
 export const ListContactedHelpersResponse = zod.array(ListContactedHelpersResponseItem)
 

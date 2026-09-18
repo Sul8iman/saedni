@@ -12,6 +12,7 @@ import { useColors } from "@/hooks/useColors";
 import { getAuthHeaders, useAuth } from "@/contexts/AuthContext";
 import { CATEGORIES, STATUS_INFO } from "@/constants/categories";
 import { requestQueryKeys } from "@/lib/request-query-keys";
+import { dedupeContactedHelpers, type ContactedHelper } from "@/lib/contacted-helpers";
 
 const BASE = process.env.EXPO_PUBLIC_DOMAIN ? `https://${process.env.EXPO_PUBLIC_DOMAIN}` : "";
 
@@ -28,15 +29,6 @@ interface HelpRequest {
   customerPhone?: string | null;
   helpCompleted?: boolean | null;
   completedHelperId?: number | null;
-}
-
-interface ContactedHelper {
-  helperId: number | null;
-  helperName?: string | null;
-  rating?: number | null;
-  ratingCount: number;
-  contactMethod: "phone" | "whatsapp";
-  contactPhone: string;
 }
 
 function ContactedHelpersSection({
@@ -58,10 +50,16 @@ function ContactedHelpersSection({
         headers: await getAuthHeaders(),
       });
       if (!response.ok) throw new Error("تعذر تحميل المساعدين المتواصلين");
-      return response.json() as Promise<ContactedHelper[]>;
+      return dedupeContactedHelpers(await response.json() as ContactedHelper[]);
     },
     enabled: requestId > 0 && viewerId > 0,
   });
+
+  useFocusEffect(
+    useCallback(() => {
+      if (requestId > 0 && viewerId > 0) void refetch();
+    }, [refetch, requestId, viewerId]),
+  );
 
   const openPhone = (phone: string) => {
     void Linking.openURL(`tel:${phone}`);
@@ -96,7 +94,7 @@ function ContactedHelpersSection({
             <View style={s.contactedCardTop}>
               <View style={s.contactedIdentity}>
                 <Text style={s.contactedName}>{helper.helperName ?? "مساعد"}</Text>
-                <Text style={s.contactedPhone}>{helper.contactPhone}</Text>
+                <Text style={s.contactedPhone}>{helper.helperPhone ?? "رقم غير متوفر"}</Text>
               </View>
               <View style={s.contactedMeta}>
                 <Text style={s.contactedMethod}>
@@ -108,7 +106,10 @@ function ContactedHelpersSection({
             <View style={s.contactedActions}>
               <TouchableOpacity
                 style={[s.contactedAction, s.contactedCallAction]}
-                onPress={() => openPhone(helper.contactPhone)}
+                onPress={() => {
+                  if (helper.helperPhone) openPhone(helper.helperPhone);
+                }}
+                disabled={!helper.helperPhone}
                 accessibilityLabel={`اتصال بـ ${helper.helperName ?? "المساعد"}`}
               >
                 <Ionicons name="call-outline" size={16} color={colors.primary} />
@@ -116,7 +117,10 @@ function ContactedHelpersSection({
               </TouchableOpacity>
               <TouchableOpacity
                 style={[s.contactedAction, s.contactedWhatsAppAction]}
-                onPress={() => openWhatsApp(helper.contactPhone)}
+                onPress={() => {
+                  if (helper.helperPhone) openWhatsApp(helper.helperPhone);
+                }}
+                disabled={!helper.helperPhone}
                 accessibilityLabel={`واتساب ${helper.helperName ?? "المساعد"}`}
               >
                 <Ionicons name="logo-whatsapp" size={16} color="#fff" />
@@ -178,6 +182,23 @@ export default function CustomerMyRequestsScreen() {
     },
     enabled: !!user && roleKey === "customer",
   });
+
+  const [isRefreshing, setIsRefreshing] = React.useState(false);
+  const refetchContactedHelpers = useCallback(() => {
+    if (!user?.id) return Promise.resolve();
+    return qc.refetchQueries({
+      queryKey: ["contacted-helpers", user.id],
+      type: "active",
+    });
+  }, [qc, user?.id]);
+  const refreshAllRequestData = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      await Promise.all([refetch(), refetchContactedHelpers()]);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [refetch, refetchContactedHelpers]);
 
   useFocusEffect(
     React.useCallback(() => {
@@ -257,7 +278,7 @@ export default function CustomerMyRequestsScreen() {
         helpers.map((helper) => ({
           text: [
             helper.helperName ?? `مساعد ${helper.helperId}`,
-            helper.contactPhone,
+            helper.helperPhone ?? "رقم غير متوفر",
             ratingLabel(helper),
           ].join(" · "),
           onPress: () => chooseRating(id, helper.helperId),
@@ -415,7 +436,11 @@ export default function CustomerMyRequestsScreen() {
           contentContainerStyle={s.listContent}
           showsVerticalScrollIndicator={false}
           refreshControl={
-            <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.primary} />
+           <RefreshControl
+             refreshing={isRefreshing || isRefetching}
+             onRefresh={() => void refreshAllRequestData()}
+             tintColor={colors.primary}
+           />
           }
           ListEmptyComponent={
             <View style={s.empty}>

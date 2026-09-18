@@ -1132,7 +1132,7 @@ components:
 
     ContactedHelper:
       type: object
-      required: [helperId, helperName, helperPhone, rating, ratingCount, contactMethod, contactedAt]
+      required: [helperId, helperName, helperPhone, contactPhone, rating, ratingCount, contactMethod, contactedAt]
       properties:
         helperId:
           type: ["integer", "null"]
@@ -1141,6 +1141,10 @@ components:
         helperPhone:
           type: ["string", "null"]
           description: The helper's current phone number, or null if the helper account was deleted.
+        contactPhone:
+          type: ["string", "null"]
+          deprecated: true
+          description: Deprecated legacy alias for helperPhone. It contains the helper's current users.phone value, or null if the helper account was deleted; it is never the customer's contact number.
         profileImageUrl:
           type: ["string", "null"]
         rating:

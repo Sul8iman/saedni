@@ -17,6 +17,12 @@ export interface ContactedHelper {
      * @nullable
      */
   helperPhone: string | null;
+  /**
+     * Deprecated legacy alias for helperPhone. It contains the helper's current users.phone value, or null if the helper account was deleted; it is never the customer's contact number.
+     * @deprecated
+     * @nullable
+     */
+  contactPhone: string | null;
   /** @nullable */
   profileImageUrl?: string | null;
   /** @nullable */

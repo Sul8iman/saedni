@@ -39,3 +39,23 @@ test("request refresh explicitly refetches request and user-scoped contacted-hel
   assert.match(source, /await Promise\.all\(\[refetch\(\), refetchContactedHelpers\(\)\]\)/);
   assert.match(source, /useFocusEffect/);
 });
+
+test("Android uses the five-star modal while iOS keeps the five-button alert flow", async () => {
+  const source = await readFile(new URL("../app/(customer)/my-requests.tsx", import.meta.url), "utf8");
+
+  assert.match(source, /Platform\.OS === "android"/);
+  assert.match(source, /const RATING_STARS = \[1, 2, 3, 4, 5\] as const/);
+  assert.match(source, /if \(Platform\.OS === "android"\) \{\s*setRatingTarget\(\{ id, helperId \}\)/s);
+  assert.match(source, /Alert\.alert\(\s*"قيّم المساعد"/);
+  assert.match(source, /RATING_STARS\.map\(\(stars\) => \(\{\s*text: `\$\{"★"\.repeat\(stars\)\}/s);
+  assert.match(source, /submitRating\(id, helperId, stars\)/);
+  assert.match(source, /\{Platform\.OS === "android" && \(\s*<Modal/s);
+  assert.match(source, /accessibilityLabel=\{`تقييم \$\{stars\} من 5`\}/);
+  assert.match(source, /ratingStars: stars/);
+  assert.match(source, /ratingStarButton:\s*\{[^}]*width:\s*44[^}]*height:\s*48/s);
+  assert.match(source, /ratingStarsRow:\s*\{[^}]*flexDirection:\s*"row"[^}]*direction:\s*"ltr"/s);
+  assert.match(source, /ratingCard:\s*\{[^}]*width:\s*"90%"[^}]*maxWidth:\s*360/s);
+
+  const submittedValues = [1, 2, 3, 4, 5].map((stars) => ({ ratingStars: stars }));
+  assert.deepEqual(submittedValues.map(({ ratingStars }) => ratingStars), [1, 2, 3, 4, 5]);
+});

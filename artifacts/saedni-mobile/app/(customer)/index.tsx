@@ -133,7 +133,19 @@ export default function CustomerHomeScreen() {
           : [];
         return mergeRequestsById(existing, [createdRequest]);
       });
-      await queryClient.invalidateQueries({ queryKey: ["my-requests", user.id] });
+      await queryClient.invalidateQueries({
+        queryKey: customerListKey,
+        exact: true,
+        refetchType: "all",
+      });
+      // Keep the authoritative POST response if a just-committed request is not
+      // visible to a refetch yet. The next focus refresh will reconcile it.
+      queryClient.setQueryData(customerListKey, (current: unknown) => {
+        const existing = Array.isArray(current)
+          ? current as Array<typeof createdRequest>
+          : [];
+        return mergeRequestsById(existing, [createdRequest]);
+      });
       await queryClient.invalidateQueries({ queryKey: ["available-requests"] });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setSubmitted(true);

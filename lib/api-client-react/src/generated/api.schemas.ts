@@ -327,16 +327,21 @@ export interface ContactedHelper {
   helperId: number | null;
   /** @nullable */
   helperName: string | null;
+  /**
+     * The helper's current phone number, or null if the helper account was deleted.
+     * @nullable
+     */
+  helperPhone: string | null;
   /** @nullable */
   profileImageUrl?: string | null;
   /** @nullable */
   rating: number | null;
   ratingCount: number;
   contactMethod: ContactedHelperContactMethod;
-  /** Returned only to the request owner or an authorized administrator. */
-  contactPhone: string;
-  firstContactedAt: string;
-  lastContactedAt: string;
+  /** The latest time this helper contacted the request. */
+  contactedAt: string;
+  firstContactedAt?: string;
+  lastContactedAt?: string;
 }
 
 export type RequestLifecycleEventAction = typeof RequestLifecycleEventAction[keyof typeof RequestLifecycleEventAction];

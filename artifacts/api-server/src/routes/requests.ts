@@ -41,6 +41,7 @@ import {
 } from "../lib/request-lifecycle";
 import { decideRequestPermission, type RequestPermissionDecision } from "../lib/request-security";
 import { helperServesArea, isActiveServiceArea, parsePreferredAreas } from "../lib/service-areas";
+import { presentContactedHelper, type ContactMethod } from "../lib/contacted-helpers";
 
 const router: IRouter = Router();
 
@@ -771,7 +772,7 @@ router.get("/requests/:id/contacted-helpers", async (req, res): Promise<void> =>
     .filter((helperId): helperId is number => helperId !== null);
   const helpers = helperIds.length > 0
     ? await db
-        .select({ id: usersTable.id, name: usersTable.name, rating: usersTable.rating })
+        .select({ id: usersTable.id, name: usersTable.name, phone: usersTable.phone, rating: usersTable.rating })
         .from(usersTable)
         .where(inArray(usersTable.id, helperIds))
     : [];
@@ -792,16 +793,13 @@ router.get("/requests/:id/contacted-helpers", async (req, res): Promise<void> =>
   res.json(contacts.map((contact) => {
     const helper = contact.helperId === null ? undefined : helperMap.get(contact.helperId);
     const aggregate = contact.helperId === null ? undefined : ratingMap.get(contact.helperId);
-    return {
-      helperId: contact.helperId,
-      helperName: helper?.name ?? contact.helperNameSnapshot ?? null,
-      rating: aggregate?.average == null ? helper?.rating ?? null : Number(aggregate.average),
-      ratingCount: Number(aggregate?.count ?? 0),
-      contactMethod: contact.contactMethod,
-      contactPhone: contact.contactPhone,
-      firstContactedAt: contact.firstContactedAt.toISOString(),
-      lastContactedAt: contact.lastContactedAt.toISOString(),
-    };
+    return presentContactedHelper(
+      { ...contact, contactMethod: contact.contactMethod as ContactMethod },
+      helper,
+      aggregate
+        ? { average: aggregate.average, count: aggregate.count }
+        : undefined,
+    );
   }));
 });
 

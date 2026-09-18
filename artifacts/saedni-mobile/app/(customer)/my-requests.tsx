@@ -1,7 +1,7 @@
 import React, { useCallback } from "react";
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet, Linking,
-  ActivityIndicator, RefreshControl, Alert,
+  ActivityIndicator, RefreshControl, Alert, Modal, Platform,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -15,6 +15,7 @@ import { requestQueryKeys } from "@/lib/request-query-keys";
 import { dedupeContactedHelpers, type ContactedHelper } from "@/lib/contacted-helpers";
 
 const BASE = process.env.EXPO_PUBLIC_DOMAIN ? `https://${process.env.EXPO_PUBLIC_DOMAIN}` : "";
+const RATING_STARS = [1, 2, 3, 4, 5] as const;
 
 interface HelpRequest {
   id: number;
@@ -184,6 +185,10 @@ export default function CustomerMyRequestsScreen() {
   });
 
   const [isRefreshing, setIsRefreshing] = React.useState(false);
+  const [ratingTarget, setRatingTarget] = React.useState<{
+    id: number;
+    helperId: number;
+  } | null>(null);
   const refetchContactedHelpers = useCallback(() => {
     if (!user?.id) return Promise.resolve();
     return qc.refetchQueries({
@@ -232,17 +237,31 @@ export default function CustomerMyRequestsScreen() {
     onError: (error) => Alert.alert("خطأ", error instanceof Error ? error.message : "تعذر إنهاء الطلب"),
   });
 
+  const submitRating = useCallback((id: number, helperId: number, stars: number) => {
+    endMutation.mutate({
+      id,
+      helpCompleted: true,
+      completedHelperId: helperId,
+      ratingStars: stars,
+    });
+  }, [endMutation]);
+
   const chooseRating = useCallback((id: number, helperId: number) => {
+    if (Platform.OS === "android") {
+      setRatingTarget({ id, helperId });
+      return;
+    }
+
     Alert.alert(
       "قيّم المساعد",
       "اختر تقييماً من نجمة إلى خمس نجوم",
-      [1, 2, 3, 4, 5].map((stars) => ({
+      RATING_STARS.map((stars) => ({
         text: `${"★".repeat(stars)} (${stars})`,
-        onPress: () => endMutation.mutate({ id, helpCompleted: true, completedHelperId: helperId, ratingStars: stars }),
+        onPress: () => submitRating(id, helperId, stars),
       })),
       { cancelable: true },
     );
-  }, [endMutation]);
+  }, [submitRating]);
 
   const chooseHelper = useCallback(async (id: number) => {
     try {
@@ -451,6 +470,47 @@ export default function CustomerMyRequestsScreen() {
           }
         />
       )}
+      {Platform.OS === "android" && (
+        <Modal
+          visible={ratingTarget !== null}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setRatingTarget(null)}
+        >
+          <View style={s.ratingBackdrop}>
+            <View style={s.ratingCard}>
+              <Text style={s.ratingTitle}>قيّم المساعد</Text>
+              <Text style={s.ratingHint}>اختر تقييماً من نجمة إلى خمس نجوم</Text>
+              <View style={s.ratingStarsRow}>
+                {RATING_STARS.map((stars) => (
+                  <TouchableOpacity
+                    key={stars}
+                    style={s.ratingStarButton}
+                    onPress={() => {
+                      if (!ratingTarget) return;
+                      const target = ratingTarget;
+                      setRatingTarget(null);
+                      submitRating(target.id, target.helperId, stars);
+                    }}
+                    accessibilityRole="button"
+                    accessibilityLabel={`تقييم ${stars} من 5`}
+                  >
+                    <Ionicons name="star-outline" size={30} color={colors.primary} />
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <TouchableOpacity
+                style={s.ratingCancelButton}
+                onPress={() => setRatingTarget(null)}
+                accessibilityRole="button"
+                accessibilityLabel="إلغاء التقييم"
+              >
+                <Text style={s.ratingCancelText}>إلغاء</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+      )}
     </View>
   );
 }
@@ -554,6 +614,33 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
       fontSize: 12, color: c.mutedForeground, textAlign: "right",
       backgroundColor: c.muted, borderRadius: 10, padding: 10,
     },
+
+    ratingBackdrop: {
+      flex: 1, backgroundColor: "rgba(0,0,0,0.45)",
+      alignItems: "center", justifyContent: "center", padding: 20,
+    },
+    ratingCard: {
+      width: "90%", maxWidth: 360, borderRadius: 18,
+      backgroundColor: c.card, paddingHorizontal: 20, paddingVertical: 22,
+      alignItems: "center", direction: "rtl",
+    },
+    ratingTitle: { fontSize: 20, fontWeight: "800", color: c.foreground, textAlign: "right" },
+    ratingHint: {
+      marginTop: 7, fontSize: 13, color: c.mutedForeground,
+      textAlign: "right", writingDirection: "rtl",
+    },
+    ratingStarsRow: {
+      width: "100%", marginTop: 22, flexDirection: "row", direction: "ltr",
+      alignItems: "center", justifyContent: "center",
+    },
+    ratingStarButton: {
+      width: 44, height: 48, alignItems: "center", justifyContent: "center",
+    },
+    ratingCancelButton: {
+      minHeight: 44, minWidth: 96, marginTop: 16, borderRadius: 10,
+      alignItems: "center", justifyContent: "center", backgroundColor: c.muted,
+    },
+    ratingCancelText: { fontSize: 14, fontWeight: "700", color: c.mutedForeground },
 
     endBtn: {
       borderWidth: 1.5, borderColor: c.border, borderRadius: 10,

@@ -87,7 +87,7 @@ export default function HelperRequestsScreen() {
   useHelperPushRegistration(!isBlocked);
 
   const [catFilter, setCatFilter] = useState("all");
-  const [areaFilter, setAreaFilter] = useState("all");
+  const [areaFilters, setAreaFilters] = useState<string[]>([]);
   const [contactingId, setContactingId] = useState<number | null>(null);
   const roleKey = activeRole ?? user?.userType ?? "helper";
 
@@ -121,11 +121,16 @@ export default function HelperRequestsScreen() {
   }
 
   const { data: allData, isLoading, refetch, isRefetching } = useQuery({
-    queryKey: requestQueryKeys.helperAvailable(user?.id ?? 0, roleKey, areaFilter, catFilter),
+    queryKey: requestQueryKeys.helperAvailable(
+      user?.id ?? 0,
+      roleKey,
+      areaFilters.join("|"),
+      catFilter,
+    ),
     queryFn: async () => {
       const query = new URLSearchParams({ status: "available" });
       if (catFilter !== "all") query.set("category", catFilter);
-      if (areaFilter !== "all") query.set("area", areaFilter);
+      for (const area of areaFilters) query.append("area", area);
       const r = await fetch(`${BASE}/api/requests?${query.toString()}`, {
         credentials: "include",
         headers: await getAuthHeaders(),
@@ -301,11 +306,31 @@ export default function HelperRequestsScreen() {
           {AREA_FILTERS.map(f => (
             <TouchableOpacity
               key={f.value}
-              style={[s.chip, areaFilter === f.value && s.chipActive]}
-              onPress={() => setAreaFilter(f.value)}
+              style={[
+                s.chip,
+                (f.value === "all" ? areaFilters.length === 0 : areaFilters.includes(f.value))
+                  && s.chipActive,
+              ]}
+              onPress={() => {
+                if (f.value === "all") {
+                  setAreaFilters([]);
+                  return;
+                }
+                setAreaFilters((current) =>
+                  current.includes(f.value)
+                    ? current.filter((area) => area !== f.value)
+                    : [...current, f.value],
+                );
+              }}
               activeOpacity={0.8}
             >
-              <Text style={[s.chipTxt, areaFilter === f.value && s.chipTxtActive]}>
+              <Text
+                style={[
+                  s.chipTxt,
+                  (f.value === "all" ? areaFilters.length === 0 : areaFilters.includes(f.value))
+                    && s.chipTxtActive,
+                ]}
+              >
                 {f.label}
               </Text>
             </TouchableOpacity>
@@ -337,7 +362,7 @@ export default function HelperRequestsScreen() {
               <Ionicons name="search-outline" size={56} color={colors.border} />
               <Text style={s.emptyTitle}>لا توجد طلبات</Text>
               <Text style={s.emptyHint}>
-                {catFilter !== "all" || areaFilter !== "all"
+                {catFilter !== "all" || areaFilters.length > 0
                   ? "لا توجد طلبات تطابق الفلتر المحدد"
                   : "ارجع لاحقاً للاطلاع على الطلبات الجديدة"}
               </Text>

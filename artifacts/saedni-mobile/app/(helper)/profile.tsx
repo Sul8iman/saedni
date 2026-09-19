@@ -11,6 +11,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useColors } from "@/hooks/useColors";
 import { getAuthHeaders, useAuth } from "@/contexts/AuthContext";
 import { CATEGORIES, AREAS } from "@/constants/categories";
+import { formatRatingAccessibility, formatRatingScore } from "@workspace/api-client-react";
 
 const BASE = process.env.EXPO_PUBLIC_DOMAIN ? `https://${process.env.EXPO_PUBLIC_DOMAIN}` : "";
 
@@ -154,8 +155,13 @@ export default function HelperProfileScreen() {
           </View>
           <View style={s.divider} />
           <View style={s.infoRow}>
-            <Text style={s.infoVal}>
-              {profile?.rating != null ? `${profile.rating.toFixed(1)} / 5 (${profile.ratingCount ?? 0})` : "لا توجد تقييمات"}
+            <Text
+              style={[s.infoVal, { writingDirection: "ltr", textAlign: "left" }]}
+              accessibilityLabel={profile?.rating != null ? formatRatingAccessibility(profile.rating) ?? undefined : undefined}
+            >
+              {profile?.rating != null
+                ? `${formatRatingScore(profile.rating)} (${profile.ratingCount ?? 0})`
+                : "لا توجد تقييمات"}
             </Text>
             <Text style={s.infoKey}>التقييم</Text>
           </View>

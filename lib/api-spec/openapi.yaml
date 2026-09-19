@@ -197,8 +197,12 @@ paths:
             type: string
         - name: area
           in: query
+          style: form
+          explode: true
           schema:
-            type: string
+            type: array
+            items:
+              type: string
         - name: status
           in: query
           schema:

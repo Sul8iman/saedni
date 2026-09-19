@@ -40,7 +40,7 @@ import {
   presentRequestLifecycleEvent,
 } from "../lib/request-lifecycle";
 import { decideRequestPermission, type RequestPermissionDecision } from "../lib/request-security";
-import { helperServesArea, isActiveServiceArea, parsePreferredAreas } from "../lib/service-areas";
+import { helperServesArea, isActiveServiceArea, normalizeAreaQuery } from "../lib/service-areas";
 import { presentContactedHelper, type ContactMethod } from "../lib/contacted-helpers";
 
 const router: IRouter = Router();
@@ -237,7 +237,10 @@ async function getLiveRequest(id: number) {
 }
 
 router.get("/requests", async (req, res): Promise<void> => {
-  const parsed = ListRequestsQueryParams.safeParse(req.query);
+  const parsed = ListRequestsQueryParams.safeParse({
+    ...req.query,
+    area: normalizeAreaQuery(req.query.area),
+  });
   const params = parsed.success ? parsed.data : {};
   const conditions = [isNull(requestsTable.deletedAt)];
   const actor = await requireRequestActor(req, res);
@@ -245,6 +248,8 @@ router.get("/requests", async (req, res): Promise<void> => {
 
   const isCustomer = actorHasRole(actor, "customer");
   const isHelper = actorHasRole(actor, "helper");
+  const isCustomerOwnedRequestQuery = isCustomer
+    && (params.customerId !== undefined || !isHelper);
 
   if (isAdminActor(actor)) {
     // Administrators can review all live requests.
@@ -273,7 +278,13 @@ router.get("/requests", async (req, res): Promise<void> => {
   }
 
   if (params.category) conditions.push(eq(requestsTable.category, params.category));
-  if (params.area) conditions.push(eq(requestsTable.area, params.area));
+  if (params.area && !isCustomerOwnedRequestQuery) {
+    conditions.push(
+      params.area.length === 1
+        ? eq(requestsTable.area, params.area[0])
+        : inArray(requestsTable.area, params.area),
+    );
+  }
   if (params.status) conditions.push(eq(requestsTable.status, params.status));
   if (params.customerId) conditions.push(eq(requestsTable.customerId, Number(params.customerId)));
   if (params.helperId) conditions.push(eq(requestsTable.helperId, Number(params.helperId)));
@@ -284,16 +295,7 @@ router.get("/requests", async (req, res): Promise<void> => {
     .where(and(...conditions))
     .orderBy(desc(requestsTable.createdAt), desc(requestsTable.id));
 
-  let actorVisibleRows = rows;
-  if (isHelper && !isAdminActor(actor)) {
-    const [helper] = await db
-      .select({ preferredAreas: usersTable.preferredAreas })
-      .from(usersTable)
-      .where(eq(usersTable.id, actor.id));
-    actorVisibleRows = rows.filter((row) => helperServesArea(helper?.preferredAreas, row.area));
-  }
-
-  res.json(await Promise.all(actorVisibleRows.map((row) =>
+  res.json(await Promise.all(rows.map((row) =>
     enrichRequest(row, {
       includeContact: shouldIncludeRequestContact(actor, row),
     }),
@@ -608,18 +610,6 @@ router.patch("/requests/:id/accept", async (req, res): Promise<void> => {
     res.status(400).json({ error: "هذا الطلب غير متاح للقبول" });
     return;
   }
-  const [helper] = await db
-    .select({
-      name: usersTable.name,
-      preferredAreas: usersTable.preferredAreas,
-    })
-    .from(usersTable)
-    .where(eq(usersTable.id, actor.id));
-  if (!helperServesArea(helper?.preferredAreas, existing.area)) {
-    res.status(403).json({ error: "لا يمكنك قبول طلب خارج مناطق خدمتك" });
-    return;
-  }
-
   const row = await db.transaction(async (tx) => {
     const [accepted] = await tx
       .update(requestsTable)
@@ -686,16 +676,11 @@ router.post("/requests/:id/contact", async (req, res): Promise<void> => {
   const [helper] = await db
     .select({
       name: usersTable.name,
-      preferredAreas: usersTable.preferredAreas,
     })
     .from(usersTable)
     .where(eq(usersTable.id, actor.id));
   if (!helper) {
     res.status(404).json({ error: "المساعد غير موجود" });
-    return;
-  }
-  if (!helperServesArea(helper?.preferredAreas, existing.area)) {
-    res.status(403).json({ error: "لا يمكنك الوصول إلى طلب خارج مناطق خدمتك" });
     return;
   }
   const [customer] = await db

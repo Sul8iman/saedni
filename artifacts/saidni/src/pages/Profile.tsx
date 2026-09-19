@@ -1,6 +1,6 @@
 import { useLocation } from "wouter";
 import { User, Star, MapPin, Phone, Shield, LogOut } from "lucide-react";
-import { useLogout } from "@workspace/api-client-react";
+import { formatRatingAccessibility, formatRatingScore, useLogout } from "@workspace/api-client-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { BottomNav } from "@/components/BottomNav";
@@ -89,8 +89,13 @@ export default function Profile() {
               <Star className="w-4 h-4 text-yellow-500 flex-shrink-0" />
               <div>
                 <p className="text-xs text-muted-foreground">التقييم</p>
-                <p className="font-bold text-sm text-yellow-600" data-testid="profile-rating">
-                  {user.rating.toFixed(1)} / 5.0
+                <p
+                  className="font-bold text-sm text-yellow-600"
+                  data-testid="profile-rating"
+                  aria-label={formatRatingAccessibility(user.rating) ?? undefined}
+                  dir="ltr"
+                >
+                  {formatRatingScore(user.rating)}
                 </p>
               </div>
             </div>

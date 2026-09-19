@@ -8,7 +8,7 @@
 
 export type ListRequestsParams = {
 category?: string;
-area?: string;
+area?: string[];
 status?: string;
 customerId?: number;
 helperId?: number;

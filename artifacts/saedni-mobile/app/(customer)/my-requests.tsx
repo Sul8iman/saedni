@@ -13,16 +13,17 @@ import { getAuthHeaders, useAuth } from "@/contexts/AuthContext";
 import { CATEGORIES, STATUS_INFO } from "@/constants/categories";
 import { requestQueryKeys } from "@/lib/request-query-keys";
 import { dedupeContactedHelpers, type ContactedHelper } from "@/lib/contacted-helpers";
+import { formatRatingAccessibility, formatRatingScore } from "@workspace/api-client-react";
 
 const BASE = process.env.EXPO_PUBLIC_DOMAIN ? `https://${process.env.EXPO_PUBLIC_DOMAIN}` : "";
 const RATING_STARS = [1, 2, 3, 4, 5] as const;
 const RATING_ACCESSIBILITY_LABELS = [
   "",
-  "1 نجمة",
-  "2 نجمتان",
-  "3 نجوم",
-  "4 نجوم",
-  "5 نجوم",
+  "التقييم 1 من 5",
+  "التقييم 2 من 5",
+  "التقييم 3 من 5",
+  "التقييم 4 من 5",
+  "التقييم 5 من 5",
 ] as const;
 
 interface HelpRequest {
@@ -79,7 +80,11 @@ function ContactedHelpersSection({
   const ratingLabel = (helper: ContactedHelper) =>
     helper.ratingCount === 0
       ? "جديد"
-      : `★ ${helper.rating?.toFixed(1) ?? "—"} · ${helper.ratingCount} تقييم`;
+      : `★ ${formatRatingScore(helper.rating) ?? "—/5"} · ${helper.ratingCount} تقييم`;
+  const ratingAccessibilityLabel = (helper: ContactedHelper) =>
+    helper.ratingCount === 0
+      ? "مساعد جديد"
+      : `${formatRatingAccessibility(helper.rating) ?? "لا يوجد تقييم"}، ${helper.ratingCount} تقييم`;
 
   return (
     <View style={s.contactedSection}>
@@ -109,7 +114,12 @@ function ContactedHelpersSection({
                 <Text style={s.contactedMethod}>
                   {helper.contactMethod === "whatsapp" ? "واتساب" : "اتصال"}
                 </Text>
-                <Text style={s.contactedRating}>{ratingLabel(helper)}</Text>
+                <Text
+                  style={[s.contactedRating, s.ratingScore]}
+                  accessibilityLabel={ratingAccessibilityLabel(helper)}
+                >
+                  {ratingLabel(helper)}
+                </Text>
               </View>
             </View>
             <View style={s.contactedActions}>
@@ -313,7 +323,7 @@ export default function CustomerMyRequestsScreen() {
       const ratingLabel = (helper: ContactedHelper) =>
         helper.ratingCount === 0
           ? "جديد"
-          : `★ ${helper.rating?.toFixed(1) ?? "—"} · ${helper.ratingCount} تقييم`;
+          : `★ ${formatRatingScore(helper.rating) ?? "—/5"} · ${helper.ratingCount} تقييم`;
       Alert.alert(
         "من المساعد الذي أنجز الطلب؟",
         "",
@@ -520,14 +530,14 @@ export default function CustomerMyRequestsScreen() {
                       size={26}
                       color={selectedRating !== null && stars <= selectedRating ? colors.primary : colors.border}
                     />
-                    <Text style={s.ratingNumber}>{stars}</Text>
+                    <Text style={[s.ratingNumber, s.ratingScore]}>{formatRatingScore(stars)}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
               <Text style={s.ratingSelection}>
                 {selectedRating === null
                   ? "لم يتم اختيار تقييم"
-                  : `التقييم المختار: ${selectedRating} من 5`}
+                  : `التقييم المختار: ${formatRatingScore(selectedRating)}`}
               </Text>
               <TouchableOpacity
                 style={[
@@ -645,6 +655,7 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
     contactedMeta: { alignItems: "flex-start", gap: 3 },
     contactedMethod: { fontSize: 11, color: c.primary, fontWeight: "700" },
     contactedRating: { fontSize: 11, color: c.mutedForeground, fontWeight: "600" },
+    ratingScore: { writingDirection: "ltr", textAlign: "left" },
     contactedActions: { flexDirection: "row-reverse", gap: 8 },
     contactedAction: {
       flex: 1, minHeight: 36, borderRadius: 8,

@@ -206,7 +206,7 @@ export const ListUserAreaCountsResponse = zod.object({
  */
 export const ListRequestsQueryParams = zod.object({
   "category": zod.coerce.string().optional(),
-  "area": zod.coerce.string().optional(),
+  "area": zod.array(zod.coerce.string()).optional(),
   "status": zod.coerce.string().optional(),
   "customerId": zod.coerce.number().optional(),
   "helperId": zod.coerce.number().optional()

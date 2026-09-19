@@ -85,6 +85,32 @@ test("soft-deleted requests are hidden from default listings", () => {
   assert.equal(isVisibleInDefaultRequestList({ deletedAt: new Date() }), false);
 });
 
+test("request visibility uses customer ownership and keeps helper areas out of default access", async () => {
+  const source = await readFile(new URL("../routes/requests.ts", import.meta.url), "utf8");
+  const listStart = source.indexOf('router.get("/requests"');
+  const listEnd = source.indexOf('router.post("/requests"', listStart);
+  const listRoute = source.slice(listStart, listEnd);
+  assert.match(listRoute, /conditions\.push\(eq\(requestsTable\.customerId, actor\.id\)\)/);
+  assert.match(listRoute, /isCustomerOwnedRequestQuery/);
+  assert.match(listRoute, /inArray\(requestsTable\.area, params\.area\)/);
+  assert.doesNotMatch(listRoute, /actorVisibleRows\s*=\s*rows\.filter/);
+  assert.doesNotMatch(listRoute, /helperServesArea\(helper\?\.preferredAreas, row\.area\)/);
+});
+
+test("helper accept and contact authorization do not depend on profile areas", async () => {
+  const source = await readFile(new URL("../routes/requests.ts", import.meta.url), "utf8");
+  const acceptStart = source.indexOf('router.patch("/requests/:id/accept"');
+  const contactStart = source.indexOf('router.post("/requests/:id/contact"');
+  const contactEnd = source.indexOf('router.get("/requests/:id/contacted-helpers"', contactStart);
+  assert.ok(acceptStart >= 0 && contactStart > acceptStart && contactEnd > contactStart);
+  const acceptRoute = source.slice(acceptStart, contactStart);
+  const contactRoute = source.slice(contactStart, contactEnd);
+  assert.doesNotMatch(acceptRoute, /helperServesArea/);
+  assert.doesNotMatch(contactRoute, /helperServesArea/);
+  assert.match(contactRoute, /actorHasRole\(actor, "helper"\)/);
+  assert.match(contactRoute, /onConflictDoUpdate/);
+});
+
 test("account deletion removes only the user and never mutates request rows", async () => {
   const [requestSource, adminSource] = await Promise.all([
     readFile(new URL("../routes/requests.ts", import.meta.url), "utf8"),

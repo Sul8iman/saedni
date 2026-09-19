@@ -2,7 +2,11 @@ import React, { useMemo, useState } from "react";
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { useGetAdminStatistics } from "@workspace/api-client-react";
+import {
+  formatRatingAccessibility,
+  formatRatingScore,
+  useGetAdminStatistics,
+} from "@workspace/api-client-react";
 import { useColors } from "@/hooks/useColors";
 import { CATEGORIES, AREAS } from "@/constants/categories";
 import AdminAreaFilter from "@/components/AdminAreaFilter";
@@ -102,11 +106,15 @@ function MetricCard({
   value,
   icon,
   tone,
+  valueAccessibilityLabel,
+  valueDirection,
 }: {
   label: string;
   value: string | number;
   icon: keyof typeof Ionicons.glyphMap;
   tone?: "success" | "danger" | "primary" | "neutral";
+  valueAccessibilityLabel?: string;
+  valueDirection?: "ltr";
 }) {
   const colors = useColors();
   const toneColor = tone === "success"
@@ -121,7 +129,16 @@ function MetricCard({
       <View style={[styles.metricIcon, { backgroundColor: `${toneColor}18` }]}>
         <Ionicons name={icon} size={18} color={toneColor} />
       </View>
-      <Text style={[styles.metricValue, { color: toneColor }]}>{value}</Text>
+      <Text
+        style={[
+          styles.metricValue,
+          { color: toneColor },
+          valueDirection === "ltr" && styles.ltrValue,
+        ]}
+        accessibilityLabel={valueAccessibilityLabel}
+      >
+        {value}
+      </Text>
       <Text style={[styles.metricLabel, { color: colors.mutedForeground }]}>{label}</Text>
     </View>
   );
@@ -256,7 +273,14 @@ export default function AdminStatisticsScreen() {
               <MetricCard label="المستخدمون النشطون" value={stats.users.active} icon="checkmark-circle-outline" tone="success" />
               <MetricCard label="المستخدمون المحظورون" value={stats.users.blocked} icon="ban-outline" tone="danger" />
               <MetricCard label="مستخدمون جدد" value={stats.users.newInPeriod} icon="person-add-outline" tone="primary" />
-              <MetricCard label="متوسط تقييم المساعدين" value={number(stats.ratings.averageStars).toFixed(1)} icon="star-outline" tone="success" />
+              <MetricCard
+                label="متوسط تقييم المساعدين"
+                value={formatRatingScore(stats.ratings.averageStars) ?? "—/5"}
+                valueAccessibilityLabel={formatRatingAccessibility(stats.ratings.averageStars) ?? "لا يوجد تقييم"}
+                valueDirection="ltr"
+                icon="star-outline"
+                tone="success"
+              />
               <MetricCard label="إجمالي التقييمات" value={stats.ratings.totalRatings} icon="ribbon-outline" />
             </View>
 
@@ -389,6 +413,7 @@ const styles = StyleSheet.create({
   metricCard: { width: "31.5%", minHeight: 108, borderWidth: 1, borderRadius: 14, padding: 11, alignItems: "flex-end", justifyContent: "space-between" },
   metricIcon: { width: 31, height: 31, borderRadius: 9, alignItems: "center", justifyContent: "center" },
   metricValue: { fontSize: 18, fontWeight: "800", textAlign: "right" },
+  ltrValue: { writingDirection: "ltr", textAlign: "center" },
   metricLabel: { fontSize: 10, fontWeight: "600", textAlign: "right" },
   highlightRow: { flexDirection: "row-reverse", borderWidth: 1, borderRadius: 14, padding: 14, marginTop: 4 },
   highlightItem: { flex: 1, alignItems: "center", gap: 5 },

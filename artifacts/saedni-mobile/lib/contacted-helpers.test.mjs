@@ -45,16 +45,25 @@ test("Android uses the five-star modal while iOS keeps the five-button alert flo
 
   assert.match(source, /Platform\.OS === "android"/);
   assert.match(source, /const RATING_STARS = \[1, 2, 3, 4, 5\] as const/);
+  assert.match(source, /const RATING_ACCESSIBILITY_LABELS = \[\s*""\s*,\s*"1 نجمة"\s*,\s*"2 نجمتان"\s*,\s*"3 نجوم"\s*,\s*"4 نجوم"\s*,\s*"5 نجوم"/s);
   assert.match(source, /if \(Platform\.OS === "android"\) \{\s*setRatingTarget\(\{ id, helperId \}\)/s);
   assert.match(source, /Alert\.alert\(\s*"قيّم المساعد"/);
   assert.match(source, /RATING_STARS\.map\(\(stars\) => \(\{\s*text: `\$\{"★"\.repeat\(stars\)\}/s);
   assert.match(source, /submitRating\(id, helperId, stars\)/);
   assert.match(source, /\{Platform\.OS === "android" && \(\s*<Modal/s);
-  assert.match(source, /accessibilityLabel=\{`تقييم \$\{stars\} من 5`\}/);
+  assert.match(source, /accessibilityLabel=\{RATING_ACCESSIBILITY_LABELS\[stars\]\}/);
+  assert.match(source, /onPress=\{\(\) => setSelectedRating\(stars\)\}/);
+  assert.match(source, /name=\{selectedRating !== null && stars <= selectedRating \? "star" : "star-outline"\}/);
+  assert.match(source, /التقييم المختار: \$\{selectedRating\} من 5/);
+  assert.match(source, /إرسال التقييم/);
+  assert.match(source, /disabled=\{selectedRating === null \|\| endMutation\.isPending\}/);
   assert.match(source, /ratingStars: stars/);
   assert.match(source, /ratingStarButton:\s*\{[^}]*width:\s*44[^}]*height:\s*48/s);
-  assert.match(source, /ratingStarsRow:\s*\{[^}]*flexDirection:\s*"row"[^}]*direction:\s*"ltr"/s);
-  assert.match(source, /ratingCard:\s*\{[^}]*width:\s*"90%"[^}]*maxWidth:\s*360/s);
+  assert.match(source, /ratingStarsRow:\s*\{[^}]*flexDirection:\s*"row"[^}]*direction:\s*"rtl"/s);
+  assert.match(source, /ratingCard:\s*\{[^}]*width:\s*"100%"[^}]*maxWidth:\s*360/s);
+  assert.match(source, /closeRatingModal\(\);\s*submitRating\(target\.id, target\.helperId, stars\)/s);
+  assert.match(source, /if \(!ratingTarget \|\| selectedRating === null \|\| endMutation\.isPending\) return/);
+  assert.doesNotMatch(source, /onPress=\{\(\) => \{\s*if \(!ratingTarget\) return;\s*const target = ratingTarget;\s*setRatingTarget\(null\);\s*submitRating\(target\.id, target\.helperId, stars\);/s);
 
   const submittedValues = [1, 2, 3, 4, 5].map((stars) => ({ ratingStars: stars }));
   assert.deepEqual(submittedValues.map(({ ratingStars }) => ratingStars), [1, 2, 3, 4, 5]);

@@ -16,6 +16,14 @@ import { dedupeContactedHelpers, type ContactedHelper } from "@/lib/contacted-he
 
 const BASE = process.env.EXPO_PUBLIC_DOMAIN ? `https://${process.env.EXPO_PUBLIC_DOMAIN}` : "";
 const RATING_STARS = [1, 2, 3, 4, 5] as const;
+const RATING_ACCESSIBILITY_LABELS = [
+  "",
+  "1 نجمة",
+  "2 نجمتان",
+  "3 نجوم",
+  "4 نجوم",
+  "5 نجوم",
+] as const;
 
 interface HelpRequest {
   id: number;
@@ -189,6 +197,7 @@ export default function CustomerMyRequestsScreen() {
     id: number;
     helperId: number;
   } | null>(null);
+  const [selectedRating, setSelectedRating] = React.useState<number | null>(null);
   const refetchContactedHelpers = useCallback(() => {
     if (!user?.id) return Promise.resolve();
     return qc.refetchQueries({
@@ -246,9 +255,15 @@ export default function CustomerMyRequestsScreen() {
     });
   }, [endMutation]);
 
+  const closeRatingModal = useCallback(() => {
+    setRatingTarget(null);
+    setSelectedRating(null);
+  }, []);
+
   const chooseRating = useCallback((id: number, helperId: number) => {
     if (Platform.OS === "android") {
       setRatingTarget({ id, helperId });
+      setSelectedRating(null);
       return;
     }
 
@@ -262,6 +277,14 @@ export default function CustomerMyRequestsScreen() {
       { cancelable: true },
     );
   }, [submitRating]);
+
+  const submitSelectedRating = useCallback(() => {
+    if (!ratingTarget || selectedRating === null || endMutation.isPending) return;
+    const target = ratingTarget;
+    const stars = selectedRating;
+    closeRatingModal();
+    submitRating(target.id, target.helperId, stars);
+  }, [closeRatingModal, endMutation.isPending, ratingTarget, selectedRating, submitRating]);
 
   const chooseHelper = useCallback(async (id: number) => {
     try {
@@ -475,33 +498,53 @@ export default function CustomerMyRequestsScreen() {
           visible={ratingTarget !== null}
           transparent
           animationType="fade"
-          onRequestClose={() => setRatingTarget(null)}
+          onRequestClose={closeRatingModal}
         >
           <View style={s.ratingBackdrop}>
             <View style={s.ratingCard}>
               <Text style={s.ratingTitle}>قيّم المساعد</Text>
               <Text style={s.ratingHint}>اختر تقييماً من نجمة إلى خمس نجوم</Text>
+              <Text style={s.ratingClarification}>1 = أقل تقييم، 5 = أعلى تقييم</Text>
               <View style={s.ratingStarsRow}>
                 {RATING_STARS.map((stars) => (
                   <TouchableOpacity
                     key={stars}
                     style={s.ratingStarButton}
-                    onPress={() => {
-                      if (!ratingTarget) return;
-                      const target = ratingTarget;
-                      setRatingTarget(null);
-                      submitRating(target.id, target.helperId, stars);
-                    }}
+                    onPress={() => setSelectedRating(stars)}
                     accessibilityRole="button"
-                    accessibilityLabel={`تقييم ${stars} من 5`}
+                    accessibilityLabel={RATING_ACCESSIBILITY_LABELS[stars]}
+                    disabled={endMutation.isPending}
                   >
-                    <Ionicons name="star-outline" size={30} color={colors.primary} />
+                    <Ionicons
+                      name={selectedRating !== null && stars <= selectedRating ? "star" : "star-outline"}
+                      size={26}
+                      color={selectedRating !== null && stars <= selectedRating ? colors.primary : colors.border}
+                    />
+                    <Text style={s.ratingNumber}>{stars}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
+              <Text style={s.ratingSelection}>
+                {selectedRating === null
+                  ? "لم يتم اختيار تقييم"
+                  : `التقييم المختار: ${selectedRating} من 5`}
+              </Text>
+              <TouchableOpacity
+                style={[
+                  s.ratingSubmitButton,
+                  (selectedRating === null || endMutation.isPending) && s.ratingSubmitDisabled,
+                ]}
+                onPress={submitSelectedRating}
+                disabled={selectedRating === null || endMutation.isPending}
+                accessibilityRole="button"
+                accessibilityLabel="إرسال التقييم"
+              >
+                <Text style={s.ratingSubmitText}>إرسال التقييم</Text>
+              </TouchableOpacity>
               <TouchableOpacity
                 style={s.ratingCancelButton}
-                onPress={() => setRatingTarget(null)}
+                onPress={closeRatingModal}
+                disabled={endMutation.isPending}
                 accessibilityRole="button"
                 accessibilityLabel="إلغاء التقييم"
               >
@@ -617,11 +660,11 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
 
     ratingBackdrop: {
       flex: 1, backgroundColor: "rgba(0,0,0,0.45)",
-      alignItems: "center", justifyContent: "center", padding: 20,
+      alignItems: "center", justifyContent: "center", paddingHorizontal: 16, paddingVertical: 20,
     },
     ratingCard: {
-      width: "90%", maxWidth: 360, borderRadius: 18,
-      backgroundColor: c.card, paddingHorizontal: 20, paddingVertical: 22,
+      width: "100%", maxWidth: 360, borderRadius: 18,
+      backgroundColor: c.card, paddingHorizontal: 12, paddingVertical: 22,
       alignItems: "center", direction: "rtl",
     },
     ratingTitle: { fontSize: 20, fontWeight: "800", color: c.foreground, textAlign: "right" },
@@ -629,15 +672,30 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
       marginTop: 7, fontSize: 13, color: c.mutedForeground,
       textAlign: "right", writingDirection: "rtl",
     },
+    ratingClarification: {
+      marginTop: 5, fontSize: 12, color: c.mutedForeground,
+      textAlign: "right", writingDirection: "rtl",
+    },
     ratingStarsRow: {
-      width: "100%", marginTop: 22, flexDirection: "row", direction: "ltr",
+      width: "100%", marginTop: 16, flexDirection: "row", direction: "rtl",
       alignItems: "center", justifyContent: "center",
     },
     ratingStarButton: {
-      width: 44, height: 48, alignItems: "center", justifyContent: "center",
+      width: 44, height: 48, alignItems: "center", justifyContent: "center", gap: 1,
     },
+    ratingNumber: { fontSize: 12, lineHeight: 14, color: c.mutedForeground, fontWeight: "700" },
+    ratingSelection: {
+      minHeight: 20, marginTop: 8, fontSize: 14, color: c.foreground,
+      fontWeight: "700", textAlign: "center", writingDirection: "rtl",
+    },
+    ratingSubmitButton: {
+      width: "100%", minHeight: 44, marginTop: 14, borderRadius: 10,
+      alignItems: "center", justifyContent: "center", backgroundColor: c.primary,
+    },
+    ratingSubmitDisabled: { opacity: 0.45 },
+    ratingSubmitText: { fontSize: 14, fontWeight: "800", color: c.primaryForeground },
     ratingCancelButton: {
-      minHeight: 44, minWidth: 96, marginTop: 16, borderRadius: 10,
+      minHeight: 44, minWidth: 96, marginTop: 10, borderRadius: 10,
       alignItems: "center", justifyContent: "center", backgroundColor: c.muted,
     },
     ratingCancelText: { fontSize: 14, fontWeight: "700", color: c.mutedForeground },

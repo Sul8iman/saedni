@@ -33,10 +33,25 @@ test("route requests accept two active Muscat areas and permit the same area", (
   );
 });
 
+test("legacy route requests with an active single area are accepted temporarily", () => {
+  assert.deepEqual(
+    normalizeNewRequestLocation({ category: "delivery", area: "بوشر" }),
+    { success: true, data: { area: "بوشر", fromArea: null, toArea: null } },
+  );
+  assert.deepEqual(
+    normalizeNewRequestLocation({ category: "delivery", area: "صور" }),
+    { success: false, field: "area" },
+  );
+});
+
 test("single-location requests require an active area and discard route fields", () => {
   assert.deepEqual(
     normalizeNewRequestLocation({ category: "home_services" }),
     { success: false, field: "area" },
+  );
+  assert.deepEqual(
+    normalizeNewRequestLocation({ category: "home_services", area: "بوشر" }),
+    { success: true, data: { area: "بوشر", fromArea: null, toArea: null } },
   );
   assert.deepEqual(
     normalizeNewRequestLocation({
@@ -89,5 +104,19 @@ test("helper area matching uses route origin, single area, and historical area f
   assert.equal(
     requestMatchesAreaFilter({ category: "transport", area: "الخوض", fromArea: null }, configuredAreas),
     true,
+  );
+  assert.equal(
+    requestMatchesAreaFilter(
+      { category: "delivery", area: "الخوض", fromArea: null, toArea: "بوشر" },
+      configuredAreas,
+    ),
+    true,
+  );
+  assert.equal(
+    requestMatchesAreaFilter(
+      { category: "delivery", area: "الخوض", fromArea: null, toArea: "بوشر" },
+      ["بوشر"],
+    ),
+    false,
   );
 });

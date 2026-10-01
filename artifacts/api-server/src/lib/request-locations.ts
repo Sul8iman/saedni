@@ -35,6 +35,16 @@ export function normalizeNewRequestLocation(input: RequestLocationInput): Reques
   }
 
   if (isRouteBasedCategory(input.category)) {
+    const hasRouteFields = input.fromArea !== undefined || input.toArea !== undefined;
+    if (!hasRouteFields) {
+      // Temporary compatibility for already-published clients that send one area.
+      if (!isActiveServiceArea(input.area)) return { success: false, field: "area" };
+      return {
+        success: true,
+        data: { area: input.area, fromArea: null, toArea: null },
+      };
+    }
+
     if (!isActiveServiceArea(input.fromArea)) return { success: false, field: "fromArea" };
     if (!isActiveServiceArea(input.toArea)) return { success: false, field: "toArea" };
     return {

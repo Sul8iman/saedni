@@ -12,10 +12,10 @@ export type RequestLocationValues = {
 };
 
 export function getRequestLocationLines(request: RequestLocationValues): Array<{ label: string; value: string }> {
-  if (isRouteCategory(request.category) && (request.fromArea || request.toArea)) {
+  if (isRouteCategory(request.category) && request.fromArea && request.toArea) {
     return [
-      { label: "من", value: request.fromArea ?? request.area ?? "غير محدد" },
-      { label: "إلى", value: request.toArea ?? request.area ?? "غير محدد" },
+      { label: "من", value: request.fromArea },
+      { label: "إلى", value: request.toArea },
     ];
   }
   return [{ label: "الموقع", value: request.area ?? "غير محدد" }];

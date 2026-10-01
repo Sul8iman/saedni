@@ -155,6 +155,10 @@ export interface HelpRequest {
   category: HelpRequestCategory;
   details: string;
   area: string;
+  /** @nullable */
+  fromArea: string | null;
+  /** @nullable */
+  toArea: string | null;
   timeType: HelpRequestTimeType;
   /** @nullable */
   scheduledDateTime?: string | null;
@@ -207,16 +211,37 @@ export interface HelpRequestInput {
   customerId: number;
   category: HelpRequestInputCategory;
   details: string;
-  area: string;
+  /** Required for single-location categories; route categories use fromArea and toArea. */
+  area?: string;
+  /** Required for route-based categories. */
+  fromArea?: string;
+  /** Required for route-based categories. */
+  toArea?: string;
   timeType: HelpRequestInputTimeType;
   scheduledDateTime?: string;
   offeredAmount: number;
 }
 
+export type HelpRequestUpdateCategory = typeof HelpRequestUpdateCategory[keyof typeof HelpRequestUpdateCategory];
+
+
+export const HelpRequestUpdateCategory = {
+  transport: 'transport',
+  delivery: 'delivery',
+  government: 'government',
+  shopping: 'shopping',
+  home_services: 'home_services',
+  labor: 'labor',
+} as const;
+
 export interface HelpRequestUpdate {
-  category?: string;
+  category?: HelpRequestUpdateCategory;
   details?: string;
   area?: string;
+  /** @nullable */
+  fromArea?: string | null;
+  /** @nullable */
+  toArea?: string | null;
   timeType?: string;
   scheduledDateTime?: string;
   offeredAmount?: number;

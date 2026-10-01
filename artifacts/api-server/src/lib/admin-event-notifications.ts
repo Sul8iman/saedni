@@ -1,3 +1,5 @@
+import { isRouteBasedCategory } from "./request-locations.ts";
+
 export const ADMIN_EVENT_TYPES = {
   newCustomer: "new_customer",
   newHelper: "new_helper",
@@ -68,17 +70,24 @@ export function buildNewRequestAdminEvent(input: {
   requestId: number;
   category: string;
   area: string;
+  fromArea?: string | null;
+  toArea?: string | null;
   customerId: number;
   customerName: string;
   customerPhone: string;
 }): AdminEventNotification {
   const categoryLabel = getCategoryLabel(input.category);
+  const isRouteRequest = isRouteBasedCategory(input.category)
+    && Boolean(input.fromArea)
+    && Boolean(input.toArea);
 
   return {
     eventKey: `${ADMIN_EVENT_TYPES.newRequest}:${input.requestId}`,
     type: ADMIN_EVENT_TYPES.newRequest,
     title: "طلب جديد",
-    body: `طلب جديد: ${categoryLabel} - ${input.area}`,
+    body: isRouteRequest
+      ? `طلب جديد: ${categoryLabel} من ${input.fromArea} إلى ${input.toArea}`
+      : `طلب جديد: ${categoryLabel} - ${input.area}`,
     userId: input.customerId,
     userName: input.customerName || null,
     phone: input.customerPhone,
@@ -88,6 +97,8 @@ export function buildNewRequestAdminEvent(input: {
       requestId: input.requestId,
       category: input.category,
       area: input.area,
+      ...(input.fromArea ? { fromArea: input.fromArea } : {}),
+      ...(input.toArea ? { toArea: input.toArea } : {}),
     },
   };
 }

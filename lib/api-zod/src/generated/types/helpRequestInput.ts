@@ -12,7 +12,12 @@ export interface HelpRequestInput {
   customerId: number;
   category: HelpRequestInputCategory;
   details: string;
-  area: string;
+  /** Required for single-location categories; route categories use fromArea and toArea. */
+  area?: string;
+  /** Required for route-based categories. */
+  fromArea?: string;
+  /** Required for route-based categories. */
+  toArea?: string;
   timeType: HelpRequestInputTimeType;
   scheduledDateTime?: string;
   offeredAmount: number;

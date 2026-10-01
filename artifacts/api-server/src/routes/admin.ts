@@ -14,6 +14,7 @@ import { VerifyHelperParams, VerifyHelperBody, DeleteUserParams } from "@workspa
 import { sendAdminOtpPush } from "../lib/push";
 import { logger } from "../lib/logger";
 import { enrichRequest } from "./requests";
+import { buildRequestAreaCondition } from "../lib/request-area-query";
 
 const router: IRouter = Router();
 
@@ -53,7 +54,7 @@ function adminFilters(req: import("express").Request): { filters?: AdminFilters;
 }
 function filterConditions(f: AdminFilters, customer?: typeof usersTable) {
   const conditions: any[] = [];
-  if (f.areas.length) conditions.push(or(...f.areas.map((area) => eq(requestsTable.area, area))));
+  if (f.areas.length) conditions.push(buildRequestAreaCondition(f.areas));
   if (f.category) conditions.push(eq(requestsTable.category, f.category));
   if (f.from) conditions.push(gte(requestsTable.createdAt, f.from));
   if (f.to) conditions.push(lte(requestsTable.createdAt, f.to));

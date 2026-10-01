@@ -8,7 +8,7 @@ import {
 } from "@workspace/api-client-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { CATEGORY_MAP } from "@/lib/categories";
+import { CATEGORY_MAP, getRequestLocationLines } from "@/lib/categories";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { BottomNav } from "@/components/BottomNav";
 import { Button } from "@/components/ui/button";
@@ -94,10 +94,12 @@ export default function HelperMyRequests() {
 
           {/* Request meta */}
           <div className="flex flex-wrap gap-3 text-xs text-muted-foreground mb-3">
-            <span className="flex items-center gap-1">
-              <MapPin className="w-3 h-3" />
-              {req.area}
-            </span>
+            {getRequestLocationLines(req).map((location) => (
+              <span key={location.label} className="flex items-center gap-1">
+                <MapPin className="w-3 h-3" />
+                {location.label}: {location.value}
+              </span>
+            ))}
             <span className="flex items-center gap-1">
               <Clock className="w-3 h-3" />
               {req.timeType === "now" ? "الآن" : req.scheduledDateTime ?? "مجدول"}

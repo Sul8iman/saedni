@@ -30,6 +30,7 @@ import { getAuthHeaders, useAuth } from "@/contexts/AuthContext";
 import { useAdminPushRegistration } from "@/hooks/usePushNotifications";
 import { CATEGORIES, STATUS_INFO, AREAS } from "@/constants/categories";
 import AdminAreaFilter from "@/components/AdminAreaFilter";
+import { getRequestLocationLines } from "@/lib/request-locations";
 
 const BASE = `https://${process.env.EXPO_PUBLIC_DOMAIN ?? "saedni.onrender.com"}`;
 const PAGE_SIZE = 20;
@@ -39,6 +40,8 @@ interface RequestItem {
   category: string;
   details: string;
   area: string;
+  fromArea?: string | null;
+  toArea?: string | null;
   timeType: string;
   scheduledDateTime?: string | null;
   offeredAmount: number;
@@ -292,10 +295,12 @@ export default function AdminDashboard() {
         </View>
         <View style={styles.amountRow}>
           <Text style={[styles.amount, { color: colors.primary }]}>{Number(item.offeredAmount).toFixed(3)} ر.ع.</Text>
-          <View style={styles.metaItem}>
-            <Ionicons name="location-outline" size={14} color={colors.mutedForeground} />
-            <Text style={[styles.meta, { color: colors.foreground }]}>{item.area}</Text>
-          </View>
+            {getRequestLocationLines(item).map((location) => (
+              <View style={styles.metaItem} key={location.label}>
+                <Ionicons name="location-outline" size={14} color={colors.mutedForeground} />
+                <Text style={[styles.meta, { color: colors.foreground }]}>{location.label}: {location.value}</Text>
+              </View>
+            ))}
         </View>
         <View style={styles.metaRow}>
           <Text style={[styles.meta, { color: colors.mutedForeground }]}>{item.customerName ?? "عميل غير معروف"}</Text>
@@ -344,7 +349,9 @@ export default function AdminDashboard() {
           </View>
         </View>
         <View style={styles.archiveMeta}>
-          <Text style={[styles.archiveMetaText, { color: colors.foreground }]}>{item.area}</Text>
+          {getRequestLocationLines(item).map((location) => (
+            <Text key={location.label} style={[styles.archiveMetaText, { color: colors.foreground }]}>{location.label}: {location.value}</Text>
+          ))}
           <Text style={[styles.archiveMetaText, { color: colors.mutedForeground }]}>{item.customerName ?? "عميل غير معروف"}</Text>
           <Text style={[styles.archiveMetaText, { color: colors.primary }]}>{Number(item.offeredAmount).toFixed(3)} ر.ع.</Text>
         </View>
@@ -374,7 +381,9 @@ export default function AdminDashboard() {
         </View>
       </View>
       <View style={styles.archiveMeta}>
-        <Text style={[styles.archiveMetaText, { color: colors.foreground }]}>{item.area}</Text>
+        {getRequestLocationLines(item).map((location) => (
+          <Text key={location.label} style={[styles.archiveMetaText, { color: colors.foreground }]}>{location.label}: {location.value}</Text>
+        ))}
         <Text style={[styles.archiveMetaText, { color: colors.mutedForeground }]}>حُذف في {fmtDate(item.deletedAt)}</Text>
       </View>
       <View style={styles.actionRow}>

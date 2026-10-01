@@ -27,6 +27,7 @@ export * from './helpRequestInputTimeType';
 export * from './helpRequestStatus';
 export * from './helpRequestTimeType';
 export * from './helpRequestUpdate';
+export * from './helpRequestUpdateCategory';
 export * from './listAdminActiveRequestsParams';
 export * from './listAdminArchiveRequestsParams';
 export * from './listAdminArchiveRequestsResult';

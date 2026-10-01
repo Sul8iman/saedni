@@ -85,16 +85,25 @@ test("soft-deleted requests are hidden from default listings", () => {
   assert.equal(isVisibleInDefaultRequestList({ deletedAt: new Date() }), false);
 });
 
-test("request visibility uses customer ownership and keeps helper areas out of default access", async () => {
-  const source = await readFile(new URL("../routes/requests.ts", import.meta.url), "utf8");
+test("request visibility applies helper-area matching on the server and keeps customer ownership", async () => {
+  const [source, areaQuerySource, adminSource] = await Promise.all([
+    readFile(new URL("../routes/requests.ts", import.meta.url), "utf8"),
+    readFile(new URL("./request-area-query.ts", import.meta.url), "utf8"),
+    readFile(new URL("../routes/admin.ts", import.meta.url), "utf8"),
+  ]);
   const listStart = source.indexOf('router.get("/requests"');
   const listEnd = source.indexOf('router.post("/requests"', listStart);
   const listRoute = source.slice(listStart, listEnd);
   assert.match(listRoute, /conditions\.push\(eq\(requestsTable\.customerId, actor\.id\)\)/);
   assert.match(listRoute, /isCustomerOwnedRequestQuery/);
-  assert.match(listRoute, /inArray\(requestsTable\.area, params\.area\)/);
+  assert.match(listRoute, /buildRequestAreaCondition\(preferredAreas\)/);
+  assert.match(listRoute, /buildRequestAreaCondition\(params\.area\)/);
   assert.doesNotMatch(listRoute, /actorVisibleRows\s*=\s*rows\.filter/);
   assert.doesNotMatch(listRoute, /helperServesArea\(helper\?\.preferredAreas, row\.area\)/);
+  assert.match(areaQuerySource, /requestsTable\.fromArea/);
+  assert.match(areaQuerySource, /isNull\(requestsTable\.fromArea\)/);
+  assert.match(areaQuerySource, /requestsTable\.area/);
+  assert.match(adminSource, /buildRequestAreaCondition\(f\.areas\)/);
 });
 
 test("helper accept and contact authorization do not depend on profile areas", async () => {

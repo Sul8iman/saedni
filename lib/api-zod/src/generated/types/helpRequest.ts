@@ -17,6 +17,10 @@ export interface HelpRequest {
   category: HelpRequestCategory;
   details: string;
   area: string;
+  /** @nullable */
+  fromArea: string | null;
+  /** @nullable */
+  toArea: string | null;
   timeType: HelpRequestTimeType;
   /** @nullable */
   scheduledDateTime?: string | null;

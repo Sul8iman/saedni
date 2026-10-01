@@ -1,7 +1,7 @@
 import { Phone, MessageCircle, MapPin, Clock, Banknote, User, ShieldOff } from "lucide-react";
 import { useListRequests, getListRequestsQueryKey } from "@workspace/api-client-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { CATEGORIES, CATEGORY_MAP, AREAS } from "@/lib/categories";
+import { CATEGORIES, CATEGORY_MAP, AREAS, getRequestLocationLines } from "@/lib/categories";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { BottomNav } from "@/components/BottomNav";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -118,10 +118,12 @@ export default function HelperRequests() {
                     <p className="text-sm text-foreground mb-3 leading-relaxed">{req.details}</p>
 
                     <div className="flex flex-wrap gap-3 text-xs text-muted-foreground mb-3">
-                      <span className="flex items-center gap-1">
-                        <MapPin className="w-3 h-3" />
-                        {req.area}
-                      </span>
+                      {getRequestLocationLines(req).map((location) => (
+                        <span key={location.label} className="flex items-center gap-1">
+                          <MapPin className="w-3 h-3" />
+                          {location.label}: {location.value}
+                        </span>
+                      ))}
                       <span className="flex items-center gap-1">
                         <Clock className="w-3 h-3" />
                         {req.timeType === "now" ? "الآن" : req.scheduledDateTime ?? "مجدول"}

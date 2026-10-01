@@ -1,7 +1,7 @@
 import { useParams } from "wouter";
 import { ArrowRight, MapPin, Clock, Banknote, User } from "lucide-react";
 import { useGetRequest, getGetRequestQueryKey } from "@workspace/api-client-react";
-import { CATEGORY_MAP, STATUS_MAP } from "@/lib/categories";
+import { CATEGORY_MAP, STATUS_MAP, getRequestLocationLines } from "@/lib/categories";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { BottomNav } from "@/components/BottomNav";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -62,11 +62,13 @@ export default function RequestDetails() {
 
         {/* Info cards */}
         <div className="grid grid-cols-2 gap-3">
-          <div className="bg-white rounded-2xl border border-border p-4 shadow-xs">
-            <MapPin className="w-4 h-4 text-primary mb-1" />
-            <p className="text-xs text-muted-foreground">المنطقة</p>
-            <p className="font-semibold text-sm mt-0.5">{req.area}</p>
-          </div>
+          {getRequestLocationLines(req).map((location) => (
+            <div key={location.label} className="bg-white rounded-2xl border border-border p-4 shadow-xs">
+              <MapPin className="w-4 h-4 text-primary mb-1" />
+              <p className="text-xs text-muted-foreground">{location.label}</p>
+              <p className="font-semibold text-sm mt-0.5">{location.value}</p>
+            </div>
+          ))}
           <div className="bg-white rounded-2xl border border-border p-4 shadow-xs">
             <Clock className="w-4 h-4 text-primary mb-1" />
             <p className="text-xs text-muted-foreground">الوقت</p>

@@ -64,6 +64,29 @@ test("builds a request notification without request details or customer phone in
   assert.equal(event.body.includes("أحمد"), false);
 });
 
+test("includes origin and destination in a route request notification", () => {
+  const event = buildNewRequestAdminEvent({
+    requestId: 34,
+    category: "delivery",
+    area: "الخوض",
+    fromArea: "الخوض",
+    toArea: "بوشر",
+    customerId: 21,
+    customerName: "أحمد",
+    customerPhone: "96890000000",
+  });
+
+  assert.equal(event.body, "طلب جديد: مندوب توصيل من الخوض إلى بوشر");
+  assert.deepEqual(event.pushData, {
+    notificationType: ADMIN_EVENT_TYPES.newRequest,
+    requestId: 34,
+    category: "delivery",
+    area: "الخوض",
+    fromArea: "الخوض",
+    toArea: "بوشر",
+  });
+});
+
 test("suppresses a repeated event key after the notification record exists", async () => {
   const event = buildNewUserAdminEvent({
     userId: 44,

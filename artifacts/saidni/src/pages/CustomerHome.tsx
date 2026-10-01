@@ -6,7 +6,7 @@ import { CheckCircle2, ShieldOff } from "lucide-react";
 import { useCreateRequest } from "@workspace/api-client-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { CATEGORIES, AREAS } from "@/lib/categories";
+import { CATEGORIES, AREAS, isRouteCategory } from "@/lib/categories";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { BottomNav } from "@/components/BottomNav";
 import { Button } from "@/components/ui/button";
@@ -20,8 +20,17 @@ const schema = z.object({
   details: z.string().min(10, "اكتب تفاصيل الطلب (10 أحرف على الأقل)"),
   timeType: z.enum(["now", "scheduled"]),
   scheduledDateTime: z.string().optional(),
-  area: z.string().min(1, "اختر المنطقة"),
+  area: z.string().optional(),
+  fromArea: z.string().optional(),
+  toArea: z.string().optional(),
   offeredAmount: z.coerce.number().min(0.5, "أدخل المبلغ"),
+}).superRefine((data, ctx) => {
+  if (isRouteCategory(data.category)) {
+    if (!data.fromArea) ctx.addIssue({ code: "custom", path: ["fromArea"], message: "اختر موقع البداية" });
+    if (!data.toArea) ctx.addIssue({ code: "custom", path: ["toArea"], message: "اختر موقع الوصول" });
+  } else if (!data.area) {
+    ctx.addIssue({ code: "custom", path: ["area"], message: "اختر المنطقة" });
+  }
 });
 
 type FormData = z.infer<typeof schema>;
@@ -36,10 +45,12 @@ export default function CustomerHome() {
 
   const form = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: { category: "", details: "", timeType: "now", area: "", offeredAmount: 0 },
+    defaultValues: { category: "", details: "", timeType: "now", area: "", fromArea: "", toArea: "", offeredAmount: 0 },
   });
 
   const timeType = form.watch("timeType");
+  const category = form.watch("category");
+  const routeRequest = isRouteCategory(category);
 
   const onSubmit = (data: FormData) => {
     if (!user) return;
@@ -55,7 +66,8 @@ export default function CustomerHome() {
           details: data.details,
           timeType: data.timeType,
           scheduledDateTime: data.timeType === "scheduled" ? data.scheduledDateTime : undefined,
-          area: data.area,
+          area: routeRequest ? data.fromArea! : data.area!,
+          ...(routeRequest ? { fromArea: data.fromArea, toArea: data.toArea } : {}),
           offeredAmount: data.offeredAmount,
         },
       },
@@ -124,7 +136,12 @@ export default function CustomerHome() {
                             key={cat.value}
                             type="button"
                             disabled={isBlocked}
-                            onClick={() => field.onChange(cat.value)}
+                            onClick={() => {
+                              field.onChange(cat.value);
+                              form.setValue("area", "");
+                              form.setValue("fromArea", "");
+                              form.setValue("toArea", "");
+                            }}
                             className={`flex flex-col items-center gap-1.5 p-3 rounded-2xl border-2 transition-all text-center ${
                               isBlocked
                                 ? "border-border bg-muted text-muted-foreground opacity-50 cursor-not-allowed"
@@ -235,29 +252,58 @@ export default function CustomerHome() {
               )}
             </div>
 
-            {/* Area */}
-            <FormField
-              control={form.control}
-              name="area"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>المنطقة:</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value} disabled={isBlocked}>
-                    <FormControl>
-                      <SelectTrigger className="rounded-xl h-12" data-testid="select-area">
-                        <SelectValue placeholder="اختر المنطقة" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {AREAS.map((a) => (
-                        <SelectItem key={a} value={a}>{a}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
+            {/* Location */}
+            <div className="space-y-3">
+              <p className="text-sm font-semibold">الموقع</p>
+              {routeRequest ? (
+                <>
+                  {(["fromArea", "toArea"] as const).map((name) => (
+                    <FormField
+                      key={name}
+                      control={form.control}
+                      name={name}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{name === "fromArea" ? "من" : "إلى"}</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value} disabled={isBlocked}>
+                            <FormControl>
+                              <SelectTrigger className="rounded-xl h-12" data-testid={`select-${name}`}>
+                                <SelectValue placeholder="اختر الموقع" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {AREAS.map((a) => <SelectItem key={a} value={a}>{a}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  ))}
+                </>
+              ) : (
+                <FormField
+                  control={form.control}
+                  name="area"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>المنطقة:</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value} disabled={isBlocked}>
+                        <FormControl>
+                          <SelectTrigger className="rounded-xl h-12" data-testid="select-area">
+                            <SelectValue placeholder="اختر المنطقة" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {AREAS.map((a) => <SelectItem key={a} value={a}>{a}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               )}
-            />
+            </div>
 
             {/* Amount */}
             <FormField

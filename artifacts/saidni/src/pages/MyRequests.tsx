@@ -8,7 +8,7 @@ import {
 } from "@workspace/api-client-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { CATEGORY_MAP } from "@/lib/categories";
+import { CATEGORY_MAP, getRequestLocationLines } from "@/lib/categories";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { BottomNav } from "@/components/BottomNav";
 import { Button } from "@/components/ui/button";
@@ -101,10 +101,12 @@ export default function MyRequests() {
 
                 {/* Meta */}
                 <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
-                  <span className="flex items-center gap-1">
-                    <MapPin className="w-3 h-3 flex-shrink-0" />
-                    {req.area}
-                  </span>
+                  {getRequestLocationLines(req).map((location) => (
+                    <span key={location.label} className="flex items-center gap-1">
+                      <MapPin className="w-3 h-3 flex-shrink-0" />
+                      {location.label}: {location.value}
+                    </span>
+                  ))}
                   <span className="flex items-center gap-1 font-bold text-green-700">
                     <Banknote className="w-3 h-3 flex-shrink-0" />
                     {req.offeredAmount} ر.ع.

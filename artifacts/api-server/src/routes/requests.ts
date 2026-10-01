@@ -1,197 +1,3 @@
-import { Router, type IRouter } from "express";
-import { and, avg, count, desc, eq, inArray, isNotNull, isNull, or } from "drizzle-orm";
-import {
-  db,
-  helperRatingsTable,
-  requestContactsTable,
-  requestLifecycleEventsTable,
-  requestsTable,
-  usersTable,
-} from "@workspace/db";
-import {
-  AcceptRequestBody,
-  AcceptRequestParams,
-  CancelRequestParams,
-  CompleteRequestBody,
-  CompleteRequestParams,
-  CreateRequestBody,
-  DeleteRequestParams,
-  GetRequestParams,
-  ListRequestsQueryParams,
-  ListContactedHelpersParams,
-  RecordRequestContactBody,
-  UpdateRequestBody,
-  UpdateRequestParams,
-  UpdateRequestStatusBody,
-  UpdateRequestStatusParams,
-} from "@workspace/api-zod";
-import { logger } from "../lib/logger";
-import { buildNewRequestAdminEvent } from "../lib/admin-event-notifications";
-import { notifyAdminEvent } from "../lib/admin-event-store";
-import {
-  actorHasRole,
-  isAdminActor,
-  requireAdminRequestActor,
-  requireRequestActor,
-  type RequestActor,
-} from "../lib/request-access";
-import {
-  buildRequestLifecycleEventValues,
-  presentRequestLifecycleEvent,
-} from "../lib/request-lifecycle";
-import { decideRequestPermission, type RequestPermissionDecision } from "../lib/request-security";
-import { helperServesArea, isActiveServiceArea, normalizeAreaQuery } from "../lib/service-areas";
-import { presentContactedHelper, type ContactMethod } from "../lib/contacted-helpers";
-
-const router: IRouter = Router();
-
-const CATEGORY_AR: Record<string, string> = {
-  transport: "شاحنة للنقل",
-  delivery: "مندوب توصيل",
-  government: "معاملات ومراجعات",
-  shopping: "شراء أغراض",
-  home_services: "خدمات منزلية",
-  labor: "أخرى",
-};
-
-const notifiedRequestIds = new Set<number>();
-
-async function sendNewRequestNotifications(
-  requestId: number,
-  category: string,
-  area: string,
-): Promise<void> {
-  if (notifiedRequestIds.has(requestId)) {
-    logger.warn({ requestId }, "push: duplicate call suppressed by idempotency guard");
-    return;
-  }
-  notifiedRequestIds.add(requestId);
-
-  try {
-    const rows = await db
-      .select({
-        id: usersTable.id,
-        userType: usersTable.userType,
-        roles: usersTable.roles,
-        expoPushToken: usersTable.expoPushToken,
-        helperInterests: usersTable.helperInterests,
-        preferredAreas: usersTable.preferredAreas,
-      })
-      .from(usersTable)
-      .where(and(eq(usersTable.isBlocked, false), isNotNull(usersTable.expoPushToken)));
-
-    const catLabel = CATEGORY_AR[category] ?? category;
-    const seenTokens = new Set<string>();
-    let matchedHelpers = 0;
-
-    for (const helper of rows) {
-      let roles: string[];
-      try {
-        roles = helper.roles ? JSON.parse(helper.roles) : [helper.userType];
-      } catch {
-        roles = [helper.userType];
-      }
-      if (!roles.includes("helper")) continue;
-
-      if (helper.helperInterests) {
-        try {
-          const interests: string[] = JSON.parse(helper.helperInterests);
-          if (interests.length > 0 && !interests.includes(category)) continue;
-        } catch {}
-      }
-
-      if (!helperServesArea(helper.preferredAreas, area)) continue;
-
-      matchedHelpers++;
-      if (helper.expoPushToken) seenTokens.add(helper.expoPushToken);
-    }
-
-    const uniqueTokens = [...seenTokens];
-    logger.info(
-      { requestId, category, area, matchedHelpers, uniqueTokens: uniqueTokens.length },
-      "push: dispatching new-request notifications",
-    );
-    if (uniqueTokens.length === 0) return;
-
-    const messages = uniqueTokens.map((to) => ({
-      to,
-      title: "طلب جديد متاح",
-      body: `طلب جديد في ${area}\n${catLabel}`,
-      data: { type: "new_request", requestId, category, area },
-      sound: "default",
-    }));
-
-    let sentCount = 0;
-    for (let i = 0; i < messages.length; i += 100) {
-      const batch = messages.slice(i, i + 100);
-      const response = await fetch("https://exp.host/--/api/v2/push/send", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-          "Accept-Encoding": "gzip, deflate",
-        },
-        body: JSON.stringify(batch),
-      });
-      const json = await response.json().catch(() => null);
-      sentCount += batch.length;
-      logger.info(
-        { requestId, batchStart: i, batchSize: batch.length, status: response.status, response: json },
-        "push: expo batch sent",
-      );
-    }
-
-    logger.info(
-      { requestId, matchedHelpers, uniqueTokens: uniqueTokens.length, sentCount },
-      "push: dispatch complete",
-    );
-  } catch (err) {
-    logger.warn({ requestId, err }, "push: notification dispatch failed");
-  }
-}
-
-export async function enrichRequest(
-  request: typeof requestsTable.$inferSelect,
-  options: { includeContact?: boolean } = {},
-) {
-  const ids = [request.customerId, request.helperId, request.completedHelperId].filter(Boolean) as number[];
-  const {
-    customerNameSnapshot,
-    customerPhoneSnapshot,
-    completedHelperNameSnapshot,
-    completedHelperPhoneSnapshot,
-    ...requestWithoutSnapshots
-  } = request;
-  const users =
-    ids.length > 0
-      ? await db
-          .select({ id: usersTable.id, name: usersTable.name, phone: usersTable.phone })
-          .from(usersTable)
-          .where(inArray(usersTable.id, ids))
-      : [];
-  const userMap = Object.fromEntries(users.map((user) => [user.id, user]));
-  const helperId = request.completedHelperId ?? request.helperId;
-
-  return {
-    ...requestWithoutSnapshots,
-    createdAt: request.createdAt.toISOString(),
-    completedAt: request.completedAt?.toISOString() ?? null,
-    deletedAt: request.deletedAt?.toISOString() ?? null,
-    customerName: options.includeContact
-      ? (userMap[request.customerId]?.name ?? customerNameSnapshot ?? null)
-      : null,
-    customerPhone: options.includeContact
-      ? (userMap[request.customerId]?.phone ?? customerPhoneSnapshot ?? null)
-      : null,
-    helperName: options.includeContact && helperId
-      ? (userMap[helperId]?.name ?? completedHelperNameSnapshot ?? null)
-      : options.includeContact ? completedHelperNameSnapshot ?? null : null,
-    helperPhone: options.includeContact && helperId
-      ? (userMap[helperId]?.phone ?? completedHelperPhoneSnapshot ?? null)
-      : options.includeContact ? completedHelperPhoneSnapshot ?? null : null,
-  };
-}
-
 function shouldIncludeRequestContact(
   actor: RequestActor,
   request: typeof requestsTable.$inferSelect,
@@ -224,6 +30,12 @@ function requestContentUnchangedConditions(request: typeof requestsTable.$inferS
       ? isNull(requestsTable.scheduledDateTime)
       : eq(requestsTable.scheduledDateTime, request.scheduledDateTime),
     eq(requestsTable.area, request.area),
+    request.fromArea === null
+      ? isNull(requestsTable.fromArea)
+      : eq(requestsTable.fromArea, request.fromArea),
+    request.toArea === null
+      ? isNull(requestsTable.toArea)
+      : eq(requestsTable.toArea, request.toArea),
     eq(requestsTable.offeredAmount, request.offeredAmount),
   ];
 }
@@ -266,9 +78,21 @@ router.get("/requests", async (req, res): Promise<void> => {
     }
     conditions.push(eq(requestsTable.helperId, actor.id));
   } else if (isHelper) {
-    // A helper's unfiltered feed includes available work and their own assignments.
-    // This remains correct for accounts that also have the customer role.
-    const helperVisibility = or(eq(requestsTable.status, "available"), eq(requestsTable.helperId, actor.id));
+    // Available work matches the helper's service areas on the server. Their
+    // own assigned requests remain visible regardless of area preferences.
+    const [helper] = await db
+      .select({ preferredAreas: usersTable.preferredAreas })
+      .from(usersTable)
+      .where(eq(usersTable.id, actor.id));
+    const preferredAreas = parsePreferredAreas(helper?.preferredAreas)
+      .filter(isActiveServiceArea);
+    const helperVisibility = or(
+      and(
+        eq(requestsTable.status, "available"),
+        buildRequestAreaCondition(preferredAreas),
+      ),
+      eq(requestsTable.helperId, actor.id),
+    );
     if (helperVisibility) conditions.push(helperVisibility);
   } else if (isCustomer) {
     conditions.push(eq(requestsTable.customerId, actor.id));
@@ -279,11 +103,7 @@ router.get("/requests", async (req, res): Promise<void> => {
 
   if (params.category) conditions.push(eq(requestsTable.category, params.category));
   if (params.area && !isCustomerOwnedRequestQuery) {
-    conditions.push(
-      params.area.length === 1
-        ? eq(requestsTable.area, params.area[0])
-        : inArray(requestsTable.area, params.area),
-    );
+    conditions.push(buildRequestAreaCondition(params.area));
   }
   if (params.status) conditions.push(eq(requestsTable.status, params.status));
   if (params.customerId) conditions.push(eq(requestsTable.customerId, Number(params.customerId)));
@@ -312,8 +132,14 @@ router.post("/requests", async (req, res): Promise<void> => {
   const actor = await requireRequestActor(req, res);
   if (!actor) return;
 
-  if (!isActiveServiceArea(parsed.data.area)) {
-    res.status(400).json({ error: "المنطقة غير متاحة للاختيار الجديد" });
+  const location = normalizeNewRequestLocation(parsed.data);
+  if (!location.success) {
+    const error = location.field === "fromArea"
+      ? "اختر منطقة انطلاق نشطة"
+      : location.field === "toArea"
+        ? "اختر منطقة وصول نشطة"
+        : "المنطقة غير متاحة للاختيار الجديد";
+    res.status(400).json({ error });
     return;
   }
 
@@ -346,6 +172,7 @@ router.post("/requests", async (req, res): Promise<void> => {
       .insert(requestsTable)
       .values({
         ...parsed.data,
+        ...location.data,
         status: "available",
         customerNameSnapshot: customer.name,
         customerPhoneSnapshot: customer.phone,
@@ -365,6 +192,8 @@ router.post("/requests", async (req, res): Promise<void> => {
       requestId: row.id,
       category: row.category,
       area: row.area,
+      fromArea: row.fromArea,
+      toArea: row.toArea,
       customerId: customer.id,
       customerName: customer.name,
       customerPhone: customer.phone,
@@ -372,7 +201,7 @@ router.post("/requests", async (req, res): Promise<void> => {
   );
 
   res.status(201).json(await enrichRequest(row, { includeContact: true }));
-  void sendNewRequestNotifications(row.id, row.category, row.area);
+  void sendNewRequestNotifications(row.id, row.category, row.area, row.fromArea, row.toArea);
 });
 
 router.get("/requests/:id", async (req, res): Promise<void> => {
@@ -422,14 +251,37 @@ router.patch("/requests/:id", async (req, res): Promise<void> => {
   }
   if (!enforceRequestPermission(res, decideRequestPermission({ action: "edit", actor, request: existing }))) return;
 
-  const { status: attemptedStatusChange, ...updates } = parsed.data;
+  const { status: attemptedStatusChange, ...parsedUpdates } = parsed.data;
   if (attemptedStatusChange !== undefined) {
     res.status(400).json({ error: "استخدم إجراء حالة الطلب المخصص" });
     return;
   }
-  if (Object.keys(updates).length === 0) {
+  if (Object.keys(parsedUpdates).length === 0) {
     res.json(await enrichRequest(existing));
     return;
+  }
+
+  const locationWasUpdated = ["category", "area", "fromArea", "toArea"]
+    .some((key) => Object.prototype.hasOwnProperty.call(parsedUpdates, key));
+  let updates = parsedUpdates;
+  if (locationWasUpdated) {
+    const location = normalizeNewRequestLocation({
+      category: parsedUpdates.category ?? existing.category,
+      area: parsedUpdates.area ?? existing.area,
+      fromArea: parsedUpdates.fromArea === undefined ? existing.fromArea : parsedUpdates.fromArea,
+      toArea: parsedUpdates.toArea === undefined ? existing.toArea : parsedUpdates.toArea,
+    });
+    if (!location.success) {
+      const error = location.field === "fromArea"
+        ? "اختر منطقة انطلاق نشطة"
+        : location.field === "toArea"
+          ? "اختر منطقة وصول نشطة"
+          : "المنطقة غير متاحة للاختيار الجديد";
+      res.status(400).json({ error });
+      return;
+    }
+    const { area: _area, fromArea: _fromArea, toArea: _toArea, ...otherUpdates } = parsedUpdates;
+    updates = { ...otherUpdates, ...location.data };
   }
 
   const row = await db.transaction(async (tx) => {

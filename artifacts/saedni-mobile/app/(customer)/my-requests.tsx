@@ -12,6 +12,7 @@ import { useColors } from "@/hooks/useColors";
 import { getAuthHeaders, useAuth } from "@/contexts/AuthContext";
 import { CATEGORIES, STATUS_INFO } from "@/constants/categories";
 import { requestQueryKeys } from "@/lib/request-query-keys";
+import { getRequestLocationLines } from "@/lib/request-locations";
 import { dedupeContactedHelpers, type ContactedHelper } from "@/lib/contacted-helpers";
 import { formatRatingAccessibility, formatRatingScore } from "@workspace/api-client-react";
 
@@ -31,6 +32,8 @@ interface HelpRequest {
   category: string;
   details: string;
   area: string;
+  fromArea?: string | null;
+  toArea?: string | null;
   timeType: string;
   scheduledDateTime?: string | null;
   offeredAmount: number;
@@ -380,11 +383,13 @@ export default function CustomerMyRequestsScreen() {
         <Text style={s.details}>{item.details}</Text>
 
         <View style={s.infoGrid}>
-          <View style={s.infoRow}>
-            <Text style={s.infoVal}>{item.area}</Text>
-            <Text style={s.infoKey}>الموقع</Text>
-            <Ionicons name="location-outline" size={14} color={colors.mutedForeground} />
-          </View>
+          {getRequestLocationLines(item).map((location) => (
+            <View style={s.infoRow} key={location.label}>
+              <Text style={s.infoVal}>{location.value}</Text>
+              <Text style={s.infoKey}>{location.label}</Text>
+              <Ionicons name="location-outline" size={14} color={colors.mutedForeground} />
+            </View>
+          ))}
 
           <View style={s.infoRow}>
             <Text style={s.infoVal}>

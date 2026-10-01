@@ -12,7 +12,12 @@ export interface HelpRequestInput {
   customerId: number;
   category: HelpRequestInputCategory;
   details: string;
-  area: string;
+  /** Required for single-location categories. During compatibility, legacy route clients may omit both route fields and send area. */
+  area?: string;
+  /** New route clients must send both fromArea and toArea. Legacy clients may omit both and send area during the compatibility period. */
+  fromArea?: string;
+  /** New route clients must send both fromArea and toArea. Legacy clients may omit both and send area during the compatibility period. */
+  toArea?: string;
   timeType: HelpRequestInputTimeType;
   scheduledDateTime?: string;
   offeredAmount: number;

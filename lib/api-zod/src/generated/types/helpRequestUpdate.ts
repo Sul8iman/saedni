@@ -5,11 +5,16 @@
  * ساعدني - API specification for the Oman help marketplace
  * OpenAPI spec version: 0.1.0
  */
+import type { HelpRequestUpdateCategory } from './helpRequestUpdateCategory';
 
 export interface HelpRequestUpdate {
-  category?: string;
+  category?: HelpRequestUpdateCategory;
   details?: string;
   area?: string;
+  /** @nullable */
+  fromArea?: string | null;
+  /** @nullable */
+  toArea?: string | null;
   timeType?: string;
   scheduledDateTime?: string;
   offeredAmount?: number;

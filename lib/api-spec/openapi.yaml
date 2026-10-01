@@ -938,7 +938,7 @@ components:
 
     HelpRequest:
       type: object
-      required: [id, customerId, category, details, area, timeType, offeredAmount, status, createdAt]
+      required: [id, customerId, category, details, area, fromArea, toArea, timeType, offeredAmount, status, createdAt]
       properties:
         id:
           type: integer
@@ -953,6 +953,10 @@ components:
           type: string
         area:
           type: string
+        fromArea:
+          type: ["string", "null"]
+        toArea:
+          type: ["string", "null"]
         timeType:
           type: string
           enum: [now, scheduled]
@@ -988,7 +992,7 @@ components:
 
     HelpRequestInput:
       type: object
-      required: [customerId, category, details, area, timeType, offeredAmount]
+      required: [customerId, category, details, timeType, offeredAmount]
       properties:
         customerId:
           type: integer
@@ -999,6 +1003,13 @@ components:
           type: string
         area:
           type: string
+          description: Required for single-location categories. During compatibility, legacy route clients may omit both route fields and send area.
+        fromArea:
+          type: string
+          description: New route clients must send both fromArea and toArea. Legacy clients may omit both and send area during the compatibility period.
+        toArea:
+          type: string
+          description: New route clients must send both fromArea and toArea. Legacy clients may omit both and send area during the compatibility period.
         timeType:
           type: string
           enum: [now, scheduled]
@@ -1012,10 +1023,15 @@ components:
       properties:
         category:
           type: string
+          enum: [transport, delivery, government, shopping, home_services, labor]
         details:
           type: string
         area:
           type: string
+        fromArea:
+          type: ["string", "null"]
+        toArea:
+          type: ["string", "null"]
         timeType:
           type: string
         scheduledDateTime:

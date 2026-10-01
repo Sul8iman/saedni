@@ -1,4 +1,4 @@
-import { boolean, integer, pgTable, real, serial, text, timestamp } from "drizzle-orm/pg-core";
+import { boolean, index, integer, pgTable, real, serial, text, timestamp } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { usersTable } from "./users";
@@ -10,6 +10,8 @@ export const requestsTable = pgTable("requests", {
   category: text("category").notNull(),
   details: text("details").notNull(),
   area: text("area").notNull(),
+  fromArea: text("from_area"),
+  toArea: text("to_area"),
   timeType: text("time_type").notNull().default("now"),
   scheduledDateTime: text("scheduled_date_time"),
   offeredAmount: real("offered_amount").notNull(),
@@ -27,7 +29,9 @@ export const requestsTable = pgTable("requests", {
   deletedByUserId: integer("deleted_by_user_id"),
   deletedReason: text("deleted_reason"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, (table) => [
+  index("requests_from_area_idx").on(table.fromArea),
+]);
 
 export const insertRequestSchema = createInsertSchema(requestsTable).omit({
   id: true,

@@ -18,7 +18,7 @@ import {
 } from "@workspace/api-client-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { CATEGORY_MAP } from "@/lib/categories";
+import { CATEGORY_MAP, getRequestLocationLines } from "@/lib/categories";
 import { BottomNav } from "@/components/BottomNav";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -256,7 +256,9 @@ function UserDetail({ userId, onBack }: { userId: number; onBack: () => void }) 
                   <div key={req.id} className="bg-white rounded-xl border border-border p-3 shadow-xs">
                     <p className="text-xs font-semibold text-primary mb-0.5">{cat.label}</p>
                     <p className="text-xs text-muted-foreground line-clamp-1">{req.details}</p>
-                    <p className="text-xs text-green-600 font-bold mt-1">{req.offeredAmount} ر.ع. · {req.area}</p>
+                    <p className="text-xs text-green-600 font-bold mt-1">
+                      {req.offeredAmount} ر.ع. · {getRequestLocationLines(req).map((location) => `${location.label}: ${location.value}`).join(" · ")}
+                    </p>
                   </div>
                 );
               })}
@@ -278,7 +280,9 @@ function UserDetail({ userId, onBack }: { userId: number; onBack: () => void }) 
                   <div key={req.id} className="bg-white rounded-xl border border-border p-3 shadow-xs opacity-70">
                     <p className="text-xs font-semibold text-muted-foreground mb-0.5">{cat.label}</p>
                     <p className="text-xs text-muted-foreground line-clamp-1">{req.details}</p>
-                    <p className="text-xs text-muted-foreground mt-1">{req.offeredAmount} ر.ع. · {req.area}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {req.offeredAmount} ر.ع. · {getRequestLocationLines(req).map((location) => `${location.label}: ${location.value}`).join(" · ")}
+                    </p>
                   </div>
                 );
               })}

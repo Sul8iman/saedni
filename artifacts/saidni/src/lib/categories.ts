@@ -11,6 +11,30 @@ export const CATEGORIES = [
 
 export type CategoryValue = (typeof CATEGORIES)[number]["value"];
 
+export const ROUTE_CATEGORIES = ["delivery", "transport", "shopping", "labor"] as const;
+export type RouteCategory = (typeof ROUTE_CATEGORIES)[number];
+
+export function isRouteCategory(category: string): category is RouteCategory {
+  return (ROUTE_CATEGORIES as readonly string[]).includes(category);
+}
+
+export type RequestWithLocations = {
+  category: string;
+  area: string;
+  fromArea?: string | null;
+  toArea?: string | null;
+};
+
+export function getRequestLocationLines(request: RequestWithLocations): Array<{ label: string; value: string }> {
+  if (isRouteCategory(request.category) && request.fromArea && request.toArea) {
+    return [
+      { label: "من", value: request.fromArea },
+      { label: "إلى", value: request.toArea },
+    ];
+  }
+  return [{ label: "الموقع", value: request.area }];
+}
+
 export const CATEGORY_MAP: Record<string, { label: string; icon: string }> = Object.fromEntries(
   CATEGORIES.map((c) => [c.value, { label: c.label, icon: c.icon }])
 );

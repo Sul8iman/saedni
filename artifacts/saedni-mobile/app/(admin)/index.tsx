@@ -30,6 +30,11 @@ import { getAuthHeaders, useAuth } from "@/contexts/AuthContext";
 import { useAdminPushRegistration } from "@/hooks/usePushNotifications";
 import { CATEGORIES, STATUS_INFO, AREAS } from "@/constants/categories";
 import AdminAreaFilter from "@/components/AdminAreaFilter";
+import AdminDateRangeFilter, {
+  type AdminArchivePeriod,
+  type AdminDateRange,
+} from "@/components/AdminDateRangeFilter";
+import { AdminRequestDetails } from "@/components/AdminRequestDetails";
 import { getRequestLocationLines } from "@/lib/request-locations";
 
 const BASE = `https://${process.env.EXPO_PUBLIC_DOMAIN ?? "saedni.onrender.com"}`;
@@ -37,6 +42,7 @@ const PAGE_SIZE = 20;
 
 interface RequestItem {
   id: number;
+  customerId: number;
   category: string;
   details: string;
   area: string;
@@ -52,6 +58,8 @@ interface RequestItem {
   helperPhone?: string | null;
   createdAt: string;
   completedAt?: string | null;
+  completedHelperId?: number | null;
+  completedHelperTaskRatingStars?: number | null;
   helpCompleted?: boolean | null;
   deletedAt?: string | null;
   deletedReason?: string | null;
@@ -139,14 +147,24 @@ export default function AdminDashboard() {
   const [archiveSearch, setArchiveSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState("");
   const [archiveCategory, setArchiveCategory] = useState("");
-  const [archivePeriod, setArchivePeriod] = useState<"all" | "7d" | "30d" | "month">("all");
+  const [archivePeriod, setArchivePeriod] = useState<AdminArchivePeriod>("all");
+  const [appliedArchivePeriod, setAppliedArchivePeriod] = useState<AdminArchivePeriod>("all");
+  const [appliedCustomArchiveRange, setAppliedCustomArchiveRange] = useState<AdminDateRange | null>(null);
   const archiveFrom = useMemo(
-    () => archivePeriod === "all" ? undefined : periodStart(archivePeriod).toISOString(),
-    [archivePeriod],
+    () => {
+      if (appliedArchivePeriod === "custom") return appliedCustomArchiveRange?.from.toISOString();
+      return appliedArchivePeriod === "all" ? undefined : periodStart(appliedArchivePeriod).toISOString();
+    },
+    [appliedArchivePeriod, appliedCustomArchiveRange],
+  );
+  const archiveTo = useMemo(
+    () => appliedArchivePeriod === "custom" ? appliedCustomArchiveRange?.to.toISOString() : undefined,
+    [appliedArchivePeriod, appliedCustomArchiveRange],
   );
   const [activePage, setActivePage] = useState(1);
   const [archivePage, setArchivePage] = useState(1);
   const [archiveResult, setArchiveResult] = useState<ArchiveResult>("helped");
+  const [expandedRequestId, setExpandedRequestId] = useState<number | null>(null);
 
   const activeParams = {
     ...(activeAreas.length > 0 ? { area: activeAreas } : {}),
@@ -160,6 +178,7 @@ export default function AdminDashboard() {
     ...(archiveSearch.trim() ? { search: archiveSearch.trim() } : {}),
     ...(archiveCategory ? { category: archiveCategory } : {}),
     ...(archiveFrom ? { from: archiveFrom } : {}),
+    ...(archiveTo ? { to: archiveTo } : {}),
     result: archiveResult === "deleted" ? "helped" as const : archiveResult,
     page: archivePage,
     pageSize: PAGE_SIZE,
@@ -280,6 +299,39 @@ export default function AdminDashboard() {
     setArchivePage(1);
   };
 
+  const renderRequestDetails = (item: RequestItem) => {
+    const isExpanded = expandedRequestId === item.id;
+    return (
+      <>
+        <TouchableOpacity
+          style={[styles.requestDetailsToggle, { borderTopColor: colors.border }]}
+          onPress={() =>
+            setExpandedRequestId((current) => (current === item.id ? null : item.id))
+          }
+          accessibilityRole="button"
+          accessibilityState={{ expanded: isExpanded }}
+          accessibilityLabel={
+            isExpanded ? "إخفاء تفاصيل المساعدين" : "عرض تفاصيل المساعدين"
+          }
+          testID={`toggle-request-details-${item.id}`}
+        >
+          <View style={styles.requestDetailsToggleCopy}>
+            <Ionicons name="people-outline" size={16} color={colors.primary} />
+            <Text style={[styles.requestDetailsToggleText, { color: colors.primary }]}>
+              {isExpanded ? "إخفاء تفاصيل المساعدين" : "عرض تفاصيل المساعدين"}
+            </Text>
+          </View>
+          <Ionicons
+            name={isExpanded ? "chevron-up" : "chevron-down"}
+            size={17}
+            color={colors.primary}
+          />
+        </TouchableOpacity>
+        {isExpanded && <AdminRequestDetails request={item} />}
+      </>
+    );
+  };
+
   const renderActiveRequest = ({ item }: { item: RequestItem }) => {
     const status = statusInfo(item.status);
     return (
@@ -306,6 +358,7 @@ export default function AdminDashboard() {
           <Text style={[styles.meta, { color: colors.mutedForeground }]}>{item.customerName ?? "عميل غير معروف"}</Text>
           <Text style={[styles.meta, { color: colors.mutedForeground }]}>{fmtDate(item.createdAt)}</Text>
         </View>
+        {renderRequestDetails(item)}
         <View style={styles.actionRow}>
           <TouchableOpacity
             style={[styles.actionButton, { backgroundColor: colors.secondary, borderColor: colors.border }]}
@@ -365,6 +418,7 @@ export default function AdminDashboard() {
             {item.helperPhone && <Text style={[styles.meta, { color: colors.mutedForeground }]}>{item.helperPhone}</Text>}
           </View>
         )}
+        {renderRequestDetails(item)}
       </View>
     );
   };
@@ -526,7 +580,19 @@ export default function AdminDashboard() {
               </TouchableOpacity>
               <SearchBox value={archiveSearch} onChange={(value) => { setArchiveSearch(value); setArchivePage(1); }} colors={colors} />
               <CategoryFilter value={archiveCategory} onChange={(value) => { setArchiveCategory(value); setArchivePage(1); }} colors={colors} />
-              <PeriodFilter value={archivePeriod} onChange={(value) => { setArchivePeriod(value); setArchivePage(1); }} colors={colors} />
+              <AdminDateRangeFilter
+                value={archivePeriod}
+                onChange={(value) => {
+                  setArchivePeriod(value);
+                  if (value !== "custom") setAppliedArchivePeriod(value);
+                  setArchivePage(1);
+                }}
+                onApplyRange={(range) => {
+                  setAppliedCustomArchiveRange(range);
+                  setAppliedArchivePeriod("custom");
+                  setArchivePage(1);
+                }}
+              />
               <AdminAreaFilter areas={AREAS} selectedAreas={archiveAreas} onChange={setArchiveAreaFilter} />
             </View>
           }
@@ -607,39 +673,6 @@ function CategoryFilter({
           </TouchableOpacity>
         ))}
       </ScrollView>
-    </View>
-  );
-}
-
-function PeriodFilter({
-  value,
-  onChange,
-  colors,
-}: {
-  value: "all" | "7d" | "30d" | "month";
-  onChange: (value: "all" | "7d" | "30d" | "month") => void;
-  colors: ReturnType<typeof useColors>;
-}) {
-  const options: Array<["all" | "7d" | "30d" | "month", string]> = [
-    ["all", "كل الوقت"],
-    ["7d", "7 أيام"],
-    ["30d", "30 يوماً"],
-    ["month", "هذا الشهر"],
-  ];
-  return (
-    <View style={styles.filterWrapper}>
-      <Text style={[styles.filterLabel, { color: colors.foreground }]}>تاريخ إنشاء الطلب</Text>
-      <View style={styles.filterRow}>
-        {options.map(([key, label]) => (
-          <TouchableOpacity
-            key={key}
-            style={[styles.filterChip, { backgroundColor: colors.muted, borderColor: colors.border }, value === key && { backgroundColor: colors.secondary, borderColor: colors.primary }]}
-            onPress={() => onChange(key)}
-          >
-            <Text style={[styles.filterChipText, { color: value === key ? colors.primary : colors.mutedForeground }]}>{label}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
     </View>
   );
 }
@@ -771,6 +804,16 @@ const styles = StyleSheet.create({
   filterChip: { borderWidth: 1, borderRadius: 16, paddingHorizontal: 10, paddingVertical: 7 },
   filterChipText: { fontSize: 11, fontWeight: "700" },
   card: { borderWidth: 1, borderRadius: 14, padding: 14, marginBottom: 10 },
+  requestDetailsToggle: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderTopWidth: StyleSheet.hairlineWidth,
+    marginTop: 8,
+    paddingTop: 10,
+  },
+  requestDetailsToggleCopy: { flexDirection: "row-reverse", alignItems: "center", gap: 6 },
+  requestDetailsToggleText: { fontSize: 12, fontWeight: "700" },
   cardTop: { flexDirection: "row-reverse", alignItems: "flex-start", justifyContent: "space-between", gap: 10 },
   cardTitleCopy: { flex: 1, alignItems: "flex-end" },
   category: { fontSize: 15, fontWeight: "800", textAlign: "right" },

@@ -33,15 +33,15 @@
       },
       "android": {
         "buildType": "app-bundle",
-        "autoIncrement": false
+        "autoIncrement": false,
+        "image": "sdk-54"
       }
     },
     "android-production": {
       "extends": "production",
       "corepack": true,
       "android": {
-        "buildType": "app-bundle",
-        "image": "ubuntu-24.04-jdk-17-ndk-r27b"
+        "buildType": "app-bundle"
       }
     }
   },

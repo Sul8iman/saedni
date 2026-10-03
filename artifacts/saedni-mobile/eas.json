@@ -25,6 +25,7 @@
       "env": {
         "EXPO_PUBLIC_DOMAIN": "saedni.onrender.com"
       },
+      "pnpm": "10.26.1",
       "ios": {
         "buildConfiguration": "Release",
         "autoIncrement": false
@@ -38,7 +39,6 @@
       "extends": "production",
       "node": "22.14.0",
       "corepack": true,
-      "pnpm": "10.26.1",
       "android": {
         "buildType": "app-bundle",
         "image": "ubuntu-24.04-jdk-17-ndk-r27b"

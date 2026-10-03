@@ -38,7 +38,7 @@
       "extends": "production",
       "node": "22.14.0",
       "corepack": true,
-      "pnpm": "11.24.0",
+      "pnpm": "10.26.1",
       "android": {
         "buildType": "app-bundle",
         "image": "ubuntu-24.04-jdk-17-ndk-r27b"

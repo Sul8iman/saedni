@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, count, desc, and, inArray, isNull, isNotNull, or, ilike, gte, lte, sql } from "drizzle-orm";
+import { eq, count, desc, and, inArray, isNull, isNotNull, or, ilike, gte, lt, sql } from "drizzle-orm";
 import { createHmac } from "crypto";
 import {
   adminNotificationsTable,
@@ -57,7 +57,7 @@ function filterConditions(f: AdminFilters, customer?: typeof usersTable) {
   if (f.areas.length) conditions.push(buildRequestAreaCondition(f.areas));
   if (f.category) conditions.push(eq(requestsTable.category, f.category));
   if (f.from) conditions.push(gte(requestsTable.createdAt, f.from));
-  if (f.to) conditions.push(lte(requestsTable.createdAt, f.to));
+  if (f.to) conditions.push(lt(requestsTable.createdAt, f.to));
   if (f.search && customer) {
     const pattern = `%${f.search.replace(/[%_\\]/g, "\\$&")}%`;
     conditions.push(or(ilike(customer.name, pattern), ilike(customer.phone, pattern), ilike(requestsTable.details, pattern)));
@@ -477,11 +477,11 @@ router.get("/admin/statistics", async (req, res): Promise<void> => {
   }
   const base = [isNull(requestsTable.deletedAt), ...filterConditions(f)];
   const periodUsers = f.from && f.to
-    ? and(gte(usersTable.createdAt, f.from), lte(usersTable.createdAt, f.to))
+    ? and(gte(usersTable.createdAt, f.from), lt(usersTable.createdAt, f.to))
     : f.from
       ? gte(usersTable.createdAt, f.from)
       : f.to
-        ? lte(usersTable.createdAt, f.to)
+        ? lt(usersTable.createdAt, f.to)
         : undefined;
   const requestCounts = await db.select({
     total: count(),
@@ -494,11 +494,11 @@ router.get("/admin/statistics", async (req, res): Promise<void> => {
     value: sql<number>`coalesce(sum(${requestsTable.offeredAmount}) filter (where ${and(eq(requestsTable.status, "completed"), eq(requestsTable.helpCompleted, true))}), 0)`,
     avgValue: sql<number>`coalesce(avg(${requestsTable.offeredAmount}) filter (where ${and(eq(requestsTable.status, "completed"), eq(requestsTable.helpCompleted, true))}), 0)`,
     newInPeriod: f.from && f.to
-      ? sql<number>`count(*) filter (where ${and(gte(requestsTable.createdAt, f.from), lte(requestsTable.createdAt, f.to))})`
+      ? sql<number>`count(*) filter (where ${and(gte(requestsTable.createdAt, f.from), lt(requestsTable.createdAt, f.to))})`
       : f.from
         ? sql<number>`count(*) filter (where ${gte(requestsTable.createdAt, f.from)})`
         : f.to
-          ? sql<number>`count(*) filter (where ${lte(requestsTable.createdAt, f.to)})`
+          ? sql<number>`count(*) filter (where ${lt(requestsTable.createdAt, f.to)})`
           : sql<number>`0`,
   }).from(requestsTable).where(and(...base));
   const [users] = await db.select({

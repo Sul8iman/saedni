@@ -38,8 +38,8 @@ function startOfDay(date: Date): Date {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0, 0);
 }
 
-function endOfDay(date: Date): Date {
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59, 999);
+function startOfNextDay(date: Date): Date {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1);
 }
 
 function formatGregorianDate(date: Date | null): string {
@@ -130,7 +130,7 @@ export default function AdminDateRangeFilter({
       return;
     }
 
-    onApplyRange({ from: startOfDay(fromDate), to: endOfDay(toDate) });
+    onApplyRange({ from: startOfDay(fromDate), to: startOfNextDay(toDate) });
     setRangeError(null);
   }
 

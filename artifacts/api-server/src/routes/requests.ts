@@ -61,7 +61,7 @@ const notifiedRequestIds = new Set<number>();
 async function sendNewRequestNotifications(
   requestId: number,
   category: string,
-  area: string,
+  areas: string[],
 ): Promise<void> {
   if (notifiedRequestIds.has(requestId)) {
     logger.warn({ requestId }, "push: duplicate call suppressed by idempotency guard");
@@ -70,6 +70,12 @@ async function sendNewRequestNotifications(
   notifiedRequestIds.add(requestId);
 
   try {
+    const [request] = await db
+      .select({ status: requestsTable.status, isPaused: requestsTable.isPaused })
+      .from(requestsTable)
+      .where(and(eq(requestsTable.id, requestId), isNull(requestsTable.deletedAt)));
+    if (!request || request.status !== "available" || request.isPaused) return;
+
     const rows = await db
       .select({
         id: usersTable.id,
@@ -78,6 +84,7 @@ async function sendNewRequestNotifications(
         expoPushToken: usersTable.expoPushToken,
         helperInterests: usersTable.helperInterests,
         preferredAreas: usersTable.preferredAreas,
+        isHelperAvailable: usersTable.isHelperAvailable,
       })
       .from(usersTable)
       .where(and(eq(usersTable.isBlocked, false), isNotNull(usersTable.expoPushToken)));
@@ -94,6 +101,7 @@ async function sendNewRequestNotifications(
         roles = [helper.userType];
       }
       if (!roles.includes("helper")) continue;
+      if (!helper.isHelperAvailable) continue;
 
       if (helper.helperInterests) {
         try {
@@ -102,7 +110,7 @@ async function sendNewRequestNotifications(
         } catch {}
       }
 
-      if (!helperServesArea(helper.preferredAreas, area)) continue;
+      if (!areas.some((area) => helperServesArea(helper.preferredAreas, area))) continue;
 
       matchedHelpers++;
       if (helper.expoPushToken) seenTokens.add(helper.expoPushToken);
@@ -110,7 +118,7 @@ async function sendNewRequestNotifications(
 
     const uniqueTokens = [...seenTokens];
     logger.info(
-      { requestId, category, area, matchedHelpers, uniqueTokens: uniqueTokens.length },
+      { requestId, category, areas, matchedHelpers, uniqueTokens: uniqueTokens.length },
       "push: dispatching new-request notifications",
     );
     if (uniqueTokens.length === 0) return;
@@ -118,8 +126,8 @@ async function sendNewRequestNotifications(
     const messages = uniqueTokens.map((to) => ({
       to,
       title: "طلب جديد متاح",
-      body: `طلب جديد في ${area}\n${catLabel}`,
-      data: { type: "new_request", requestId, category, area },
+      body: areas.length > 1 ? `من ${areas[0]} إلى ${areas[1]}\n${catLabel}` : `في ${areas[0] ?? ""}\n${catLabel}`,
+      data: { type: "new_request", requestId, category, fromArea: areas[0] ?? null, toArea: areas[1] ?? null },
       sound: "default",
     }));
 
@@ -274,21 +282,21 @@ router.get("/requests", async (req, res): Promise<void> => {
     }
     conditions.push(eq(requestsTable.helperId, actor.id));
   } else if (isHelper) {
-    // Available work matches the helper's service areas on the server. Their
-    // own assigned requests remain visible regardless of area preferences.
-    const [helper] = await db
-      .select({ preferredAreas: usersTable.preferredAreas })
+    // Profile preferences target notifications only. Available helpers can
+    // browse all active work; their own assigned requests stay accessible.
+    const [availability] = await db
+      .select({ isHelperAvailable: usersTable.isHelperAvailable })
       .from(usersTable)
       .where(eq(usersTable.id, actor.id));
-    const preferredAreas = parsePreferredAreas(helper?.preferredAreas)
-      .filter(isActiveServiceArea);
-    const helperVisibility = or(
-      and(
+    const helperVisibility = availability?.isHelperAvailable
+      ? or(
+        and(
         eq(requestsTable.status, "available"),
-        buildRequestAreaCondition(preferredAreas),
-      ),
-      eq(requestsTable.helperId, actor.id),
-    );
+        eq(requestsTable.isPaused, false),
+        ),
+        eq(requestsTable.helperId, actor.id),
+      )
+      : eq(requestsTable.helperId, actor.id);
     if (helperVisibility) conditions.push(helperVisibility);
   } else if (isCustomer) {
     conditions.push(eq(requestsTable.customerId, actor.id));
@@ -431,7 +439,7 @@ router.post("/requests", async (req, res): Promise<void> => {
   );
 
   res.status(201).json(await enrichRequest(row, { includeContact: true }));
-  void sendNewRequestNotifications(row.id, row.category, row.area);
+  void sendNewRequestNotifications(row.id, row.category, [row.fromArea ?? row.area, row.toArea].filter((area): area is string => Boolean(area)));
 });
 
 router.get("/requests/:id", async (req, res): Promise<void> => {
@@ -491,7 +499,9 @@ router.patch("/requests/:id", async (req, res): Promise<void> => {
     return;
   }
 
-  const locationWasUpdated = ["category", "area", "fromArea", "toArea"]
+  const locationWasUpdated = [
+    "category", "area", "fromArea", "toArea", "fromGovernorate", "toGovernorate",
+  ]
     .some((key) => Object.prototype.hasOwnProperty.call(parsedUpdates, key));
   let updates = parsedUpdates;
   if (locationWasUpdated) {
@@ -500,17 +510,28 @@ router.patch("/requests/:id", async (req, res): Promise<void> => {
       area: parsedUpdates.area ?? existing.area,
       fromArea: parsedUpdates.fromArea === undefined ? existing.fromArea : parsedUpdates.fromArea,
       toArea: parsedUpdates.toArea === undefined ? existing.toArea : parsedUpdates.toArea,
+      fromGovernorate: parsedUpdates.fromGovernorate === undefined ? existing.fromGovernorate : parsedUpdates.fromGovernorate,
+      toGovernorate: parsedUpdates.toGovernorate === undefined ? existing.toGovernorate : parsedUpdates.toGovernorate,
     });
     if (!location.success) {
       const error = location.field === "fromArea"
         ? "اختر منطقة انطلاق نشطة"
         : location.field === "toArea"
           ? "اختر منطقة وصول نشطة"
+          : location.field === "fromGovernorate" || location.field === "toGovernorate"
+            ? "اختر المحافظة المطابقة للمنطقة"
           : "المنطقة غير متاحة للاختيار الجديد";
       res.status(400).json({ error });
       return;
     }
-    const { area: _area, fromArea: _fromArea, toArea: _toArea, ...otherUpdates } = parsedUpdates;
+    const {
+      area: _area,
+      fromArea: _fromArea,
+      toArea: _toArea,
+      fromGovernorate: _fromGovernorate,
+      toGovernorate: _toGovernorate,
+      ...otherUpdates
+    } = parsedUpdates;
     updates = { ...otherUpdates, ...location.data };
   }
 
@@ -540,6 +561,63 @@ router.patch("/requests/:id", async (req, res): Promise<void> => {
   }
   res.json(await enrichRequest(row, { includeContact: true }));
 });
+
+async function setRequestPaused(req: import("express").Request, res: import("express").Response, isPaused: boolean): Promise<void> {
+  const params = GetRequestParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+  const actor = await requireRequestActor(req, res);
+  if (!actor) return;
+  const existing = await getLiveRequest(params.data.id);
+  if (!existing) {
+    requestNotFound(res);
+    return;
+  }
+  const isOwner = actorHasRole(actor, "customer") && existing.customerId === actor.id;
+  if (!isOwner && !isAdminActor(actor)) {
+    res.status(403).json({ error: "لا يمكنك تغيير حالة طلب مستخدم آخر" });
+    return;
+  }
+  if (existing.status === "completed" || existing.status === "cancelled") {
+    res.status(400).json({ error: "لا يمكن إيقاف طلب منتهٍ أو ملغي" });
+    return;
+  }
+  if (existing.isPaused === isPaused) {
+    res.json(await enrichRequest(existing, { includeContact: true }));
+    return;
+  }
+
+  const row = await db.transaction(async (tx) => {
+    const [updated] = await tx
+      .update(requestsTable)
+      .set({ isPaused })
+      .where(and(
+        eq(requestsTable.id, existing.id),
+        eq(requestsTable.status, existing.status),
+        eq(requestsTable.isPaused, !isPaused),
+        isNull(requestsTable.deletedAt),
+      ))
+      .returning();
+    if (!updated) return null;
+    await tx.insert(requestLifecycleEventsTable).values(buildRequestLifecycleEventValues({
+      requestId: updated.id,
+      action: isPaused ? "paused" : "resumed",
+      actor,
+      metadata: { status: updated.status, isPaused },
+    }));
+    return updated;
+  });
+  if (!row) {
+    res.status(409).json({ error: "تغير الطلب، حدّث الصفحة ثم أعد المحاولة" });
+    return;
+  }
+  res.json(await enrichRequest(row, { includeContact: true }));
+}
+
+router.patch("/requests/:id/pause", (req, res) => void setRequestPaused(req, res, true));
+router.patch("/requests/:id/resume", (req, res) => void setRequestPaused(req, res, false));
 
 // DELETE is an archive operation. There is deliberately no normal-flow hard-delete endpoint.
 router.delete("/requests/:id", async (req, res): Promise<void> => {
@@ -688,8 +766,20 @@ router.patch("/requests/:id/accept", async (req, res): Promise<void> => {
       helperId: parsed.data.helperId,
     }),
   )) return;
+  if (existing.isPaused) {
+    res.status(400).json({ error: "هذا الطلب متوقف مؤقتًا" });
+    return;
+  }
   if (existing.status !== "available") {
     res.status(400).json({ error: "هذا الطلب غير متاح للقبول" });
+    return;
+  }
+  const [helperAvailability] = await db
+    .select({ isHelperAvailable: usersTable.isHelperAvailable })
+    .from(usersTable)
+    .where(eq(usersTable.id, actor.id));
+  if (!helperAvailability?.isHelperAvailable) {
+    res.status(403).json({ error: "فعّل «أنا مستعد للمساعدة» لقبول الطلبات" });
     return;
   }
   const row = await db.transaction(async (tx) => {
@@ -750,6 +840,10 @@ router.post("/requests/:id/contact", async (req, res): Promise<void> => {
     res.status(400).json({ error: "لا يمكن التواصل بعد انتهاء الطلب" });
     return;
   }
+  if (existing.isPaused) {
+    res.status(400).json({ error: "هذا الطلب متوقف مؤقتًا ولا يستقبل تواصلًا جديدًا" });
+    return;
+  }
   if (existing.helperId !== null && existing.helperId !== actor.id) {
     res.status(403).json({ error: "لا يمكنك التواصل مع هذا الطلب" });
     return;
@@ -758,11 +852,16 @@ router.post("/requests/:id/contact", async (req, res): Promise<void> => {
   const [helper] = await db
     .select({
       name: usersTable.name,
+      isHelperAvailable: usersTable.isHelperAvailable,
     })
     .from(usersTable)
     .where(eq(usersTable.id, actor.id));
   if (!helper) {
     res.status(404).json({ error: "المساعد غير موجود" });
+    return;
+  }
+  if (!helper.isHelperAvailable) {
+    res.status(403).json({ error: "فعّل «أنا مستعد للمساعدة» للتواصل مع الطلبات" });
     return;
   }
   const [customer] = await db
@@ -947,6 +1046,17 @@ router.patch("/requests/:id/complete", async (req, res): Promise<void> => {
     res.status(400).json({ error: "اختر المساعد الذي أنجز الطلب" });
     return;
   }
+  if (helpCompleted === false && !parsed.data.helpNotCompletedReason) {
+    res.status(400).json({ error: "اختر سبب عدم إتمام المساعدة" });
+    return;
+  }
+  if (helpCompleted !== false && (
+    parsed.data.helpNotCompletedReason !== undefined
+    || parsed.data.helpNotCompletedComment !== undefined
+  )) {
+    res.status(400).json({ error: "سبب عدم إتمام المساعدة متاح عند اختيار «لم تتم المساعدة» فقط" });
+    return;
+  }
 
   const result = await db.transaction(async (tx) => {
     const [lockedRequest] = await tx
@@ -1028,6 +1138,12 @@ router.patch("/requests/:id/complete", async (req, res): Promise<void> => {
         status: "completed",
         completedAt: new Date(),
         helpCompleted: helpCompleted ?? null,
+        helpNotCompletedReason: helpCompleted === false
+          ? parsed.data.helpNotCompletedReason ?? null
+          : null,
+        helpNotCompletedComment: helpCompleted === false
+          ? parsed.data.helpNotCompletedComment?.trim() || null
+          : null,
         completedHelperId: helpCompleted === true ? completedHelperId ?? null : null,
         completedHelperNameSnapshot: completedHelperSnapshot?.name ?? null,
         completedHelperPhoneSnapshot: completedHelperSnapshot?.phone ?? null,

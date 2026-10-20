@@ -9,6 +9,8 @@ export type RequestLifecycleAction =
   | "created"
   | "updated"
   | "accepted"
+  | "paused"
+  | "resumed"
   | "status_changed"
   | "completed"
   | "help_result_changed"

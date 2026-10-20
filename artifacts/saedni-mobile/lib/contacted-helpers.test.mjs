@@ -114,7 +114,39 @@ test("mobile request lists keep customer ownership and helper areas separate fro
   assert.match(helperSource, /for \(const area of areaFilters\) query\.append\("area", area\)/);
   assert.match(helperSource, /setAreaFilters\(\[\]\)/);
   assert.doesNotMatch(helperSource, /preferredAreas/);
-  assert.match(helperSource, /areaFilters\.includes\(f\.value\)/);
+  assert.match(helperSource, /areaGovernorate/);
+  assert.match(helperSource, /areaFilters\.includes\(area\)/);
+  assert.match(helperSource, /OMAN_LOCATION_CATALOG/);
   assert.match(queryKeysSource, /helperAvailable: \(/);
   assert.doesNotMatch(queryKeysSource, /preferredAreas|currentUser\.area/);
+});
+
+test("registration, customer, helper, and admin screens share the Oman catalog", async () => {
+  const paths = [
+    "../app/(auth)/register.tsx",
+    "../app/(customer)/index.tsx",
+    "../app/(customer)/profile.tsx",
+    "../app/(helper)/profile.tsx",
+    "../app/(admin)/users.tsx",
+    "../components/AdminAreaFilter.tsx",
+  ];
+  const screens = await Promise.all(paths.map((path) => readFile(new URL(path, import.meta.url), "utf8")));
+  for (const source of screens) assert.match(source, /OMAN_LOCATION_CATALOG/);
+  assert.match(screens[1], /fromGovernorate/);
+  assert.match(screens[1], /toGovernorate/);
+});
+
+test("customer request UI collects a required no-help reason and exposes pause/resume", async () => {
+  const source = await readFile(new URL("../app/(customer)/my-requests.tsx", import.meta.url), "utf8");
+  for (const reason of [
+    "لم يتواصل معي أحد",
+    "لم نتفق على السعر",
+    "لم نتفق على الوقت أو التفاصيل",
+    "لم أعد بحاجة للمساعدة",
+    "طلب مكرر أو تجريبي",
+    "أخرى",
+  ]) assert.ok(source.includes(reason));
+  assert.match(source, /تفاصيل إضافية \(اختياري\)/);
+  assert.match(source, /api\/requests\/\$\{id\}\/\$\{pause \? "pause" : "resume"\}/);
+  assert.match(source, /الإيقاف المؤقت يمنع تواصل مساعدين جدد، ولا يوقف التواصل الجاري خارج التطبيق/);
 });

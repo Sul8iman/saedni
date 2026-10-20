@@ -534,6 +534,14 @@ router.get("/admin/statistics", async (req, res): Promise<void> => {
     helped: sql<number>`count(*) filter (where ${and(eq(requestsTable.status, "completed"), eq(requestsTable.helpCompleted, true))})`,
     notHelped: sql<number>`count(*) filter (where ${and(eq(requestsTable.status, "completed"), eq(requestsTable.helpCompleted, false))})`,
   }).from(requestsTable).where(and(...base)).groupBy(requestsTable.category);
+  const notHelpedReasons = await db.select({
+    reason: requestsTable.helpNotCompletedReason,
+    total: count(),
+  }).from(requestsTable).where(and(
+    ...base,
+    eq(requestsTable.status, "completed"),
+    eq(requestsTable.helpCompleted, false),
+  )).groupBy(requestsTable.helpNotCompletedReason);
   const retentionRows = await db
     .select({ customerId: requestsTable.customerId, requestCount: count() })
     .from(requestsTable)
@@ -555,7 +563,7 @@ router.get("/admin/statistics", async (req, res): Promise<void> => {
     successfulValueOman: Number(rc?.value ?? 0), averageSuccessfulValueOman: Number(rc?.avgValue ?? 0),
     contacts: { contactedRequests: contacted, contactRate: total ? contacted / total : 0, averageHelpersPerRequest: total ? Number(contact?.contactedHelpers ?? 0) / total : 0, averageFirstContactMinutes: Number(contact?.averageFirstContactMinutes ?? 0), notContactedRequests: Math.max(0, total - contacted) },
     ratings: { averageStars: Number(rating?.averageStars ?? 0), totalRatings: Number(rating?.totalRatings ?? 0), helpersWithRatings: Number(rating?.helpersWithRatings ?? 0), helpersWithoutRatings: Math.max(0, Number(users.helpers) - Number(rating?.helpersWithRatings ?? 0)) },
-    breakdowns: { area: areas.map((x) => ({ ...x, total: Number(x.total), successRate: Number(x.helped) + Number(x.notHelped) ? Number(x.helped) / (Number(x.helped) + Number(x.notHelped)) : 0 })), category: categories.map((x) => ({ ...x, total: Number(x.total), successRate: Number(x.helped) + Number(x.notHelped) ? Number(x.helped) / (Number(x.helped) + Number(x.notHelped)) : 0 })) },
+    breakdowns: { area: areas.map((x) => ({ ...x, total: Number(x.total), successRate: Number(x.helped) + Number(x.notHelped) ? Number(x.helped) / (Number(x.helped) + Number(x.notHelped)) : 0 })), category: categories.map((x) => ({ ...x, total: Number(x.total), successRate: Number(x.helped) + Number(x.notHelped) ? Number(x.helped) / (Number(x.helped) + Number(x.notHelped)) : 0 })), notHelpedReasons: notHelpedReasons.map((x) => ({ reason: x.reason, total: Number(x.total) })) },
     retention: { oneRequest, repeatCustomers, repeatRate: oneRequest + repeatCustomers ? repeatCustomers / (oneRequest + repeatCustomers) : 0 },
     period: { period, from: f.from?.toISOString() ?? null, to: f.to?.toISOString() ?? null }, filters: { areas: f.areas, category: f.category ?? null },
     meta: { currency: "OMR", activeStatuses: ACTIVE_STATUSES },

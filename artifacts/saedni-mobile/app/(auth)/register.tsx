@@ -10,7 +10,7 @@ import * as Haptics from "expo-haptics";
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
 import { useColors } from "@/hooks/useColors";
 import { useAuth, type AuthUser } from "@/contexts/AuthContext";
-import { AREAS } from "@/constants/categories";
+import { OMAN_LOCATION_CATALOG } from "../../../../lib/api-zod/location-catalog";
 
 type Step = "form" | "otp";
 type UserType = "customer" | "helper";
@@ -31,6 +31,7 @@ export default function RegisterScreen() {
   const [userType, setUserType] = useState<UserType>("customer");
   const [customerArea, setCustomerArea] = useState("");
   const [helperAreas, setHelperAreas] = useState<string[]>([]);
+  const [expandedGovernorate, setExpandedGovernorate] = useState<string | null>(null);
   const [otp, setOtp] = useState("");
   const [loading, setLoading] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
@@ -192,22 +193,45 @@ export default function RegisterScreen() {
               <Text style={s.fieldLabel}>
                 {userType === "customer" ? "منطقتك" : "مناطق الخدمة"}
               </Text>
-              <View style={s.areaWrap}>
-                {AREAS.map((area) => {
-                  const selected = userType === "customer"
-                    ? customerArea === area
-                    : helperAreas.includes(area);
-                  return (
+              <View style={s.areaGroups}>
+                {OMAN_LOCATION_CATALOG.map(({ governorate, locations }) => (
+                  <View key={governorate}>
                     <TouchableOpacity
-                      key={area}
-                      style={[s.areaChip, selected && s.areaChipSelected]}
-                      onPress={() => userType === "customer" ? setCustomerArea(area) : toggleHelperArea(area)}
+                      style={s.governorateHeader}
+                      onPress={() => setExpandedGovernorate((current) => current === governorate ? null : governorate)}
                       activeOpacity={0.8}
                     >
-                      <Text style={[s.areaChipTxt, selected && s.areaChipTxtSelected]}>{area}</Text>
+                      <Ionicons name={expandedGovernorate === governorate ? "chevron-up" : "chevron-down"} size={16} color={colors.mutedForeground} />
+                      <Text style={s.governorateHeaderText}>{governorate}</Text>
                     </TouchableOpacity>
-                  );
-                })}
+                    {expandedGovernorate === governorate && (
+                      <View style={s.areaWrap}>
+                        {locations.map((area) => {
+                          const selected = userType === "customer"
+                            ? customerArea === area
+                            : helperAreas.includes(area);
+                          return (
+                            <TouchableOpacity
+                              key={area}
+                              style={[s.areaChip, selected && s.areaChipSelected]}
+                              onPress={() => {
+                                if (userType === "customer") {
+                                  setCustomerArea(area);
+                                  setExpandedGovernorate(null);
+                                } else {
+                                  toggleHelperArea(area);
+                                }
+                              }}
+                              activeOpacity={0.8}
+                            >
+                              <Text style={[s.areaChipTxt, selected && s.areaChipTxtSelected]}>{area}</Text>
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
+                    )}
+                  </View>
+                ))}
               </View>
 
               {/* Terms & Conditions checkbox */}
@@ -338,7 +362,13 @@ const makeStyles = (c: ReturnType<typeof useColors>) =>
     roleLabelActive: { color: c.primary },
     roleHint: { fontSize: 11, color: c.mutedForeground, textAlign: "center" },
     roleHintActive: { color: c.secondaryForeground },
-    areaWrap: { flexDirection: "row-reverse", flexWrap: "wrap", gap: 8, marginBottom: 18 },
+    areaGroups: { gap: 7, marginBottom: 18 },
+    governorateHeader: {
+      minHeight: 40, borderRadius: 9, backgroundColor: c.muted,
+      paddingHorizontal: 11, flexDirection: "row-reverse", alignItems: "center", gap: 6,
+    },
+    governorateHeaderText: { flex: 1, fontSize: 13, color: c.foreground, fontWeight: "700", textAlign: "right" },
+    areaWrap: { flexDirection: "row-reverse", flexWrap: "wrap", gap: 8, paddingVertical: 9 },
     areaChip: {
       borderWidth: 1.5, borderColor: c.border, borderRadius: 18,
       paddingHorizontal: 12, paddingVertical: 7, backgroundColor: c.background,

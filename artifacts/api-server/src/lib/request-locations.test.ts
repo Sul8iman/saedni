@@ -16,42 +16,62 @@ test("route requests require an active start and destination area", () => {
   );
 });
 
-test("route requests accept two active Muscat areas and permit the same area", () => {
+test("all service categories accept origin and destination locations", () => {
   assert.deepEqual(
     normalizeNewRequestLocation({ category: "delivery", fromArea: "الخوض", toArea: "بوشر" }),
     {
       success: true,
-      data: { area: "الخوض", fromArea: "الخوض", toArea: "بوشر" },
+      data: { area: "الخوض", fromArea: "الخوض", toArea: "بوشر", fromGovernorate: null, toGovernorate: null },
     },
   );
   assert.deepEqual(
     normalizeNewRequestLocation({ category: "shopping", fromArea: "بوشر", toArea: "بوشر" }),
     {
       success: true,
-      data: { area: "بوشر", fromArea: "بوشر", toArea: "بوشر" },
+      data: { area: "بوشر", fromArea: "بوشر", toArea: "بوشر", fromGovernorate: null, toGovernorate: null },
     },
+  );
+  assert.equal(
+    normalizeNewRequestLocation({
+      category: "home_services",
+      fromArea: "الخوض",
+      toArea: "نزوى",
+      fromGovernorate: "مسقط",
+      toGovernorate: "الداخلية",
+    }).success,
+    true,
+  );
+  assert.deepEqual(
+    normalizeNewRequestLocation({
+      category: "government",
+      fromArea: "الخوض",
+      toArea: "نزوى",
+      fromGovernorate: "الداخلية",
+      toGovernorate: "الداخلية",
+    }),
+    { success: false, field: "fromGovernorate" },
   );
 });
 
 test("legacy route requests with an active single area are accepted temporarily", () => {
   assert.deepEqual(
     normalizeNewRequestLocation({ category: "delivery", area: "بوشر" }),
-    { success: true, data: { area: "بوشر", fromArea: null, toArea: null } },
+    { success: true, data: { area: "بوشر", fromArea: null, toArea: null, fromGovernorate: null, toGovernorate: null } },
   );
   assert.deepEqual(
     normalizeNewRequestLocation({ category: "delivery", area: "صور" }),
-    { success: false, field: "area" },
+    { success: true, data: { area: "صور", fromArea: null, toArea: null, fromGovernorate: null, toGovernorate: null } },
   );
 });
 
-test("single-location requests require an active area and discard route fields", () => {
+test("all new categories require both route endpoints while legacy area remains accepted", () => {
   assert.deepEqual(
     normalizeNewRequestLocation({ category: "home_services" }),
     { success: false, field: "area" },
   );
   assert.deepEqual(
     normalizeNewRequestLocation({ category: "home_services", area: "بوشر" }),
-    { success: true, data: { area: "بوشر", fromArea: null, toArea: null } },
+    { success: true, data: { area: "بوشر", fromArea: null, toArea: null, fromGovernorate: null, toGovernorate: null } },
   );
   assert.deepEqual(
     normalizeNewRequestLocation({
@@ -60,12 +80,16 @@ test("single-location requests require an active area and discard route fields",
       fromArea: "الخوض",
       toArea: "بوشر",
     }),
-    { success: true, data: { area: "السيب", fromArea: null, toArea: null } },
+    { success: true, data: { area: "الخوض", fromArea: "الخوض", toArea: "بوشر", fromGovernorate: null, toGovernorate: null } },
   );
 });
 
-test("new requests reject non-Muscat and unsupported/inactive areas", () => {
-  for (const area of ["صور", "مسقط القديمة", ""]) {
+test("new requests accept Oman locations and reject unsupported locations", () => {
+  assert.equal(
+    normalizeNewRequestLocation({ category: "delivery", fromArea: "صور", toArea: "نزوى", fromGovernorate: "جنوب الشرقية", toGovernorate: "الداخلية" }).success,
+    true,
+  );
+  for (const area of ["مسقط القديمة", ""]) {
     assert.equal(
       normalizeNewRequestLocation({ category: "delivery", fromArea: area, toArea: "بوشر" }).success,
       false,
@@ -81,7 +105,7 @@ test("new requests reject non-Muscat and unsupported/inactive areas", () => {
   );
 });
 
-test("helper area matching uses route origin, single area, and historical area fallback", () => {
+test("manual area matching includes either endpoint and historical area fallback", () => {
   const configuredAreas = ["الخوض"];
   assert.equal(
     requestMatchesAreaFilter(
@@ -95,10 +119,10 @@ test("helper area matching uses route origin, single area, and historical area f
       { category: "delivery", area: "روي", fromArea: "روي", toArea: "الخوض" },
       configuredAreas,
     ),
-    false,
+    true,
   );
   assert.equal(
-    requestMatchesAreaFilter({ category: "home_services", area: "الخوض" }, configuredAreas),
+    requestMatchesAreaFilter({ category: "home_services", area: "الخوض", fromArea: "الخوض", toArea: "نزوى" }, configuredAreas),
     true,
   );
   assert.equal(
@@ -117,6 +141,6 @@ test("helper area matching uses route origin, single area, and historical area f
       { category: "delivery", area: "الخوض", fromArea: null, toArea: "بوشر" },
       ["بوشر"],
     ),
-    false,
+    true,
   );
 });

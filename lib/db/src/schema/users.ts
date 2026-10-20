@@ -20,6 +20,7 @@ export const usersTable = pgTable("users", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   helperInterests: text("helper_interests"),
   preferredAreas:  text("preferred_areas"),
+  isHelperAvailable: boolean("is_helper_available").notNull().default(true),
   authToken: text("auth_token").unique(),
   expoPushToken: text("expo_push_token"),
   // Helper-specific activation code (non-expiring, hashed)

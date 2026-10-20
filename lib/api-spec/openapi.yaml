@@ -152,7 +152,7 @@ paths:
     get:
       operationId: listServiceAreas
       tags: [users]
-      summary: List active Muscat service areas
+      summary: List service locations across Oman
       responses:
         "200":
           description: Active service areas
@@ -329,6 +329,52 @@ paths:
                 $ref: "#/components/schemas/HelpRequest"
         "400":
           description: Invalid status transition
+        "404":
+          description: Not found
+
+  /requests/{id}/pause:
+    patch:
+      operationId: pauseRequest
+      tags: [requests]
+      summary: Temporarily pause an open request
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Paused request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HelpRequest"
+        "403":
+          description: Owner or administrator access required
+        "404":
+          description: Not found
+
+  /requests/{id}/resume:
+    patch:
+      operationId: resumeRequest
+      tags: [requests]
+      summary: Resume a paused request
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Resumed request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HelpRequest"
+        "403":
+          description: Owner or administrator access required
         "404":
           description: Not found
 
@@ -847,6 +893,8 @@ components:
           type: ["string", "null"]
         preferredAreas:
           type: ["string", "null"]
+        isHelperAvailable:
+          type: boolean
         serviceAreas:
           type: array
           items:
@@ -931,6 +979,8 @@ components:
           type: ["string", "null"]
         preferredAreas:
           type: ["string", "null"]
+        isHelperAvailable:
+          type: boolean
         serviceAreas:
           type: array
           items:
@@ -956,6 +1006,16 @@ components:
         fromArea:
           type: ["string", "null"]
         toArea:
+          type: ["string", "null"]
+        fromGovernorate:
+          type: ["string", "null"]
+        toGovernorate:
+          type: ["string", "null"]
+        isPaused:
+          type: boolean
+        helpNotCompletedReason:
+          type: ["string", "null"]
+        helpNotCompletedComment:
           type: ["string", "null"]
         timeType:
           type: string
@@ -1008,13 +1068,17 @@ components:
           type: string
         area:
           type: string
-          description: Required for single-location categories. During compatibility, legacy route clients may omit both route fields and send area.
+          description: Legacy location field retained for installed clients and historical requests.
         fromArea:
           type: string
-          description: New route clients must send both fromArea and toArea. Legacy clients may omit both and send area during the compatibility period.
+          description: New clients send the origin location for every service category.
         toArea:
           type: string
-          description: New route clients must send both fromArea and toArea. Legacy clients may omit both and send area during the compatibility period.
+          description: New clients send the destination location for every service category.
+        fromGovernorate:
+          type: string
+        toGovernorate:
+          type: string
         timeType:
           type: string
           enum: [now, scheduled]
@@ -1036,6 +1100,10 @@ components:
         fromArea:
           type: ["string", "null"]
         toArea:
+          type: ["string", "null"]
+        fromGovernorate:
+          type: ["string", "null"]
+        toGovernorate:
           type: ["string", "null"]
         timeType:
           type: string
@@ -1077,6 +1145,18 @@ components:
           type: ["integer", "null"]
           minimum: 1
           maximum: 5
+        helpNotCompletedReason:
+          type: string
+          enum:
+            - لم يتواصل معي أحد
+            - لم نتفق على السعر
+            - لم نتفق على الوقت أو التفاصيل
+            - لم أعد بحاجة للمساعدة
+            - طلب مكرر أو تجريبي
+            - أخرى
+        helpNotCompletedComment:
+          type: string
+          maxLength: 1000
 
     ServiceArea:
       type: object
@@ -1197,7 +1277,7 @@ components:
           type: integer
         action:
           type: string
-          enum: [created, updated, accepted, status_changed, completed, help_result_changed, cancelled, soft_deleted, restored]
+          enum: [created, updated, accepted, paused, resumed, status_changed, completed, help_result_changed, cancelled, soft_deleted, restored]
         actorUserId:
           type: ["integer", "null"]
         actorRole:

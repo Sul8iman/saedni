@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import {
   View, Text, TouchableOpacity, StyleSheet, Alert,
-  ScrollView, ActivityIndicator,
+  ScrollView, ActivityIndicator, Switch,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -10,7 +10,7 @@ import { useRouter } from "expo-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useColors } from "@/hooks/useColors";
 import { getAuthHeaders, useAuth } from "@/contexts/AuthContext";
-import { CATEGORIES, AREAS } from "@/constants/categories";
+import { CATEGORIES, OMAN_LOCATION_CATALOG } from "@/constants/categories";
 import { formatRatingAccessibility, formatRatingScore } from "@workspace/api-client-react";
 
 const BASE = process.env.EXPO_PUBLIC_DOMAIN ? `https://${process.env.EXPO_PUBLIC_DOMAIN}` : "";
@@ -41,6 +41,32 @@ export default function HelperProfileScreen() {
 
   const [selCats, setSelCats] = useState<string[]>(() => parseJson(user?.helperInterests));
   const [selAreas, setSelAreas] = useState<string[]>(() => parseJson(user?.preferredAreas));
+  const [isHelperAvailable, setIsHelperAvailable] = useState(user?.isHelperAvailable ?? true);
+
+  const availabilityMutation = useMutation({
+    mutationFn: async (available: boolean) => {
+      const res = await fetch(`${BASE}/api/users/${user?.id}`, {
+        method: "PATCH",
+        headers: { ...(await getAuthHeaders()), "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ isHelperAvailable: available }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(typeof body?.error === "string" ? body.error : "تعذر تغيير حالة الاستعداد");
+      }
+      return available;
+    },
+    onSuccess: (available) => {
+      setIsHelperAvailable(available);
+      setUser({ ...user!, isHelperAvailable: available });
+      qc.invalidateQueries({ queryKey: ["available-requests"] });
+    },
+    onError: (error) => {
+      setIsHelperAvailable(user?.isHelperAvailable ?? true);
+      Alert.alert("خطأ", error instanceof Error ? error.message : "تعذر تغيير حالة الاستعداد");
+    },
+  });
 
   function toggleCat(val: string) {
     Haptics.selectionAsync();
@@ -169,6 +195,24 @@ export default function HelperProfileScreen() {
 
         {/* ─── اهتماماتي ─── */}
         <View style={s.interestsCard}>
+          <View style={[s.interestsHeader, { justifyContent: "space-between" }]}>
+            <Switch
+              value={isHelperAvailable}
+              onValueChange={(value) => availabilityMutation.mutate(value)}
+              disabled={availabilityMutation.isPending}
+              accessibilityRole="switch"
+              accessibilityLabel="أنا مستعد للمساعدة"
+              trackColor={{ false: colors.border, true: colors.primary }}
+            />
+            <Text style={s.interestsTitle}>أنا مستعد للمساعدة</Text>
+          </View>
+          <Text style={s.interestsHint}>
+            عند التفعيل تظهر لك جميع الطلبات وتصل إشعاراتها وفق اهتماماتك. يمكنك إيقاف الاستعداد مع الاحتفاظ بتفضيلاتك وسجل مشاركاتك.
+          </Text>
+        </View>
+
+        {/* ─── اهتماماتي ─── */}
+        <View style={s.interestsCard}>
           <View style={s.interestsHeader}>
             <Ionicons name="notifications-outline" size={20} color={colors.primary} />
             <Text style={s.interestsTitle}>اهتماماتي</Text>
@@ -198,22 +242,27 @@ export default function HelperProfileScreen() {
 
           {/* Area preferences */}
           <Text style={[s.subTitle, { marginTop: 16 }]}>المناطق المفضلة</Text>
-          <View style={s.chipsWrap}>
-            {AREAS.map(area => {
-              const on = selAreas.includes(area);
-              return (
-                <TouchableOpacity
-                  key={area}
-                  style={[s.chip, on && s.chipOn]}
-                  onPress={() => toggleArea(area)}
-                  activeOpacity={0.75}
-                >
-                  {on && <Ionicons name="checkmark" size={13} color={colors.primaryForeground} style={s.chipCheck} />}
-                  <Text style={[s.chipTxt, on && s.chipTxtOn]}>{area}</Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
+          {OMAN_LOCATION_CATALOG.map(({ governorate, locations }) => (
+            <View key={governorate}>
+              <Text style={[s.subTitle, { marginTop: 10 }]}>{governorate}</Text>
+              <View style={s.chipsWrap}>
+                {locations.map((area) => {
+                  const on = selAreas.includes(area);
+                  return (
+                    <TouchableOpacity
+                      key={area}
+                      style={[s.chip, on && s.chipOn]}
+                      onPress={() => toggleArea(area)}
+                      activeOpacity={0.75}
+                    >
+                      {on && <Ionicons name="checkmark" size={13} color={colors.primaryForeground} style={s.chipCheck} />}
+                      <Text style={[s.chipTxt, on && s.chipTxtOn]}>{area}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+          ))}
 
           {/* Save button */}
           <TouchableOpacity

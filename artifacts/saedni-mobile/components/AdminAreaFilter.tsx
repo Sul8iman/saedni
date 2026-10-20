@@ -1,7 +1,8 @@
-import React from "react";
+import React, { useState } from "react";
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useColors } from "@/hooks/useColors";
+import { OMAN_LOCATION_CATALOG } from "../../../lib/api-zod/location-catalog";
 
 interface AdminAreaFilterProps {
   areas: string[];
@@ -11,6 +12,7 @@ interface AdminAreaFilterProps {
 
 export default function AdminAreaFilter({ areas, selectedAreas, onChange }: AdminAreaFilterProps) {
   const colors = useColors();
+  const [governorate, setGovernorate] = useState<string | null>(null);
   const allSelected = selectedAreas.length === 0;
   const toggle = (area: string) => {
     onChange(
@@ -46,7 +48,29 @@ export default function AdminAreaFilter({ areas, selectedAreas, onChange }: Admi
             كل المناطق
           </Text>
         </TouchableOpacity>
-        {areas.map((area) => {
+        {OMAN_LOCATION_CATALOG.map(({ governorate: name }) => (
+          <TouchableOpacity
+            key={name}
+            style={[
+              styles.chip,
+              { backgroundColor: colors.muted, borderColor: colors.border },
+              governorate === name && { backgroundColor: colors.primary, borderColor: colors.primary },
+            ]}
+            onPress={() => setGovernorate(name)}
+            accessibilityRole="button"
+            accessibilityState={{ selected: governorate === name }}
+          >
+            <Text style={[styles.chipText, { color: colors.mutedForeground }, governorate === name && { color: colors.primaryForeground }]}>
+              {name}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+      {governorate && (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
+        {OMAN_LOCATION_CATALOG.find((item) => item.governorate === governorate)?.locations
+          .filter((area) => areas.includes(area))
+          .map((area) => {
           const selected = selectedAreas.includes(area);
           return (
             <TouchableOpacity
@@ -66,7 +90,8 @@ export default function AdminAreaFilter({ areas, selectedAreas, onChange }: Admi
             </TouchableOpacity>
           );
         })}
-      </ScrollView>
+        </ScrollView>
+      )}
     </View>
   );
 }

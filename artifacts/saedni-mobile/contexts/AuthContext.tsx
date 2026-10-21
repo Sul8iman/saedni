@@ -108,6 +108,7 @@ export interface AuthUser {
   area?: string | null;
   helperInterests?: string | null;
   preferredAreas?: string | null;
+  isHelperAvailable?: boolean;
 }
 
 export interface StartupLog {

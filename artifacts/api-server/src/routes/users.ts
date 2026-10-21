@@ -8,7 +8,7 @@ import {
   UpdateUserBody,
   ListUsersQueryParams,
 } from "@workspace/api-zod";
-import { isAdminActor, requireRequestActor } from "../lib/request-access";
+import { actorHasRole, isAdminActor, requireRequestActor } from "../lib/request-access";
 import {
   ACTIVE_SERVICE_AREAS,
   countHelpersByArea,
@@ -202,8 +202,9 @@ router.patch("/users/:id", async (req, res): Promise<void> => {
   }
 
   // Translate isActive → isBlocked for storage
-  const { isActive, serviceAreas, ...rest } = parsed.data as {
+  const { isActive, isHelperAvailable, serviceAreas, ...rest } = parsed.data as {
     isActive?: boolean;
+    isHelperAvailable?: boolean;
     name?: string;
     area?: string | null;
     helperInterests?: string | null;
@@ -217,7 +218,7 @@ router.patch("/users/:id", async (req, res): Promise<void> => {
   if (serviceAreas !== undefined) {
     const validated = validatePreferredAreas(serviceAreas);
     if (!validated) {
-      res.status(400).json({ error: "اختر منطقة خدمة واحدة على الأقل من مناطق مسقط" });
+      res.status(400).json({ error: "اختر منطقة خدمة واحدة على الأقل من مناطق عُمان المتاحة" });
       return;
     }
     rest.preferredAreas = JSON.stringify(validated);
@@ -231,12 +232,19 @@ router.patch("/users/:id", async (req, res): Promise<void> => {
     }
     const validated = validatePreferredAreas(decoded);
     if (!validated) {
-      res.status(400).json({ error: "اختر منطقة خدمة واحدة على الأقل من مناطق مسقط" });
+      res.status(400).json({ error: "اختر منطقة خدمة واحدة على الأقل من مناطق عُمان المتاحة" });
       return;
     }
     rest.preferredAreas = JSON.stringify(validated);
   }
   const updates: Record<string, unknown> = { ...rest };
+  if (isHelperAvailable !== undefined) {
+    if (!isAdmin && !actorHasRole(actor, "helper")) {
+      res.status(403).json({ error: "حالة الاستعداد متاحة للمساعد فقط" });
+      return;
+    }
+    updates.isHelperAvailable = isHelperAvailable;
+  }
   if (isActive !== undefined) {
     if (!isAdmin) {
       res.status(403).json({ error: "لا يمكنك تغيير حالة الحساب" });

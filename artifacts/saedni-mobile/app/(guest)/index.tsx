@@ -9,7 +9,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/contexts/AuthContext";
-import { CATEGORIES, AREAS } from "@/constants/categories";
+import { CATEGORIES } from "@/constants/categories";
+import { OMAN_LOCATION_CATALOG } from "../../../../lib/api-zod/location-catalog";
 import GuestWall from "@/components/GuestWall";
 import { getRequestLocationLines } from "@/lib/request-locations";
 
@@ -52,11 +53,6 @@ const CAT_FILTERS = [
   ...CATEGORIES.map(c => ({ value: c.value, label: c.label })),
 ];
 
-const AREA_FILTERS = [
-  { value: "all", label: "الكل" },
-  ...AREAS.map(a => ({ value: a, label: a })),
-];
-
 export default function GuestBrowseScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -66,6 +62,7 @@ export default function GuestBrowseScreen() {
 
   const [catFilter, setCatFilter] = useState("all");
   const [areaFilter, setAreaFilter] = useState("all");
+  const [areaGovernorate, setAreaGovernorate] = useState<string | null>(null);
   const [wallVisible, setWallVisible] = useState(false);
   const [wallMessage, setWallMessage] = useState<string | undefined>();
 
@@ -220,19 +217,38 @@ export default function GuestBrowseScreen() {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={s.chipsRow}
         >
-          {AREA_FILTERS.map(f => (
+          <TouchableOpacity
+            style={[s.chip, areaFilter === "all" && s.chipActive]}
+            onPress={() => { setAreaFilter("all"); setAreaGovernorate(null); }}
+            activeOpacity={0.8}
+          >
+            <Text style={[s.chipTxt, areaFilter === "all" && s.chipTxtActive]}>كل عُمان</Text>
+          </TouchableOpacity>
+          {OMAN_LOCATION_CATALOG.map(({ governorate }) => (
             <TouchableOpacity
-              key={f.value}
-              style={[s.chip, areaFilter === f.value && s.chipActive]}
-              onPress={() => setAreaFilter(f.value)}
+              key={governorate}
+              style={[s.chip, areaGovernorate === governorate && s.chipActive]}
+              onPress={() => setAreaGovernorate(governorate)}
               activeOpacity={0.8}
             >
-              <Text style={[s.chipTxt, areaFilter === f.value && s.chipTxtActive]}>
-                {f.label}
-              </Text>
+              <Text style={[s.chipTxt, areaGovernorate === governorate && s.chipTxtActive]}>{governorate}</Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
+        {areaGovernorate && (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.chipsRow}>
+            {OMAN_LOCATION_CATALOG.find(({ governorate }) => governorate === areaGovernorate)?.locations.map((area) => (
+              <TouchableOpacity
+                key={area}
+                style={[s.chip, areaFilter === area && s.chipActive]}
+                onPress={() => setAreaFilter(areaFilter === area ? "all" : area)}
+                activeOpacity={0.8}
+              >
+                <Text style={[s.chipTxt, areaFilter === area && s.chipTxtActive]}>{area}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        )}
       </View>
 
       {/* List */}

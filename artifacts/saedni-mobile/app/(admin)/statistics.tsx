@@ -65,6 +65,7 @@ interface AdminStatistics {
   breakdowns: {
     area: BreakdownRow[];
     category: BreakdownRow[];
+    notHelpedReasons: Array<{ reason: string | null; total: number }>;
   };
   retention: {
     oneRequest: number;
@@ -86,7 +87,7 @@ const EMPTY_STATS: AdminStatistics = {
   averageSuccessfulValueOman: 0,
   contacts: { contactedRequests: 0, contactRate: 0, averageHelpersPerRequest: 0, averageFirstContactMinutes: 0, notContactedRequests: 0 },
   ratings: { averageStars: 0, totalRatings: 0, helpersWithRatings: 0, helpersWithoutRatings: 0 },
-  breakdowns: { area: [], category: [] },
+  breakdowns: { area: [], category: [], notHelpedReasons: [] },
   retention: { oneRequest: 0, repeatCustomers: 0, repeatRate: 0 },
   consistency: { cancelledWithCompletionData: 0, completedWithoutCompletedAt: 0, legacyMismatches: 0 },
 };
@@ -285,6 +286,17 @@ export default function AdminStatisticsScreen() {
               colors={colors}
               formatLabel={(row) => row.label}
             />
+            <SectionTitle title="أسباب عدم إتمام المساعدة" />
+            <View style={[styles.reasonCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              {stats.breakdowns.notHelpedReasons.length === 0 ? (
+                <Text style={[styles.reasonEmpty, { color: colors.mutedForeground }]}>لا توجد أسباب مسجلة في الفترة المحددة</Text>
+              ) : stats.breakdowns.notHelpedReasons.map((item) => (
+                <View key={item.reason ?? "undefined"} style={[styles.reasonRow, { borderBottomColor: colors.border }]}>
+                  <Text style={[styles.reasonCount, { color: colors.primary }]}>{number(item.total)}</Text>
+                  <Text style={[styles.reasonLabel, { color: colors.foreground }]}>{item.reason ?? "غير محدد"}</Text>
+                </View>
+              ))}
+            </View>
 
             <SectionTitle title="المستخدمون والتقييمات" />
             <View style={styles.grid}>
@@ -428,6 +440,11 @@ const styles = StyleSheet.create({
   errorText: { fontSize: 15, fontWeight: "700" },
   retryText: { fontSize: 13, fontWeight: "700", padding: 4 },
   sectionTitle: { fontSize: 17, fontWeight: "800", textAlign: "right", marginTop: 10, marginBottom: 10 },
+  reasonCard: { borderWidth: 1, borderRadius: 14, paddingHorizontal: 12, marginBottom: 14 },
+  reasonRow: { flexDirection: "row-reverse", justifyContent: "space-between", alignItems: "center", paddingVertical: 11, borderBottomWidth: StyleSheet.hairlineWidth },
+  reasonCount: { fontSize: 14, fontWeight: "800" },
+  reasonLabel: { flex: 1, fontSize: 12, fontWeight: "700", textAlign: "right", marginEnd: 12 },
+  reasonEmpty: { textAlign: "right", paddingVertical: 12, fontSize: 12 },
   grid: { flexDirection: "row-reverse", flexWrap: "wrap", gap: 9, marginBottom: 10 },
   metricCard: { width: "31.5%", minHeight: 108, borderWidth: 1, borderRadius: 14, padding: 11, alignItems: "flex-end", justifyContent: "space-between" },
   metricIcon: { width: 31, height: 31, borderRadius: 9, alignItems: "center", justifyContent: "center" },

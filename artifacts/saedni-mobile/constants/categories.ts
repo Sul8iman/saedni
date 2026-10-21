@@ -1,3 +1,6 @@
+import { OMAN_LOCATION_CATALOG } from "../../../lib/api-zod/location-catalog";
+export { OMAN_LOCATION_CATALOG };
+
 export const CATEGORIES = [
   { value: "delivery",      label: "مندوب توصيل",      icon: "mci:account-tie-outline" },
   { value: "transport",     label: "شاحنة للنقل",       icon: "mci:truck-outline"       },
@@ -9,11 +12,7 @@ export const CATEGORIES = [
 
 export type CategoryValue = (typeof CATEGORIES)[number]["value"];
 
-export const AREAS = [
-  "مسقط", "بوشر", "الخوير", "الغبرة", "الموالح",
-  "السيب", "العامرات",
-  "المعبيلة", "الخوض", "الأنصب", "العذيبة", "القرم", "غلا", "روي", "مطرح", "قريات",
-];
+export const AREAS = OMAN_LOCATION_CATALOG.flatMap(({ locations }) => [...locations]);
 
 export const STATUS_INFO: Record<string, { label: string; color: string; bg: string }> = {
   available:   { label: "نشط",    color: "#15803D", bg: "#DCFCE7" },

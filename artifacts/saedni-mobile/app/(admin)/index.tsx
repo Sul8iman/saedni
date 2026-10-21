@@ -48,6 +48,7 @@ interface RequestItem {
   area: string;
   fromArea?: string | null;
   toArea?: string | null;
+  isPaused?: boolean;
   timeType: string;
   scheduledDateTime?: string | null;
   offeredAmount: number;
@@ -333,7 +334,9 @@ export default function AdminDashboard() {
   };
 
   const renderActiveRequest = ({ item }: { item: RequestItem }) => {
-    const status = statusInfo(item.status);
+    const status = item.isPaused
+      ? { label: "متوقف مؤقتًا", color: "#B45309", bg: "#FEF3C7" }
+      : statusInfo(item.status);
     return (
       <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
         <View style={styles.cardTop}>

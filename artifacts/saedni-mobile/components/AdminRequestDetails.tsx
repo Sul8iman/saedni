@@ -24,6 +24,9 @@ type AdminRequestDetailsRequest = {
   area: string;
   fromArea?: string | null;
   toArea?: string | null;
+  helpCompleted?: boolean | null;
+  helpNotCompletedReason?: string | null;
+  helpNotCompletedComment?: string | null;
   status: string;
   completedHelperId?: number | null;
   completedHelperTaskRatingStars?: number | null;
@@ -95,6 +98,19 @@ export function AdminRequestDetails({
             </View>
           ))}
         </View>
+        {request.status === "completed" && request.helpCompleted === false && (
+          <View style={[styles.reasonCard, { borderColor: colors.border, backgroundColor: colors.card }]}>
+            <Text style={[styles.reasonTitle, { color: colors.foreground }]}>سبب عدم إتمام المساعدة</Text>
+            <Text style={[styles.reasonText, { color: colors.foreground }]}>
+              {request.helpNotCompletedReason ?? "غير محدد"}
+            </Text>
+            {request.helpNotCompletedComment ? (
+              <Text style={[styles.reasonComment, { color: colors.mutedForeground }]}>
+                تفاصيل إضافية: {request.helpNotCompletedComment}
+              </Text>
+            ) : null}
+          </View>
+        )}
         <View style={styles.sectionHeading}>
           <Ionicons name="people-outline" size={17} color={colors.primary} />
           <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
@@ -356,6 +372,10 @@ const styles = StyleSheet.create({
   locationList: { gap: 5 },
   locationRow: { flexDirection: "row-reverse", alignItems: "center", gap: 6 },
   locationText: { fontSize: 12, fontWeight: "600", textAlign: "right" },
+  reasonCard: { borderWidth: 1, borderRadius: 12, padding: 11, gap: 5 },
+  reasonTitle: { fontSize: 12, fontWeight: "800", textAlign: "right" },
+  reasonText: { fontSize: 12, fontWeight: "700", textAlign: "right" },
+  reasonComment: { fontSize: 12, textAlign: "right", lineHeight: 19 },
   sectionHeading: {
     flexDirection: "row-reverse",
     alignItems: "center",

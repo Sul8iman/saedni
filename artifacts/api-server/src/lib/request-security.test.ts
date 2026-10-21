@@ -6,6 +6,7 @@ import {
   isVisibleInDefaultRequestList,
 } from "./request-security.ts";
 import { sanitizeLifecycleMetadata } from "./request-audit-safety.ts";
+import { CompleteRequestBody } from "../../../../lib/api-zod/src/generated/api.ts";
 
 const customer = { id: 11, userType: "customer", roles: ["customer"], isVerified: true };
 const otherCustomer = { id: 12, userType: "customer", roles: ["customer"], isVerified: true };
@@ -85,7 +86,7 @@ test("soft-deleted requests are hidden from default listings", () => {
   assert.equal(isVisibleInDefaultRequestList({ deletedAt: new Date() }), false);
 });
 
-test("request visibility applies helper-area matching on the server and keeps customer ownership", async () => {
+test("available helper visibility is independent of notification preferences and keeps customer ownership", async () => {
   const [source, areaQuerySource, adminSource] = await Promise.all([
     readFile(new URL("../routes/requests.ts", import.meta.url), "utf8"),
     readFile(new URL("./request-area-query.ts", import.meta.url), "utf8"),
@@ -96,11 +97,14 @@ test("request visibility applies helper-area matching on the server and keeps cu
   const listRoute = source.slice(listStart, listEnd);
   assert.match(listRoute, /conditions\.push\(eq\(requestsTable\.customerId, actor\.id\)\)/);
   assert.match(listRoute, /isCustomerOwnedRequestQuery/);
-  assert.match(listRoute, /buildRequestAreaCondition\(preferredAreas\)/);
+  assert.match(listRoute, /availability\?\.isHelperAvailable/);
+  assert.match(listRoute, /eq\(requestsTable\.isPaused, false\)/);
+  assert.doesNotMatch(listRoute, /preferredAreas/);
   assert.match(listRoute, /buildRequestAreaCondition\(params\.area\)/);
   assert.doesNotMatch(listRoute, /actorVisibleRows\s*=\s*rows\.filter/);
   assert.doesNotMatch(listRoute, /helperServesArea\(helper\?\.preferredAreas, row\.area\)/);
   assert.match(areaQuerySource, /requestsTable\.fromArea/);
+  assert.match(areaQuerySource, /requestsTable\.toArea/);
   assert.match(areaQuerySource, /isNull\(requestsTable\.fromArea\)/);
   assert.match(areaQuerySource, /requestsTable\.area/);
   assert.match(adminSource, /buildRequestAreaCondition\(f\.areas\)/);
@@ -118,6 +122,58 @@ test("helper accept and contact authorization do not depend on profile areas", a
   assert.doesNotMatch(contactRoute, /helperServesArea/);
   assert.match(contactRoute, /actorHasRole\(actor, "helper"\)/);
   assert.match(contactRoute, /onConflictDoUpdate/);
+});
+
+test("pause, helper availability, and notification eligibility are enforced server-side", async () => {
+  const source = await readFile(new URL("../routes/requests.ts", import.meta.url), "utf8");
+  const notificationStart = source.indexOf("async function sendNewRequestNotifications");
+  const notificationEnd = source.indexOf("router.get(\"/requests\"", notificationStart);
+  const notifications = source.slice(notificationStart, notificationEnd);
+  const pauseStart = source.indexOf("async function setRequestPaused");
+  const pauseEnd = source.indexOf("router.delete(\"/requests/:id\"", pauseStart);
+  const pauseRoutes = source.slice(pauseStart, pauseEnd);
+  const acceptStart = source.indexOf('router.patch("/requests/:id/accept"');
+  const contactStart = source.indexOf('router.post("/requests/:id/contact"');
+  const contactEnd = source.indexOf('router.get("/requests/:id/contacted-helpers"', contactStart);
+  const acceptRoute = source.slice(acceptStart, contactStart);
+  const contactRoute = source.slice(contactStart, contactEnd);
+
+  assert.match(notifications, /request\.status !== "available"/);
+  assert.match(notifications, /request\.isPaused/);
+  assert.match(notifications, /helper\.isHelperAvailable/);
+  assert.match(notifications, /helperServesArea/);
+  assert.match(pauseRoutes, /eq\(requestsTable\.isPaused, !isPaused\)/);
+  assert.match(pauseRoutes, /action: isPaused \? "paused" : "resumed"/);
+  assert.doesNotMatch(pauseRoutes, /notifiedRequestIds\.delete/);
+  assert.match(acceptRoute, /existing\.isPaused/);
+  assert.match(acceptRoute, /helperAvailability\?\.isHelperAvailable/);
+  assert.match(contactRoute, /existing\.isPaused/);
+  assert.match(contactRoute, /helper\.isHelperAvailable/);
+});
+
+test("legacy non-completion payloads remain valid and admin breakdown uses its date filter", async () => {
+  const [requestSource, adminSource] = await Promise.all([
+    readFile(new URL("../routes/requests.ts", import.meta.url), "utf8"),
+    readFile(new URL("../routes/admin.ts", import.meta.url), "utf8"),
+  ]);
+  const legacyPayload = CompleteRequestBody.safeParse({ helpCompleted: false });
+  assert.equal(legacyPayload.success, true);
+  const invalidReasonPayload = CompleteRequestBody.safeParse({ helpCompleted: false, helpNotCompletedReason: "invalid" });
+  assert.equal(invalidReasonPayload.success, false);
+  const completionStart = requestSource.indexOf('router.patch("/requests/:id/complete"');
+  const completionEnd = requestSource.indexOf('router.patch("/requests/:id/status"', completionStart);
+  const completionRoute = requestSource.slice(completionStart, completionEnd);
+  assert.equal(completionRoute.includes("helpCompleted === false && !parsed.data.helpNotCompletedReason"), false);
+  assert.ok(completionRoute.includes("helpNotCompletedReason: helpCompleted === false"));
+  assert.ok(completionRoute.includes("parsed.data.helpNotCompletedReason ?? null"));
+  assert.match(completionRoute, /helpNotCompletedReason:/);
+  assert.match(completionRoute, /helpNotCompletedComment:/);
+  const reasonQueryStart = adminSource.indexOf("const notHelpedReasons =");
+  const reasonQueryEnd = adminSource.indexOf("const retentionRows", reasonQueryStart);
+  const reasonQuery = adminSource.slice(reasonQueryStart, reasonQueryEnd);
+  assert.match(reasonQuery, /requestsTable\.helpNotCompletedReason/);
+  assert.match(reasonQuery, /\.\.\.base/);
+  assert.match(reasonQuery, /eq\(requestsTable\.helpCompleted, false\)/);
 });
 
 test("account deletion removes only the user and never mutates request rows", async () => {

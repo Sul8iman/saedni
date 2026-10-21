@@ -12,9 +12,14 @@ import {
   validatePreferredAreas,
 } from "./service-areas.ts";
 
-test("uses the reviewed 16-area active catalog", () => {
-  assert.equal(ACTIVE_SERVICE_AREAS.length, 16);
-  assert.deepEqual(ACTIVE_SERVICE_AREAS.slice(-2).map((area) => area.name), ["مطرح", "قريات"]);
+test("includes all Oman locations and preserves the reviewed Muscat list", () => {
+  const muscat = ACTIVE_SERVICE_AREAS.filter((area) => area.governorate === "مسقط").map((area) => area.name);
+  assert.equal(ACTIVE_SERVICE_AREAS.length, 73);
+  assert.deepEqual(muscat, [
+    "مسقط", "بوشر", "الخوير", "الغبرة", "الموالح", "السيب", "العامرات", "المعبيلة",
+    "الخوض", "الأنصب", "العذيبة", "القرم", "غلا", "روي", "مطرح", "قريات",
+  ]);
+  assert.equal(ACTIVE_SERVICE_AREAS.some((area) => area.name === "نزوى" && area.governorate === "الداخلية"), true);
 });
 
 test("treats malformed, null, empty, and unusable legacy JSON as no areas", () => {
@@ -24,9 +29,9 @@ test("treats malformed, null, empty, and unusable legacy JSON as no areas", () =
   }
 });
 
-test("deduplicates legacy areas without activating unsupported locations", () => {
+test("deduplicates legacy areas while accepting supported locations across Oman", () => {
   assert.deepEqual(parsePreferredAreas('["بوشر","بوشر","صور",""]'), ["بوشر", "صور"]);
-  assert.equal(hasConfiguredServiceArea('["صور"]'), false);
+  assert.equal(hasConfiguredServiceArea('["صور"]'), true);
   assert.equal(helperServesArea('["بوشر","بوشر"]', "بوشر"), true);
 });
 
@@ -39,10 +44,10 @@ test("counts each helper once per valid area and separates helpers without areas
   ]);
 
   assert.equal(result.totalCount, 4);
-  assert.equal(result.noAreaCount, 2);
+  assert.equal(result.noAreaCount, 1);
   assert.equal(result.counts.get("بوشر"), 2);
   assert.equal(result.counts.get("الخوض"), 1);
-  assert.equal(result.counts.has("صور"), false);
+  assert.equal(result.counts.get("صور"), 2);
 });
 
 test("normalizes one repeated area query value to the same shape as multiple values", () => {
@@ -60,7 +65,7 @@ test("normalizes explicit query boolean strings before schema coercion", () => {
 test("accepts only non-empty selections from the active catalog", () => {
   assert.deepEqual(validatePreferredAreas(["بوشر", "بوشر", "السيب"]), ["بوشر", "السيب"]);
   assert.equal(validatePreferredAreas([]), null);
-  assert.equal(validatePreferredAreas(["بوشر", "صور"]), null);
+  assert.deepEqual(validatePreferredAreas(["بوشر", "صور"]), ["بوشر", "صور"]);
   assert.equal(validatePreferredAreas(["بوشر", 1]), null);
 });
 

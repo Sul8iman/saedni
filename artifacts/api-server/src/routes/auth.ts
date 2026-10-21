@@ -233,7 +233,7 @@ router.post("/auth/register", async (req, res): Promise<void> => {
   if (userType === "helper") {
     const areas = validatePreferredAreas(preferredAreas);
     if (!areas) {
-      res.status(400).json({ error: "اختر منطقة خدمة واحدة على الأقل من مناطق مسقط" });
+      res.status(400).json({ error: "اختر منطقة خدمة واحدة على الأقل من مناطق عُمان المتاحة" });
       return;
     }
   }

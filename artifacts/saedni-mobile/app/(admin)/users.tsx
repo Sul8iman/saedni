@@ -17,6 +17,7 @@ import {
   useListUsers,
 } from "@workspace/api-client-react";
 import { accountDeletionErrorMessage } from "@/lib/account-deletion";
+import { OMAN_LOCATION_CATALOG } from "../../../../lib/api-zod/location-catalog";
 
 const BASE = `https://${process.env.EXPO_PUBLIC_DOMAIN ?? "saedni.onrender.com"}`;
 
@@ -52,6 +53,7 @@ export default function AdminUsersScreen() {
   const [includeNoArea, setIncludeNoArea] = useState(false);
   const [areaSheetVisible, setAreaSheetVisible] = useState(false);
   const [areaDraft, setAreaDraft] = useState<string[]>([]);
+  const [areaGovernorate, setAreaGovernorate] = useState<string | null>(null);
   const [includeNoAreaDraft, setIncludeNoAreaDraft] = useState(false);
   const [page, setPage] = useState(1);
 
@@ -147,6 +149,7 @@ export default function AdminUsersScreen() {
   const openAreaSheet = () => {
     setAreaDraft(selectedAreas);
     setIncludeNoAreaDraft(includeNoArea);
+    setAreaGovernorate(null);
     setAreaSheetVisible(true);
   };
 
@@ -475,31 +478,46 @@ export default function AdminUsersScreen() {
               ) : isAreasError ? (
                 <Text style={s.areaError}>تعذر تحميل المناطق</Text>
               ) : (
-                activeAreas.map((area) => {
-                  const selected = areaDraft.includes(area.name);
-                  return (
+                OMAN_LOCATION_CATALOG.map(({ governorate, locations }) => (
+                  <View key={governorate}>
                     <TouchableOpacity
-                      key={area.name}
-                      style={[s.areaOption, selected && s.areaOptionActive]}
-                      onPress={() => setAreaDraft((current) =>
-                        selected
-                          ? current.filter((item) => item !== area.name)
-                          : [...current, area.name]
-                      )}
-                      testID={`admin-users-area-${area.name}`}
+                      style={s.areaOption}
+                      onPress={() => setAreaGovernorate((current) => current === governorate ? null : governorate)}
                     >
-                      <Ionicons
-                        name={selected ? "checkmark-circle" : "ellipse-outline"}
-                        size={21}
-                        color={selected ? colors.primary : colors.mutedForeground}
-                      />
+                      <Ionicons name={areaGovernorate === governorate ? "chevron-up" : "chevron-down"} size={18} color={colors.mutedForeground} />
                       <View style={s.areaOptionLabels}>
-                        <Text style={[s.areaOptionText, selected && s.areaOptionTextActive]}>{area.name}</Text>
-                        <Text style={s.areaCountText}>{getAreaCountLine(area.name)}</Text>
+                        <Text style={[s.areaOptionText, { fontWeight: "800" }]}>{governorate}</Text>
                       </View>
                     </TouchableOpacity>
-                  );
-                })
+                    {areaGovernorate === governorate && activeAreas
+                      .filter((area) => locations.some((location) => location === area.name))
+                      .map((area) => {
+                        const selected = areaDraft.includes(area.name);
+                        return (
+                          <TouchableOpacity
+                            key={area.name}
+                            style={[s.areaOption, selected && s.areaOptionActive]}
+                            onPress={() => setAreaDraft((current) =>
+                              selected
+                                ? current.filter((item) => item !== area.name)
+                                : [...current, area.name]
+                            )}
+                            testID={`admin-users-area-${area.name}`}
+                          >
+                            <Ionicons
+                              name={selected ? "checkmark-circle" : "ellipse-outline"}
+                              size={21}
+                              color={selected ? colors.primary : colors.mutedForeground}
+                            />
+                            <View style={s.areaOptionLabels}>
+                              <Text style={[s.areaOptionText, selected && s.areaOptionTextActive]}>{area.name}</Text>
+                              <Text style={s.areaCountText}>{getAreaCountLine(area.name)}</Text>
+                            </View>
+                          </TouchableOpacity>
+                        );
+                      })}
+                  </View>
+                ))
               )}
             </ScrollView>
           </View>

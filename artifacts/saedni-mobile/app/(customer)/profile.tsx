@@ -6,7 +6,7 @@ import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/contexts/AuthContext";
-import { AREAS } from "@/constants/categories";
+import { OMAN_LOCATION_CATALOG } from "@/constants/categories";
 import { getAuthHeaders } from "@/contexts/AuthContext";
 import { useMutation } from "@tanstack/react-query";
 
@@ -19,11 +19,13 @@ export default function CustomerProfileScreen() {
     try {
       const parsed = JSON.parse(user?.preferredAreas ?? "[]");
       if (Array.isArray(parsed)) {
-        const valid = parsed.filter((value): value is string => typeof value === "string" && AREAS.includes(value));
+        const allAreas: string[] = OMAN_LOCATION_CATALOG.flatMap(({ locations }) => [...locations]);
+        const valid = parsed.filter((value): value is string => typeof value === "string" && allAreas.includes(value));
         if (valid.length > 0) return [...new Set(valid)];
       }
     } catch {}
-    return user?.area && AREAS.includes(user.area) ? [user.area] : [];
+    const allAreas: string[] = OMAN_LOCATION_CATALOG.flatMap(({ locations }) => [...locations]);
+    return user?.area && allAreas.includes(user.area) ? [user.area] : [];
   });
 
   function toggleArea(area: string) {
@@ -113,18 +115,23 @@ export default function CustomerProfileScreen() {
 
         <View style={s.areaCard}>
            <Text style={s.areaTitle}>مناطقي المفضلة</Text>
-           <Text style={s.areaHint}>اختر منطقتك</Text>
-          <View style={s.areaWrap}>
-            {AREAS.map((item) => (
-              <TouchableOpacity
-                key={item}
-                 style={[s.areaChip, selectedAreas.includes(item) && s.areaChipSelected]}
-                 onPress={() => toggleArea(item)}
-              >
-                 <Text style={[s.areaChipTxt, selectedAreas.includes(item) && s.areaChipTxtSelected]}>{item}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+          <Text style={s.areaHint}>اختر المحافظة ثم المنطقة المفضلة</Text>
+          {OMAN_LOCATION_CATALOG.map(({ governorate, locations }) => (
+            <View key={governorate}>
+              <Text style={s.areaHint}>{governorate}</Text>
+              <View style={s.areaWrap}>
+                {locations.map((item) => (
+                  <TouchableOpacity
+                    key={item}
+                    style={[s.areaChip, selectedAreas.includes(item) && s.areaChipSelected]}
+                    onPress={() => toggleArea(item)}
+                  >
+                    <Text style={[s.areaChipTxt, selectedAreas.includes(item) && s.areaChipTxtSelected]}>{item}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          ))}
           <TouchableOpacity
              style={[s.saveBtn, (selectedAreas.length === 0 || saveMutation.isPending) && s.saveBtnDisabled]}
             onPress={() => saveMutation.mutate()}

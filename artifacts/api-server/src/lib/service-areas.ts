@@ -1,21 +1,6 @@
-export const ACTIVE_SERVICE_AREAS = [
-  { name: "مسقط", governorate: "مسقط", sortOrder: 1 },
-  { name: "بوشر", governorate: "مسقط", sortOrder: 2 },
-  { name: "الخوير", governorate: "مسقط", sortOrder: 3 },
-  { name: "الغبرة", governorate: "مسقط", sortOrder: 4 },
-  { name: "الموالح", governorate: "مسقط", sortOrder: 5 },
-  { name: "السيب", governorate: "مسقط", sortOrder: 6 },
-  { name: "العامرات", governorate: "مسقط", sortOrder: 7 },
-  { name: "المعبيلة", governorate: "مسقط", sortOrder: 8 },
-  { name: "الخوض", governorate: "مسقط", sortOrder: 9 },
-  { name: "الأنصب", governorate: "مسقط", sortOrder: 10 },
-  { name: "العذيبة", governorate: "مسقط", sortOrder: 11 },
-  { name: "القرم", governorate: "مسقط", sortOrder: 12 },
-  { name: "غلا", governorate: "مسقط", sortOrder: 13 },
-  { name: "روي", governorate: "مسقط", sortOrder: 14 },
-  { name: "مطرح", governorate: "مسقط", sortOrder: 15 },
-  { name: "قريات", governorate: "مسقط", sortOrder: 16 },
-] as const;
+import { ACTIVE_SERVICE_AREAS } from "@workspace/api-zod/locations";
+
+export { ACTIVE_SERVICE_AREAS };
 
 const activeAreaNames = new Set<string>(ACTIVE_SERVICE_AREAS.map((area) => area.name));
 

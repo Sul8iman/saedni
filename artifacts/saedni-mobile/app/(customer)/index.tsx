@@ -12,12 +12,11 @@ import { useQueryClient } from "@tanstack/react-query";
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
 import { useColors } from "@/hooks/useColors";
 import { getAuthHeaders, useAuth } from "@/contexts/AuthContext";
-import { CATEGORIES, AREAS } from "@/constants/categories";
+import { CATEGORIES, OMAN_LOCATION_CATALOG } from "@/constants/categories";
 import type { CategoryValue } from "@/constants/categories";
 import ArabicText from "@/components/ArabicText";
 import CategoryIcon from "@/components/CategoryIcon";
 import { mergeRequestsById, requestQueryKeys } from "@/lib/request-query-keys";
-import { isRouteCategory } from "@/lib/request-locations";
 
 const BASE = process.env.EXPO_PUBLIC_DOMAIN ? `https://${process.env.EXPO_PUBLIC_DOMAIN}` : "";
 
@@ -48,14 +47,17 @@ export default function CustomerHomeScreen() {
   const [scheduledTime, setScheduledTime] = useState<Date | null>(null);
   const [datePickerVisible, setDatePickerVisible] = useState(false);
   const [timePickerVisible, setTimePickerVisible] = useState(false);
-  const [area, setArea] = useState("");
   const [fromArea, setFromArea] = useState("");
   const [toArea, setToArea] = useState("");
+  const [fromGovernorate, setFromGovernorate] = useState("");
+  const [toGovernorate, setToGovernorate] = useState("");
   const [amount, setAmount] = useState("");
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [areaPickerVisible, setAreaPickerVisible] = useState(false);
-  const [areaPickerTarget, setAreaPickerTarget] = useState<"area" | "from" | "to">("area");
+  const [areaPickerTarget, setAreaPickerTarget] = useState<"from" | "to">("from");
+  const [areaPickerStep, setAreaPickerStep] = useState<"governorate" | "location">("governorate");
+  const [areaPickerGovernorate, setAreaPickerGovernorate] = useState("");
 
   // Temporary picker state (user hasn't hit "Done" yet on iOS)
   const [tempDate, setTempDate] = useState<Date>(new Date());
@@ -79,14 +81,14 @@ export default function CustomerHomeScreen() {
   }
 
   function resetForm() {
-    setCategory(""); setDetails(""); setArea(""); setFromArea(""); setToArea(""); setAmount("");
+    setCategory(""); setDetails(""); setFromArea(""); setToArea("");
+    setFromGovernorate(""); setToGovernorate(""); setAmount("");
     setTimeType("now"); setScheduledDate(null); setScheduledTime(null);
     setSubmitted(false);
   }
 
   async function handleSubmit() {
-    const routeRequest = !!category && isRouteCategory(category);
-    if (!category || !details.trim() || (!routeRequest && !area) || (routeRequest && (!fromArea || !toArea)) || !amount) {
+    if (!category || !details.trim() || !fromArea || !toArea || !fromGovernorate || !toGovernorate || !amount) {
       Alert.alert("تنبيه", "يرجى تعبئة جميع الحقول");
       return;
     }
@@ -114,8 +116,11 @@ export default function CustomerHomeScreen() {
         credentials: "include",
         body: JSON.stringify({
           customerId: user.id, category, details, timeType,
-          area: routeRequest ? fromArea : area,
-          ...(routeRequest ? { fromArea, toArea } : {}),
+          area: fromArea,
+          fromArea,
+          toArea,
+          fromGovernorate,
+          toGovernorate,
           offeredAmount: parseFloat(amount),
           ...(scheduledDateTime ? { scheduledDateTime } : {}),
         }),
@@ -156,7 +161,8 @@ export default function CustomerHomeScreen() {
       await queryClient.invalidateQueries({ queryKey: ["available-requests"] });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setSubmitted(true);
-      setCategory(""); setDetails(""); setArea(""); setFromArea(""); setToArea(""); setAmount("");
+       setCategory(""); setDetails(""); setFromArea(""); setToArea("");
+       setFromGovernorate(""); setToGovernorate(""); setAmount("");
       setTimeType("now"); setScheduledDate(null); setScheduledTime(null);
     } catch { Alert.alert("خطأ", "تعذر الاتصال بالخادم"); }
     finally { setLoading(false); }
@@ -355,7 +361,7 @@ export default function CustomerHomeScreen() {
 
         {/* Location */}
         <ArabicText style={s.sectionLabel}>الموقع</ArabicText>
-        {(category && isRouteCategory(category)) ? (
+        {category ? (
           <>
             {(["from", "to"] as const).map((target) => {
               const value = target === "from" ? fromArea : toArea;
@@ -367,6 +373,8 @@ export default function CustomerHomeScreen() {
                     onPress={() => {
                       if (!isBlocked) {
                         setAreaPickerTarget(target);
+                        setAreaPickerStep("governorate");
+                        setAreaPickerGovernorate(target === "from" ? fromGovernorate : toGovernorate);
                         setAreaPickerVisible(true);
                       }
                     }}
@@ -382,24 +390,7 @@ export default function CustomerHomeScreen() {
               );
             })}
           </>
-        ) : (
-          <TouchableOpacity
-            style={[s.picker, isBlocked && s.disabled]}
-            onPress={() => {
-              if (!isBlocked) {
-                setAreaPickerTarget("area");
-                setAreaPickerVisible(true);
-              }
-            }}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="chevron-down" size={18} color={colors.mutedForeground} />
-            <Text style={[s.pickerTxt, !area && s.pickerPlaceholder]}>
-              {area || "اختر الموقع"}
-            </Text>
-            <Ionicons name="location-outline" size={18} color={colors.mutedForeground} />
-          </TouchableOpacity>
-        )}
+        ) : null}
 
         {/* Amount */}
         <ArabicText style={s.sectionLabel}>المبلغ المدفوع</ArabicText>
@@ -502,39 +493,70 @@ export default function CustomerHomeScreen() {
         <TouchableOpacity style={s.overlay} onPress={() => setAreaPickerVisible(false)} activeOpacity={1} />
         <SafeAreaView edges={["bottom"]} style={s.sheet}>
           <View style={s.sheetHandle} />
-          <Text style={s.sheetTitle}>اختر المنطقة</Text>
-          <FlatList
-            data={AREAS}
-            keyExtractor={i => i}
-            showsVerticalScrollIndicator={false}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                style={[s.areaRow, (areaPickerTarget === "area" ? area : areaPickerTarget === "from" ? fromArea : toArea) === item && s.areaRowActive]}
-                onPress={() => {
-                  if (areaPickerTarget === "area") setArea(item);
-                  else if (areaPickerTarget === "from") setFromArea(item);
-                  else setToArea(item);
-                  setAreaPickerVisible(false);
-                }}
-                activeOpacity={0.8}
-              >
-                <Ionicons
-                  name={(areaPickerTarget === "area" ? area : areaPickerTarget === "from" ? fromArea : toArea) === item ? "checkmark-circle" : "location-outline"}
-                  size={18}
-                  color={(areaPickerTarget === "area" ? area : areaPickerTarget === "from" ? fromArea : toArea) === item ? colors.primary : colors.mutedForeground}
-                />
-                 <Text
-                   style={[
-                     s.areaTxt,
-                     (areaPickerTarget === "area" ? area : areaPickerTarget === "from" ? fromArea : toArea) === item
-                       && s.areaTxtActive,
-                   ]}
-                 >
-                   {item}
-                 </Text>
-              </TouchableOpacity>
-            )}
-          />
+          <Text style={s.sheetTitle}>{areaPickerStep === "governorate" ? "اختر المحافظة" : "اختر الولاية أو المنطقة"}</Text>
+          {areaPickerStep === "location" && (
+            <TouchableOpacity
+              style={s.areaRow}
+              onPress={() => setAreaPickerStep("governorate")}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="chevron-back" size={18} color={colors.primary} />
+              <Text style={[s.areaTxt, s.areaTxtActive]}>{areaPickerGovernorate}</Text>
+            </TouchableOpacity>
+          )}
+          {areaPickerStep === "governorate" ? (
+            <FlatList
+              data={OMAN_LOCATION_CATALOG}
+              keyExtractor={(item) => item.governorate}
+              showsVerticalScrollIndicator={false}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={s.areaRow}
+                  onPress={() => {
+                    setAreaPickerGovernorate(item.governorate);
+                    if (areaPickerTarget === "from") {
+                      setFromGovernorate(item.governorate);
+                      setFromArea("");
+                    } else {
+                      setToGovernorate(item.governorate);
+                      setToArea("");
+                    }
+                    setAreaPickerStep("location");
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="chevron-forward" size={18} color={colors.mutedForeground} />
+                  <Text style={s.areaTxt}>{item.governorate}</Text>
+                </TouchableOpacity>
+              )}
+            />
+          ) : (
+            <FlatList
+              data={OMAN_LOCATION_CATALOG.find((item) => item.governorate === areaPickerGovernorate)?.locations ?? []}
+              keyExtractor={(item) => item}
+              showsVerticalScrollIndicator={false}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={[s.areaRow, item === (areaPickerTarget === "from" ? fromArea : toArea) && s.areaRowActive]}
+                  onPress={() => {
+                    if (areaPickerTarget === "from") setFromArea(item);
+                    else setToArea(item);
+                    setAreaPickerVisible(false);
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons
+                    name={item === (areaPickerTarget === "from" ? fromArea : toArea) ? "checkmark-circle" : "location-outline"}
+                    size={18}
+                    color={item === (areaPickerTarget === "from" ? fromArea : toArea) ? colors.primary : colors.mutedForeground}
+                  />
+                  <Text style={[s.areaTxt, item === (areaPickerTarget === "from" ? fromArea : toArea) && s.areaTxtActive]}>
+                    {item}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            />
+          )}
         </SafeAreaView>
       </Modal>
     </View>

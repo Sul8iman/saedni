@@ -1,4 +1,4 @@
-export const ROUTE_CATEGORIES = ["delivery", "transport", "shopping", "labor"] as const;
+export const ROUTE_CATEGORIES = ["delivery", "transport", "government", "shopping", "home_services", "labor"] as const;
 
 export function isRouteCategory(category: string): boolean {
   return (ROUTE_CATEGORIES as readonly string[]).includes(category);

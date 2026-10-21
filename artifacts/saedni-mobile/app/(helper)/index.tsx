@@ -9,7 +9,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useFocusEffect } from "expo-router";
 import { useColors } from "@/hooks/useColors";
 import { getAuthHeaders, useAuth } from "@/contexts/AuthContext";
-import { CATEGORIES, AREAS } from "@/constants/categories";
+import { CATEGORIES } from "@/constants/categories";
+import { OMAN_LOCATION_CATALOG } from "../../../../lib/api-zod/location-catalog";
 import { useHelperPushRegistration } from "@/hooks/usePushNotifications";
 import { requestQueryKeys } from "@/lib/request-query-keys";
 import { getRequestLocationLines } from "@/lib/request-locations";
@@ -65,11 +66,6 @@ const CAT_FILTERS = [
   ...CATEGORIES.map(c => ({ value: c.value, label: c.label })),
 ];
 
-const AREA_FILTERS = [
-  { value: "all", label: "الكل" },
-  ...AREAS.map(a => ({ value: a, label: a })),
-];
-
 async function openWhatsApp(phone: string) {
   await Linking.openURL(
     `https://wa.me/${phone}?text=${encodeURIComponent("مرحباً، رأيت طلبك في تطبيق ساعدني وأنا مستعد للمساعدة")}`
@@ -91,6 +87,7 @@ export default function HelperRequestsScreen() {
 
   const [catFilter, setCatFilter] = useState("all");
   const [areaFilters, setAreaFilters] = useState<string[]>([]);
+  const [areaGovernorate, setAreaGovernorate] = useState<string | null>(null);
   const [contactingId, setContactingId] = useState<number | null>(null);
   const roleKey = activeRole ?? user?.userType ?? "helper";
 
@@ -308,39 +305,40 @@ export default function HelperRequestsScreen() {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={s.chipsRow}
         >
-          {AREA_FILTERS.map(f => (
+          <TouchableOpacity
+            style={[s.chip, areaFilters.length === 0 && s.chipActive]}
+            onPress={() => { setAreaFilters([]); setAreaGovernorate(null); }}
+            activeOpacity={0.8}
+          >
+            <Text style={[s.chipTxt, areaFilters.length === 0 && s.chipTxtActive]}>كل عُمان</Text>
+          </TouchableOpacity>
+          {OMAN_LOCATION_CATALOG.map(({ governorate }) => (
             <TouchableOpacity
-              key={f.value}
-              style={[
-                s.chip,
-                (f.value === "all" ? areaFilters.length === 0 : areaFilters.includes(f.value))
-                  && s.chipActive,
-              ]}
-              onPress={() => {
-                if (f.value === "all") {
-                  setAreaFilters([]);
-                  return;
-                }
-                setAreaFilters((current) =>
-                  current.includes(f.value)
-                    ? current.filter((area) => area !== f.value)
-                    : [...current, f.value],
-                );
-              }}
+              key={governorate}
+              style={[s.chip, areaGovernorate === governorate && s.chipActive]}
+              onPress={() => setAreaGovernorate(governorate)}
               activeOpacity={0.8}
             >
-              <Text
-                style={[
-                  s.chipTxt,
-                  (f.value === "all" ? areaFilters.length === 0 : areaFilters.includes(f.value))
-                    && s.chipTxtActive,
-                ]}
-              >
-                {f.label}
-              </Text>
+              <Text style={[s.chipTxt, areaGovernorate === governorate && s.chipTxtActive]}>{governorate}</Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
+        {areaGovernorate && (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.chipsRow}>
+            {OMAN_LOCATION_CATALOG.find(({ governorate }) => governorate === areaGovernorate)?.locations.map((area) => (
+              <TouchableOpacity
+                key={area}
+                style={[s.chip, areaFilters.includes(area) && s.chipActive]}
+                onPress={() => setAreaFilters((current) =>
+                  current.includes(area) ? current.filter((value) => value !== area) : [...current, area],
+                )}
+                activeOpacity={0.8}
+              >
+                <Text style={[s.chipTxt, areaFilters.includes(area) && s.chipTxtActive]}>{area}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        )}
       </View>
 
       {/* ── List ── */}
@@ -367,7 +365,9 @@ export default function HelperRequestsScreen() {
               <Ionicons name="search-outline" size={56} color={colors.border} />
               <Text style={s.emptyTitle}>لا توجد طلبات</Text>
               <Text style={s.emptyHint}>
-                {catFilter !== "all" || areaFilters.length > 0
+                {user?.isHelperAvailable === false
+                  ? "فعّل «أنا مستعد للمساعدة» لعرض الطلبات واستقبال إشعاراتها."
+                  : catFilter !== "all" || areaFilters.length > 0
                   ? "لا توجد طلبات تطابق الفلتر المحدد"
                   : "ارجع لاحقاً للاطلاع على الطلبات الجديدة"}
               </Text>

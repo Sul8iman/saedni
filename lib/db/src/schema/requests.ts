@@ -12,11 +12,16 @@ export const requestsTable = pgTable("requests", {
   area: text("area").notNull(),
   fromArea: text("from_area"),
   toArea: text("to_area"),
+  fromGovernorate: text("from_governorate"),
+  toGovernorate: text("to_governorate"),
   timeType: text("time_type").notNull().default("now"),
   scheduledDateTime: text("scheduled_date_time"),
   offeredAmount: real("offered_amount").notNull(),
   status: text("status").notNull().default("available"),
+  isPaused: boolean("is_paused").notNull().default(false),
   helpCompleted: boolean("help_completed"),                               // true/false/null (null = no feedback yet)
+  helpNotCompletedReason: text("help_not_completed_reason"),
+  helpNotCompletedComment: text("help_not_completed_comment"),
   completedAt: timestamp("completed_at", { withTimezone: true }),        // when customer pressed إنهاء الطلب
   completedHelperId: integer("completed_helper_id").references(() => usersTable.id, {
     onDelete: "set null",
@@ -31,6 +36,7 @@ export const requestsTable = pgTable("requests", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [
   index("requests_from_area_idx").on(table.fromArea),
+  index("requests_available_unpaused_idx").on(table.status, table.isPaused, table.createdAt),
 ]);
 
 export const insertRequestSchema = createInsertSchema(requestsTable).omit({

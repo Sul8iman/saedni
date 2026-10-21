@@ -1,7 +1,7 @@
 import React, { useCallback } from "react";
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet, Linking,
-  ActivityIndicator, RefreshControl, Alert, Modal, Platform,
+  ActivityIndicator, RefreshControl, Alert, Modal, Platform, TextInput,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -26,6 +26,14 @@ const RATING_ACCESSIBILITY_LABELS = [
   "التقييم 4 من 5",
   "التقييم 5 من 5",
 ] as const;
+const NOT_HELPED_REASONS = [
+  "لم يتواصل معي أحد",
+  "لم نتفق على السعر",
+  "لم نتفق على الوقت أو التفاصيل",
+  "لم أعد بحاجة للمساعدة",
+  "طلب مكرر أو تجريبي",
+  "أخرى",
+] as const;
 
 interface HelpRequest {
   id: number;
@@ -34,6 +42,7 @@ interface HelpRequest {
   area: string;
   fromArea?: string | null;
   toArea?: string | null;
+  isPaused?: boolean;
   timeType: string;
   scheduledDateTime?: string | null;
   offeredAmount: number;
@@ -41,6 +50,8 @@ interface HelpRequest {
   createdAt: string;
   customerPhone?: string | null;
   helpCompleted?: boolean | null;
+  helpNotCompletedReason?: string | null;
+  helpNotCompletedComment?: string | null;
   completedHelperId?: number | null;
 }
 
@@ -211,6 +222,9 @@ export default function CustomerMyRequestsScreen() {
     helperId: number;
   } | null>(null);
   const [selectedRating, setSelectedRating] = React.useState<number | null>(null);
+  const [reasonTarget, setReasonTarget] = React.useState<number | null>(null);
+  const [selectedReason, setSelectedReason] = React.useState<string | null>(null);
+  const [reasonComment, setReasonComment] = React.useState("");
   const refetchContactedHelpers = useCallback(() => {
     if (!user?.id) return Promise.resolve();
     return qc.refetchQueries({
@@ -234,17 +248,19 @@ export default function CustomerMyRequestsScreen() {
   );
 
   const endMutation = useMutation({
-    mutationFn: ({ id, helpCompleted, completedHelperId, ratingStars }: {
+    mutationFn: ({ id, helpCompleted, completedHelperId, ratingStars, helpNotCompletedReason, helpNotCompletedComment }: {
       id: number;
       helpCompleted: boolean;
       completedHelperId?: number;
       ratingStars?: number;
+      helpNotCompletedReason?: string;
+      helpNotCompletedComment?: string;
     }) =>
       getAuthHeaders().then((authHeaders) => fetch(`${BASE}/api/requests/${id}/complete`, {
         method: "PATCH",
         credentials: "include",
         headers: { ...authHeaders, "Content-Type": "application/json" },
-        body: JSON.stringify({ helpCompleted, completedHelperId, ratingStars }),
+        body: JSON.stringify({ helpCompleted, completedHelperId, ratingStars, helpNotCompletedReason, helpNotCompletedComment }),
       })).then(async r => {
         if (!r.ok) {
           const body = await r.json().catch(() => null);
@@ -254,10 +270,53 @@ export default function CustomerMyRequestsScreen() {
       }),
     onSuccess: () => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      qc.invalidateQueries({ queryKey: ["my-requests", user?.id] });
+      setReasonTarget(null);
+      setSelectedReason(null);
+      setReasonComment("");
+      qc.invalidateQueries({ queryKey: requestQueryKeys.customer(user?.id ?? 0, roleKey) });
     },
     onError: (error) => Alert.alert("خطأ", error instanceof Error ? error.message : "تعذر إنهاء الطلب"),
   });
+
+  const pauseMutation = useMutation({
+    mutationFn: async ({ id, pause }: { id: number; pause: boolean }) => {
+      const response = await fetch(`${BASE}/api/requests/${id}/${pause ? "pause" : "resume"}`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: await getAuthHeaders(),
+      });
+      if (!response.ok) {
+        const body = await response.json().catch(() => null);
+        throw new Error(typeof body?.error === "string" ? body.error : "تعذر تحديث حالة الطلب");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      qc.invalidateQueries({ queryKey: requestQueryKeys.customer(user?.id ?? 0, roleKey) });
+      qc.invalidateQueries({ queryKey: ["available-requests"] });
+    },
+    onError: (error) => Alert.alert("خطأ", error instanceof Error ? error.message : "تعذر تحديث حالة الطلب"),
+  });
+
+  const showNotHelpedReason = useCallback((id: number) => {
+    setReasonTarget(id);
+    setSelectedReason(null);
+    setReasonComment("");
+  }, []);
+
+  const submitNotHelpedReason = useCallback(() => {
+    if (reasonTarget === null || !selectedReason || endMutation.isPending) return;
+    const id = reasonTarget;
+    const reason = selectedReason;
+    const comment = reasonComment.trim();
+    endMutation.mutate({
+      id,
+      helpCompleted: false,
+      helpNotCompletedReason: reason,
+      ...(comment ? { helpNotCompletedComment: comment } : {}),
+    });
+  }, [endMutation, reasonComment, reasonTarget, selectedReason]);
 
   const submitRating = useCallback((id: number, helperId: number, stars: number) => {
     endMutation.mutate({
@@ -317,7 +376,7 @@ export default function CustomerMyRequestsScreen() {
             { text: "إلغاء", style: "cancel" },
             {
               text: "لم أتلقَ مساعدة",
-              onPress: () => endMutation.mutate({ id, helpCompleted: false }),
+              onPress: () => showNotHelpedReason(id),
             },
           ],
         );
@@ -343,7 +402,7 @@ export default function CustomerMyRequestsScreen() {
     } catch (error) {
       Alert.alert("خطأ", error instanceof Error ? error.message : "تعذر تحميل المساعدين");
     }
-  }, [chooseRating]);
+  }, [chooseRating, showNotHelpedReason]);
 
   const confirmEnd = useCallback((id: number) => {
     Alert.alert(
@@ -354,7 +413,7 @@ export default function CustomerMyRequestsScreen() {
         {
           text: "لا",
           style: "destructive",
-          onPress: () => endMutation.mutate({ id, helpCompleted: false }),
+          onPress: () => showNotHelpedReason(id),
         },
         {
           text: "نعم",
@@ -362,13 +421,31 @@ export default function CustomerMyRequestsScreen() {
         },
       ]
     );
-  }, [chooseHelper, endMutation]);
+  }, [chooseHelper, showNotHelpedReason]);
+
+  const toggleRequestPause = useCallback((id: number, pause: boolean) => {
+    if (!pause) {
+      pauseMutation.mutate({ id, pause: false });
+      return;
+    }
+    Alert.alert(
+      "إيقاف مؤقت",
+      "الإيقاف المؤقت يمنع تواصل مساعدين جدد، ولا يوقف التواصل الجاري خارج التطبيق.",
+      [
+        { text: "إلغاء", style: "cancel" },
+        { text: "إيقاف مؤقت", onPress: () => pauseMutation.mutate({ id, pause: true }) },
+      ],
+    );
+  }, [pauseMutation]);
 
   const catLabel = useCallback((v: string) => CATEGORIES.find(c => c.value === v)?.label ?? v, []);
   const s = makeStyles(colors, insets.bottom);
 
   const renderItem = ({ item }: { item: HelpRequest }) => {
-    const st = STATUS_INFO[item.status] ?? { label: item.status, color: "#6B7280", bg: "#F3F4F6" };
+    const statusInfo = STATUS_INFO[item.status] ?? { label: item.status, color: "#6B7280", bg: "#F3F4F6" };
+    const st = item.isPaused
+      ? { label: "متوقف مؤقتًا", color: "#B45309", bg: "#FEF3C7" }
+      : statusInfo;
     const isActive = item.status === "available" || item.status === "accepted" || item.status === "in_progress";
 
     return (
@@ -454,15 +531,26 @@ export default function CustomerMyRequestsScreen() {
         />
 
         {isActive && (
-          <TouchableOpacity
-            style={s.endBtn}
-            onPress={() => confirmEnd(item.id)}
-            activeOpacity={0.8}
-            disabled={endMutation.isPending}
-          >
-            <Ionicons name="checkmark-circle-outline" size={16} color={colors.primary} />
-            <Text style={s.endTxt}>إنهاء الطلب</Text>
-          </TouchableOpacity>
+          <>
+            <TouchableOpacity
+              style={s.pauseBtn}
+              onPress={() => toggleRequestPause(item.id, !item.isPaused)}
+              activeOpacity={0.8}
+              disabled={pauseMutation.isPending}
+            >
+              <Ionicons name={item.isPaused ? "play-circle-outline" : "pause-circle-outline"} size={17} color="#B45309" />
+              <Text style={s.pauseTxt}>{item.isPaused ? "إعادة تفعيل الطلب" : "إيقاف مؤقت"}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={s.endBtn}
+              onPress={() => confirmEnd(item.id)}
+              activeOpacity={0.8}
+              disabled={endMutation.isPending}
+            >
+              <Ionicons name="checkmark-circle-outline" size={16} color={colors.primary} />
+              <Text style={s.endTxt}>إنهاء الطلب</Text>
+            </TouchableOpacity>
+          </>
         )}
       </View>
     );
@@ -508,6 +596,64 @@ export default function CustomerMyRequestsScreen() {
           }
         />
       )}
+      <Modal
+        visible={reasonTarget !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setReasonTarget(null)}
+      >
+        <View style={s.ratingBackdrop}>
+          <View style={s.reasonModal}>
+            <Text style={s.ratingTitle}>لماذا لم تتم المساعدة؟</Text>
+            <Text style={s.ratingHint}>اختر سببًا واحدًا للمتابعة</Text>
+            <View style={s.reasonOptions}>
+              {NOT_HELPED_REASONS.map((reason) => (
+                <TouchableOpacity
+                  key={reason}
+                  style={[s.reasonOption, selectedReason === reason && s.reasonOptionSelected]}
+                  onPress={() => setSelectedReason(reason)}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected: selectedReason === reason }}
+                >
+                  <Ionicons
+                    name={selectedReason === reason ? "radio-button-on" : "radio-button-off"}
+                    size={19}
+                    color={selectedReason === reason ? colors.primary : colors.mutedForeground}
+                  />
+                  <Text style={s.reasonOptionText}>{reason}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <TextInput
+              value={reasonComment}
+              onChangeText={setReasonComment}
+              placeholder="تفاصيل إضافية (اختياري)"
+              maxLength={1000}
+              multiline
+              textAlign="right"
+              style={s.reasonInput}
+            />
+            <TouchableOpacity
+              style={[s.ratingSubmitButton, (!selectedReason || endMutation.isPending) && s.ratingSubmitDisabled]}
+              onPress={submitNotHelpedReason}
+              disabled={!selectedReason || endMutation.isPending}
+              accessibilityRole="button"
+              accessibilityLabel="حفظ سبب عدم إتمام المساعدة"
+            >
+              {endMutation.isPending
+                ? <ActivityIndicator color="#FFFFFF" />
+                : <Text style={s.ratingSubmitText}>حفظ وإنهاء الطلب</Text>}
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={s.ratingCancelButton}
+              onPress={() => setReasonTarget(null)}
+              disabled={endMutation.isPending}
+            >
+              <Text style={s.ratingCancelText}>إلغاء</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
       {Platform.OS === "android" && (
         <Modal
           visible={ratingTarget !== null}
@@ -683,6 +829,23 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
       backgroundColor: c.card, paddingHorizontal: 12, paddingVertical: 22,
       alignItems: "center", direction: "rtl",
     },
+    reasonModal: {
+      width: "100%", maxWidth: 390, maxHeight: "92%", borderRadius: 18,
+      backgroundColor: c.card, paddingHorizontal: 16, paddingVertical: 18,
+      alignItems: "stretch", direction: "rtl",
+    },
+    reasonOptions: { marginTop: 12, gap: 5 },
+    reasonOption: {
+      minHeight: 40, borderWidth: 1, borderColor: c.border, borderRadius: 10,
+      paddingHorizontal: 10, flexDirection: "row-reverse", alignItems: "center", gap: 8,
+    },
+    reasonOptionSelected: { borderColor: c.primary, backgroundColor: c.secondary },
+    reasonOptionText: { flex: 1, textAlign: "right", color: c.foreground, fontSize: 12, fontWeight: "600" },
+    reasonInput: {
+      minHeight: 76, maxHeight: 110, marginTop: 11, borderWidth: 1,
+      borderColor: c.border, borderRadius: 10, padding: 10, color: c.foreground,
+      textAlignVertical: "top", backgroundColor: c.background,
+    },
     ratingTitle: { fontSize: 20, fontWeight: "800", color: c.foreground, textAlign: "right" },
     ratingHint: {
       marginTop: 7, fontSize: 13, color: c.mutedForeground,
@@ -722,6 +885,12 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
       justifyContent: "center", gap: 6, backgroundColor: c.secondary,
     },
     endTxt: { color: c.primary, fontSize: 14, fontWeight: "700" },
+    pauseBtn: {
+      borderWidth: 1, borderColor: "#FCD34D", borderRadius: 10, paddingVertical: 10,
+      flexDirection: "row-reverse", alignItems: "center", justifyContent: "center",
+      gap: 6, backgroundColor: "#FFFBEB",
+    },
+    pauseTxt: { color: "#B45309", fontSize: 13, fontWeight: "700" },
 
     empty: { alignItems: "center", justifyContent: "center", paddingTop: 80, gap: 10 },
     emptyTitle: { fontSize: 18, fontWeight: "700", color: c.foreground },

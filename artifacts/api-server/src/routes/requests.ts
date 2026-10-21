@@ -1046,10 +1046,6 @@ router.patch("/requests/:id/complete", async (req, res): Promise<void> => {
     res.status(400).json({ error: "اختر المساعد الذي أنجز الطلب" });
     return;
   }
-  if (helpCompleted === false && !parsed.data.helpNotCompletedReason) {
-    res.status(400).json({ error: "اختر سبب عدم إتمام المساعدة" });
-    return;
-  }
   if (helpCompleted !== false && (
     parsed.data.helpNotCompletedReason !== undefined
     || parsed.data.helpNotCompletedComment !== undefined

@@ -6,6 +6,7 @@ import {
   isVisibleInDefaultRequestList,
 } from "./request-security.ts";
 import { sanitizeLifecycleMetadata } from "./request-audit-safety.ts";
+import { CompleteRequestBody } from "../../../../lib/api-zod/src/generated/api.ts";
 
 const customer = { id: 11, userType: "customer", roles: ["customer"], isVerified: true };
 const otherCustomer = { id: 12, userType: "customer", roles: ["customer"], isVerified: true };
@@ -150,15 +151,21 @@ test("pause, helper availability, and notification eligibility are enforced serv
   assert.match(contactRoute, /helper\.isHelperAvailable/);
 });
 
-test("non-completion requires a reason and the admin breakdown uses its date filter", async () => {
+test("legacy non-completion payloads remain valid and admin breakdown uses its date filter", async () => {
   const [requestSource, adminSource] = await Promise.all([
     readFile(new URL("../routes/requests.ts", import.meta.url), "utf8"),
     readFile(new URL("../routes/admin.ts", import.meta.url), "utf8"),
   ]);
+  const legacyPayload = CompleteRequestBody.safeParse({ helpCompleted: false });
+  assert.equal(legacyPayload.success, true);
+  const invalidReasonPayload = CompleteRequestBody.safeParse({ helpCompleted: false, helpNotCompletedReason: "invalid" });
+  assert.equal(invalidReasonPayload.success, false);
   const completionStart = requestSource.indexOf('router.patch("/requests/:id/complete"');
   const completionEnd = requestSource.indexOf('router.patch("/requests/:id/status"', completionStart);
   const completionRoute = requestSource.slice(completionStart, completionEnd);
-  assert.match(completionRoute, /helpCompleted === false && !parsed\.data\.helpNotCompletedReason/);
+  assert.equal(completionRoute.includes("helpCompleted === false && !parsed.data.helpNotCompletedReason"), false);
+  assert.ok(completionRoute.includes("helpNotCompletedReason: helpCompleted === false"));
+  assert.ok(completionRoute.includes("parsed.data.helpNotCompletedReason ?? null"));
   assert.match(completionRoute, /helpNotCompletedReason:/);
   assert.match(completionRoute, /helpNotCompletedComment:/);
   const reasonQueryStart = adminSource.indexOf("const notHelpedReasons =");

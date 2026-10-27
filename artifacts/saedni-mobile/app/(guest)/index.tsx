@@ -5,16 +5,14 @@ import {
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
+import { useListRequests } from "@workspace/api-client-react";
 import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/contexts/AuthContext";
 import { CATEGORIES } from "@/constants/categories";
 import { OMAN_LOCATION_CATALOG } from "../../../../lib/api-zod/location-catalog";
 import GuestWall from "@/components/GuestWall";
-import { getRequestLocationLines } from "@/lib/request-locations";
-
-const BASE = process.env.EXPO_PUBLIC_DOMAIN ? `https://${process.env.EXPO_PUBLIC_DOMAIN}` : "";
+import { getRequestLocationLines, requestMatchesArea } from "@/lib/request-locations";
 
 interface HelpRequest {
   id: number;
@@ -66,15 +64,13 @@ export default function GuestBrowseScreen() {
   const [wallVisible, setWallVisible] = useState(false);
   const [wallMessage, setWallMessage] = useState<string | undefined>();
 
-  const { data: allData, isLoading, refetch, isRefetching } = useQuery({
-    queryKey: ["guest-available-requests"],
-    // Live requests are intentionally private; browsing begins after sign-in.
-    queryFn: async () => [] as HelpRequest[],
+  const { data: allData, isLoading, isError, refetch, isRefetching } = useListRequests(undefined, {
+    query: { queryKey: ["guest-available-requests"] },
   });
 
   const data = (allData ?? []).filter(item => {
     const catMatch = catFilter === "all" || item.category === catFilter;
-    const areaMatch = areaFilter === "all" || item.area === areaFilter;
+    const areaMatch = areaFilter === "all" || requestMatchesArea(item, areaFilter);
     return catMatch && areaMatch;
   });
 
@@ -147,7 +143,7 @@ export default function GuestBrowseScreen() {
       {/* Locked contact action */}
       <TouchableOpacity
         style={s.lockedBtn}
-        onPress={() => showWall("سجّل الدخول للتواصل مع صاحب الطلب وقبوله")}
+        onPress={() => showWall("سجّل الدخول أو أنشئ حساباً للتواصل مع صاحب الطلب")}
         activeOpacity={0.85}
       >
         <Ionicons name="lock-closed-outline" size={16} color={colors.mutedForeground} />
@@ -163,7 +159,7 @@ export default function GuestBrowseScreen() {
         <View style={s.headerInner}>
           <View style={s.headerRight}>
             <Text style={s.headerTitle}>تصفح الطلبات</Text>
-            {!isLoading && (
+            {!isLoading && !isError && (
               <View style={s.countBadge}>
                 <Text style={s.countTxt}>{data.length}</Text>
               </View>
@@ -255,6 +251,19 @@ export default function GuestBrowseScreen() {
       {isLoading ? (
         <View style={s.centered}>
           <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      ) : isError ? (
+        <View style={[s.empty, s.errorState]}>
+          <Ionicons name="cloud-offline-outline" size={48} color={colors.mutedForeground} />
+          <Text style={s.emptyTitle}>تعذر تحميل الطلبات</Text>
+          <Text style={s.emptyHint}>تحقق من اتصال الإنترنت وحاول مرة أخرى</Text>
+          <TouchableOpacity
+            style={s.retryBtn}
+            onPress={() => { void refetch(); }}
+            activeOpacity={0.85}
+          >
+            <Text style={s.retryTxt}>إعادة المحاولة</Text>
+          </TouchableOpacity>
         </View>
       ) : (
         <FlatList
@@ -392,8 +401,11 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
     lockedBtnTxt: { fontSize: 13, color: c.mutedForeground, fontWeight: "600" },
 
     empty: { alignItems: "center", justifyContent: "center", paddingTop: 80, gap: 10 },
+    errorState: { flex: 1, paddingHorizontal: 24, paddingTop: 0 },
     emptyTitle: { fontSize: 18, fontWeight: "700", color: c.foreground },
     emptyHint: { fontSize: 14, color: c.mutedForeground, textAlign: "center", lineHeight: 22 },
+    retryBtn: { marginTop: 8, backgroundColor: c.primary, borderRadius: 10, paddingHorizontal: 18, paddingVertical: 10 },
+    retryTxt: { color: c.primaryForeground, fontSize: 14, fontWeight: "700" },
 
     footerCta: {
       backgroundColor: c.primary, borderRadius: 14, marginHorizontal: 4, marginTop: 8,

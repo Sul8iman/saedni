@@ -213,6 +213,7 @@ export const ListUserAreaCountsResponse = zod.object({
 
 
 /**
+ * Anonymous guests may browse active, unpaused requests. Guest responses include request details only and omit customer account and contact information.
  * @summary List help requests
  */
 export const ListRequestsQueryParams = zod.object({
@@ -229,7 +230,7 @@ export const listRequestsResponseCompletedHelperTaskRatingStarsMax = 5;
 
 export const ListRequestsResponseItem = zod.object({
   "id": zod.number().int(),
-  "customerId": zod.number().int(),
+  "customerId": zod.number().int().optional(),
   "helperId": zod.number().int().nullish(),
   "category": zod.enum(['transport', 'delivery', 'government', 'shopping', 'home_services', 'labor']),
   "details": zod.string(),
@@ -242,7 +243,7 @@ export const ListRequestsResponseItem = zod.object({
   "helpNotCompletedReason": zod.string().nullish(),
   "helpNotCompletedComment": zod.string().nullish(),
   "timeType": zod.enum(['now', 'scheduled']),
-  "scheduledDateTime": zod.string().nullish(),
+  "scheduledDateTime": zod.string().nullable(),
   "offeredAmount": zod.number(),
   "status": zod.enum(['available', 'accepted', 'in_progress', 'completed', 'cancelled']),
   "helpCompleted": zod.boolean().nullish(),
@@ -284,7 +285,7 @@ export const createRequestResponseCompletedHelperTaskRatingStarsMax = 5;
 
 export const CreateRequestResponse = zod.object({
   "id": zod.number().int(),
-  "customerId": zod.number().int(),
+  "customerId": zod.number().int().optional(),
   "helperId": zod.number().int().nullish(),
   "category": zod.enum(['transport', 'delivery', 'government', 'shopping', 'home_services', 'labor']),
   "details": zod.string(),
@@ -297,7 +298,7 @@ export const CreateRequestResponse = zod.object({
   "helpNotCompletedReason": zod.string().nullish(),
   "helpNotCompletedComment": zod.string().nullish(),
   "timeType": zod.enum(['now', 'scheduled']),
-  "scheduledDateTime": zod.string().nullish(),
+  "scheduledDateTime": zod.string().nullable(),
   "offeredAmount": zod.number(),
   "status": zod.enum(['available', 'accepted', 'in_progress', 'completed', 'cancelled']),
   "helpCompleted": zod.boolean().nullish(),
@@ -328,7 +329,7 @@ export const getRequestResponseCompletedHelperTaskRatingStarsMax = 5;
 
 export const GetRequestResponse = zod.object({
   "id": zod.number().int(),
-  "customerId": zod.number().int(),
+  "customerId": zod.number().int().optional(),
   "helperId": zod.number().int().nullish(),
   "category": zod.enum(['transport', 'delivery', 'government', 'shopping', 'home_services', 'labor']),
   "details": zod.string(),
@@ -341,7 +342,7 @@ export const GetRequestResponse = zod.object({
   "helpNotCompletedReason": zod.string().nullish(),
   "helpNotCompletedComment": zod.string().nullish(),
   "timeType": zod.enum(['now', 'scheduled']),
-  "scheduledDateTime": zod.string().nullish(),
+  "scheduledDateTime": zod.string().nullable(),
   "offeredAmount": zod.number(),
   "status": zod.enum(['available', 'accepted', 'in_progress', 'completed', 'cancelled']),
   "helpCompleted": zod.boolean().nullish(),
@@ -386,7 +387,7 @@ export const updateRequestResponseCompletedHelperTaskRatingStarsMax = 5;
 
 export const UpdateRequestResponse = zod.object({
   "id": zod.number().int(),
-  "customerId": zod.number().int(),
+  "customerId": zod.number().int().optional(),
   "helperId": zod.number().int().nullish(),
   "category": zod.enum(['transport', 'delivery', 'government', 'shopping', 'home_services', 'labor']),
   "details": zod.string(),
@@ -399,7 +400,7 @@ export const UpdateRequestResponse = zod.object({
   "helpNotCompletedReason": zod.string().nullish(),
   "helpNotCompletedComment": zod.string().nullish(),
   "timeType": zod.enum(['now', 'scheduled']),
-  "scheduledDateTime": zod.string().nullish(),
+  "scheduledDateTime": zod.string().nullable(),
   "offeredAmount": zod.number(),
   "status": zod.enum(['available', 'accepted', 'in_progress', 'completed', 'cancelled']),
   "helpCompleted": zod.boolean().nullish(),
@@ -444,7 +445,7 @@ export const updateRequestStatusResponseCompletedHelperTaskRatingStarsMax = 5;
 
 export const UpdateRequestStatusResponse = zod.object({
   "id": zod.number().int(),
-  "customerId": zod.number().int(),
+  "customerId": zod.number().int().optional(),
   "helperId": zod.number().int().nullish(),
   "category": zod.enum(['transport', 'delivery', 'government', 'shopping', 'home_services', 'labor']),
   "details": zod.string(),
@@ -457,7 +458,7 @@ export const UpdateRequestStatusResponse = zod.object({
   "helpNotCompletedReason": zod.string().nullish(),
   "helpNotCompletedComment": zod.string().nullish(),
   "timeType": zod.enum(['now', 'scheduled']),
-  "scheduledDateTime": zod.string().nullish(),
+  "scheduledDateTime": zod.string().nullable(),
   "offeredAmount": zod.number(),
   "status": zod.enum(['available', 'accepted', 'in_progress', 'completed', 'cancelled']),
   "helpCompleted": zod.boolean().nullish(),
@@ -488,7 +489,7 @@ export const pauseRequestResponseCompletedHelperTaskRatingStarsMax = 5;
 
 export const PauseRequestResponse = zod.object({
   "id": zod.number().int(),
-  "customerId": zod.number().int(),
+  "customerId": zod.number().int().optional(),
   "helperId": zod.number().int().nullish(),
   "category": zod.enum(['transport', 'delivery', 'government', 'shopping', 'home_services', 'labor']),
   "details": zod.string(),
@@ -501,7 +502,7 @@ export const PauseRequestResponse = zod.object({
   "helpNotCompletedReason": zod.string().nullish(),
   "helpNotCompletedComment": zod.string().nullish(),
   "timeType": zod.enum(['now', 'scheduled']),
-  "scheduledDateTime": zod.string().nullish(),
+  "scheduledDateTime": zod.string().nullable(),
   "offeredAmount": zod.number(),
   "status": zod.enum(['available', 'accepted', 'in_progress', 'completed', 'cancelled']),
   "helpCompleted": zod.boolean().nullish(),
@@ -532,7 +533,7 @@ export const resumeRequestResponseCompletedHelperTaskRatingStarsMax = 5;
 
 export const ResumeRequestResponse = zod.object({
   "id": zod.number().int(),
-  "customerId": zod.number().int(),
+  "customerId": zod.number().int().optional(),
   "helperId": zod.number().int().nullish(),
   "category": zod.enum(['transport', 'delivery', 'government', 'shopping', 'home_services', 'labor']),
   "details": zod.string(),
@@ -545,7 +546,7 @@ export const ResumeRequestResponse = zod.object({
   "helpNotCompletedReason": zod.string().nullish(),
   "helpNotCompletedComment": zod.string().nullish(),
   "timeType": zod.enum(['now', 'scheduled']),
-  "scheduledDateTime": zod.string().nullish(),
+  "scheduledDateTime": zod.string().nullable(),
   "offeredAmount": zod.number(),
   "status": zod.enum(['available', 'accepted', 'in_progress', 'completed', 'cancelled']),
   "helpCompleted": zod.boolean().nullish(),
@@ -580,7 +581,7 @@ export const acceptRequestResponseCompletedHelperTaskRatingStarsMax = 5;
 
 export const AcceptRequestResponse = zod.object({
   "id": zod.number().int(),
-  "customerId": zod.number().int(),
+  "customerId": zod.number().int().optional(),
   "helperId": zod.number().int().nullish(),
   "category": zod.enum(['transport', 'delivery', 'government', 'shopping', 'home_services', 'labor']),
   "details": zod.string(),
@@ -593,7 +594,7 @@ export const AcceptRequestResponse = zod.object({
   "helpNotCompletedReason": zod.string().nullish(),
   "helpNotCompletedComment": zod.string().nullish(),
   "timeType": zod.enum(['now', 'scheduled']),
-  "scheduledDateTime": zod.string().nullish(),
+  "scheduledDateTime": zod.string().nullable(),
   "offeredAmount": zod.number(),
   "status": zod.enum(['available', 'accepted', 'in_progress', 'completed', 'cancelled']),
   "helpCompleted": zod.boolean().nullish(),
@@ -638,7 +639,7 @@ export const completeRequestResponseCompletedHelperTaskRatingStarsMax = 5;
 
 export const CompleteRequestResponse = zod.object({
   "id": zod.number().int(),
-  "customerId": zod.number().int(),
+  "customerId": zod.number().int().optional(),
   "helperId": zod.number().int().nullish(),
   "category": zod.enum(['transport', 'delivery', 'government', 'shopping', 'home_services', 'labor']),
   "details": zod.string(),
@@ -651,7 +652,7 @@ export const CompleteRequestResponse = zod.object({
   "helpNotCompletedReason": zod.string().nullish(),
   "helpNotCompletedComment": zod.string().nullish(),
   "timeType": zod.enum(['now', 'scheduled']),
-  "scheduledDateTime": zod.string().nullish(),
+  "scheduledDateTime": zod.string().nullable(),
   "offeredAmount": zod.number(),
   "status": zod.enum(['available', 'accepted', 'in_progress', 'completed', 'cancelled']),
   "helpCompleted": zod.boolean().nullish(),
@@ -728,7 +729,7 @@ export const cancelRequestResponseCompletedHelperTaskRatingStarsMax = 5;
 
 export const CancelRequestResponse = zod.object({
   "id": zod.number().int(),
-  "customerId": zod.number().int(),
+  "customerId": zod.number().int().optional(),
   "helperId": zod.number().int().nullish(),
   "category": zod.enum(['transport', 'delivery', 'government', 'shopping', 'home_services', 'labor']),
   "details": zod.string(),
@@ -741,7 +742,7 @@ export const CancelRequestResponse = zod.object({
   "helpNotCompletedReason": zod.string().nullish(),
   "helpNotCompletedComment": zod.string().nullish(),
   "timeType": zod.enum(['now', 'scheduled']),
-  "scheduledDateTime": zod.string().nullish(),
+  "scheduledDateTime": zod.string().nullable(),
   "offeredAmount": zod.number(),
   "status": zod.enum(['available', 'accepted', 'in_progress', 'completed', 'cancelled']),
   "helpCompleted": zod.boolean().nullish(),
@@ -936,7 +937,7 @@ export const listAdminActiveRequestsResponseItemsItemCompletedHelperTaskRatingSt
 export const ListAdminActiveRequestsResponse = zod.object({
   "items": zod.array(zod.object({
   "id": zod.number().int(),
-  "customerId": zod.number().int(),
+  "customerId": zod.number().int().optional(),
   "helperId": zod.number().int().nullish(),
   "category": zod.enum(['transport', 'delivery', 'government', 'shopping', 'home_services', 'labor']),
   "details": zod.string(),
@@ -949,7 +950,7 @@ export const ListAdminActiveRequestsResponse = zod.object({
   "helpNotCompletedReason": zod.string().nullish(),
   "helpNotCompletedComment": zod.string().nullish(),
   "timeType": zod.enum(['now', 'scheduled']),
-  "scheduledDateTime": zod.string().nullish(),
+  "scheduledDateTime": zod.string().nullable(),
   "offeredAmount": zod.number(),
   "status": zod.enum(['available', 'accepted', 'in_progress', 'completed', 'cancelled']),
   "helpCompleted": zod.boolean().nullish(),
@@ -998,7 +999,7 @@ export const listAdminArchiveRequestsResponseItemsItemCompletedHelperTaskRatingS
 export const ListAdminArchiveRequestsResponse = zod.object({
   "items": zod.array(zod.object({
   "id": zod.number().int(),
-  "customerId": zod.number().int(),
+  "customerId": zod.number().int().optional(),
   "helperId": zod.number().int().nullish(),
   "category": zod.enum(['transport', 'delivery', 'government', 'shopping', 'home_services', 'labor']),
   "details": zod.string(),
@@ -1011,7 +1012,7 @@ export const ListAdminArchiveRequestsResponse = zod.object({
   "helpNotCompletedReason": zod.string().nullish(),
   "helpNotCompletedComment": zod.string().nullish(),
   "timeType": zod.enum(['now', 'scheduled']),
-  "scheduledDateTime": zod.string().nullish(),
+  "scheduledDateTime": zod.string().nullable(),
   "offeredAmount": zod.number(),
   "status": zod.enum(['available', 'accepted', 'in_progress', 'completed', 'cancelled']),
   "helpCompleted": zod.boolean().nullish(),
@@ -1045,7 +1046,7 @@ export const listDeletedRequestsResponseCompletedHelperTaskRatingStarsMax = 5;
 
 export const ListDeletedRequestsResponseItem = zod.object({
   "id": zod.number().int(),
-  "customerId": zod.number().int(),
+  "customerId": zod.number().int().optional(),
   "helperId": zod.number().int().nullish(),
   "category": zod.enum(['transport', 'delivery', 'government', 'shopping', 'home_services', 'labor']),
   "details": zod.string(),
@@ -1058,7 +1059,7 @@ export const ListDeletedRequestsResponseItem = zod.object({
   "helpNotCompletedReason": zod.string().nullish(),
   "helpNotCompletedComment": zod.string().nullish(),
   "timeType": zod.enum(['now', 'scheduled']),
-  "scheduledDateTime": zod.string().nullish(),
+  "scheduledDateTime": zod.string().nullable(),
   "offeredAmount": zod.number(),
   "status": zod.enum(['available', 'accepted', 'in_progress', 'completed', 'cancelled']),
   "helpCompleted": zod.boolean().nullish(),
@@ -1110,7 +1111,7 @@ export const restoreRequestResponseCompletedHelperTaskRatingStarsMax = 5;
 
 export const RestoreRequestResponse = zod.object({
   "id": zod.number().int(),
-  "customerId": zod.number().int(),
+  "customerId": zod.number().int().optional(),
   "helperId": zod.number().int().nullish(),
   "category": zod.enum(['transport', 'delivery', 'government', 'shopping', 'home_services', 'labor']),
   "details": zod.string(),
@@ -1123,7 +1124,7 @@ export const RestoreRequestResponse = zod.object({
   "helpNotCompletedReason": zod.string().nullish(),
   "helpNotCompletedComment": zod.string().nullish(),
   "timeType": zod.enum(['now', 'scheduled']),
-  "scheduledDateTime": zod.string().nullish(),
+  "scheduledDateTime": zod.string().nullable(),
   "offeredAmount": zod.number(),
   "status": zod.enum(['available', 'accepted', 'in_progress', 'completed', 'cancelled']),
   "helpCompleted": zod.boolean().nullish(),

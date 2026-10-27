@@ -190,6 +190,7 @@ paths:
       operationId: listRequests
       tags: [requests]
       summary: List help requests
+      description: Anonymous guests may browse active, unpaused requests. Guest responses include request details only and omit customer account and contact information.
       parameters:
         - name: category
           in: query
@@ -217,7 +218,7 @@ paths:
             type: integer
       responses:
         "200":
-          description: List of requests
+          description: Authenticated responses may include account and contact fields; guest responses include public request details only.
           content:
             application/json:
               schema:
@@ -988,7 +989,7 @@ components:
 
     HelpRequest:
       type: object
-      required: [id, customerId, category, details, area, fromArea, toArea, timeType, offeredAmount, status, createdAt]
+      required: [id, category, details, area, fromArea, toArea, timeType, scheduledDateTime, offeredAmount, status, createdAt]
       properties:
         id:
           type: integer

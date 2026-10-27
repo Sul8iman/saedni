@@ -39,7 +39,12 @@ import {
   buildRequestLifecycleEventValues,
   presentRequestLifecycleEvent,
 } from "../lib/request-lifecycle";
-import { decideRequestPermission, type RequestPermissionDecision } from "../lib/request-security";
+import {
+  decideRequestPermission,
+  GUEST_BROWSE_STATUS,
+  presentGuestRequest,
+  type RequestPermissionDecision,
+} from "../lib/request-security";
 import { helperServesArea, isActiveServiceArea, normalizeAreaQuery, parsePreferredAreas } from "../lib/service-areas";
 import { presentContactedHelper, type ContactMethod } from "../lib/contacted-helpers";
 import { buildRequestAreaCondition } from "../lib/request-area-query";
@@ -259,15 +264,26 @@ router.get("/requests", async (req, res): Promise<void> => {
   });
   const params = parsed.success ? parsed.data : {};
   const conditions = [isNull(requestsTable.deletedAt)];
-  const actor = await requireRequestActor(req, res);
-  if (!actor) return;
+  const sessionUserId = (req as typeof req & { session?: { userId?: number } }).session?.userId;
+  const actor = sessionUserId ? await requireRequestActor(req, res) : null;
+  if (sessionUserId && !actor) return;
 
-  const isCustomer = actorHasRole(actor, "customer");
-  const isHelper = actorHasRole(actor, "helper");
+  const isGuest = actor === null;
+  const isCustomer = actor ? actorHasRole(actor, "customer") : false;
+  const isHelper = actor ? actorHasRole(actor, "helper") : false;
   const isCustomerOwnedRequestQuery = isCustomer
     && (params.customerId !== undefined || !isHelper);
 
-  if (isAdminActor(actor)) {
+  if (isGuest) {
+    if (params.customerId !== undefined || params.helperId !== undefined) {
+      res.status(403).json({ error: "سجّل الدخول لعرض الطلبات الخاصة" });
+      return;
+    }
+    conditions.push(
+      eq(requestsTable.status, GUEST_BROWSE_STATUS),
+      eq(requestsTable.isPaused, false),
+    );
+  } else if (isAdminActor(actor)) {
     // Administrators can review all live requests.
   } else if (params.customerId !== undefined) {
     if (!isCustomer || Number(params.customerId) !== actor.id) {
@@ -318,6 +334,11 @@ router.get("/requests", async (req, res): Promise<void> => {
     .from(requestsTable)
     .where(and(...conditions))
     .orderBy(desc(requestsTable.createdAt), desc(requestsTable.id));
+
+  if (isGuest) {
+    res.json(rows.map(presentGuestRequest));
+    return;
+  }
 
   const enrichedRequests = await Promise.all(rows.map((row) =>
     enrichRequest(row, {

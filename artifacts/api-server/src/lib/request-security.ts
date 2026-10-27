@@ -7,6 +7,48 @@ type RequestSecurityRecord = {
   deletedAt?: Date | null;
 };
 
+export const GUEST_BROWSE_STATUS = "available" as const;
+
+export type GuestBrowseRequest = {
+  status: string;
+  isPaused: boolean;
+  deletedAt?: Date | null;
+};
+
+export function isGuestBrowseRequestVisible(request: GuestBrowseRequest): boolean {
+  return request.status === GUEST_BROWSE_STATUS
+    && !request.isPaused
+    && request.deletedAt == null;
+}
+
+export function presentGuestRequest(request: {
+  id: number;
+  category: string;
+  details: string;
+  area: string;
+  fromArea: string | null;
+  toArea: string | null;
+  timeType: string;
+  scheduledDateTime: string | null;
+  offeredAmount: number;
+  status: string;
+  createdAt: Date;
+}) {
+  return {
+    id: request.id,
+    category: request.category,
+    details: request.details,
+    area: request.area,
+    fromArea: request.fromArea,
+    toArea: request.toArea,
+    timeType: request.timeType,
+    scheduledDateTime: request.scheduledDateTime,
+    offeredAmount: request.offeredAmount,
+    status: request.status,
+    createdAt: request.createdAt.toISOString(),
+  };
+}
+
 export type RequestPermission =
   | "create"
   | "edit"

@@ -11,7 +11,7 @@ import type { HelpRequestTimeType } from './helpRequestTimeType';
 
 export interface HelpRequest {
   id: number;
-  customerId: number;
+  customerId?: number;
   /** @nullable */
   helperId?: number | null;
   category: HelpRequestCategory;
@@ -32,7 +32,7 @@ export interface HelpRequest {
   helpNotCompletedComment?: string | null;
   timeType: HelpRequestTimeType;
   /** @nullable */
-  scheduledDateTime?: string | null;
+  scheduledDateTime: string | null;
   offeredAmount: number;
   status: HelpRequestStatus;
   /** @nullable */

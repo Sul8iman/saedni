@@ -949,6 +949,7 @@ export const getListRequestsUrl = (params?: ListRequestsParams,) => {
 }
 
 /**
+ * Anonymous guests may browse active, unpaused requests. Guest responses include request details only and omit customer account and contact information.
  * @summary List help requests
  */
 export const listRequests = async (params?: ListRequestsParams, options?: Parameters<typeof customFetch>[1]): Promise<HelpRequest[]> => {

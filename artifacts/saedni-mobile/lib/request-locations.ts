@@ -4,6 +4,15 @@ export function isRouteCategory(category: string): boolean {
   return (ROUTE_CATEGORIES as readonly string[]).includes(category);
 }
 
+export function requestMatchesArea(
+  request: { area?: string | null; fromArea?: string | null; toArea?: string | null },
+  selectedArea: string,
+): boolean {
+  return request.fromArea === selectedArea
+    || request.toArea === selectedArea
+    || request.area === selectedArea;
+}
+
 export type RequestLocationValues = {
   category: string;
   area?: string | null;

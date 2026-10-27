@@ -3,7 +3,9 @@ import test from "node:test";
 import { readFile } from "node:fs/promises";
 import {
   decideRequestPermission,
+  isGuestBrowseRequestVisible,
   isVisibleInDefaultRequestList,
+  presentGuestRequest,
 } from "./request-security.ts";
 import { sanitizeLifecycleMetadata } from "./request-audit-safety.ts";
 import { CompleteRequestBody } from "../../../../lib/api-zod/src/generated/api.ts";
@@ -32,7 +34,7 @@ test("anonymous callers cannot archive a request", () => {
   assert.deepEqual(result, {
     allowed: false,
     status: 401,
-    error: "يلزم تسجيل الدخول لإجراء هذه العملية",
+    error: "ÙÙØ²Ù ØªØ³Ø¬ÙÙ Ø§ÙØ¯Ø®ÙÙ ÙØ¥Ø¬Ø±Ø§Ø¡ ÙØ°Ù Ø§ÙØ¹ÙÙÙØ©",
   });
 });
 
@@ -84,6 +86,50 @@ test("administrators can archive requests while customers cannot archive active 
 test("soft-deleted requests are hidden from default listings", () => {
   assert.equal(isVisibleInDefaultRequestList({ deletedAt: null }), true);
   assert.equal(isVisibleInDefaultRequestList({ deletedAt: new Date() }), false);
+});
+
+test("guest browsing includes active unpaused requests and returns no account data", async () => {
+  const active = {
+    id: 45,
+    category: "delivery",
+    details: "توصيل مستند",
+    area: "بوشر",
+    fromArea: "بوشر",
+    toArea: "الخوض",
+    timeType: "now",
+    scheduledDateTime: null,
+    offeredAmount: 5,
+    status: "available",
+    isPaused: false,
+    createdAt: new Date("2026-10-01T10:00:00.000Z"),
+    deletedAt: null,
+    customerId: 99,
+    customerPhone: "96800000000",
+    customerName: "Private customer",
+  };
+  const paused = { ...active, id: 46, isPaused: true };
+  const deleted = { ...active, id: 47, deletedAt: new Date() };
+  const completed = { ...active, id: 48, status: "completed" };
+  assert.equal(isGuestBrowseRequestVisible(active), true);
+  assert.equal(isGuestBrowseRequestVisible(paused), false);
+  assert.equal(isGuestBrowseRequestVisible(deleted), false);
+  assert.equal(isGuestBrowseRequestVisible(completed), false);
+  const guestResponse = presentGuestRequest(active);
+  assert.deepEqual(Object.keys(guestResponse), [
+    "id", "category", "details", "area", "fromArea", "toArea", "timeType",
+    "scheduledDateTime", "offeredAmount", "status", "createdAt",
+  ]);
+  assert.equal("customerId" in guestResponse, false);
+  assert.equal("customerPhone" in guestResponse, false);
+
+  const source = await readFile(new URL("../routes/requests.ts", import.meta.url), "utf8");
+  const listStart = source.indexOf('router.get("/requests"');
+  const listEnd = source.indexOf('router.post("/requests"', listStart);
+  const listRoute = source.slice(listStart, listEnd);
+  assert.match(listRoute, /sessionUserId \? await requireRequestActor/);
+  assert.match(listRoute, /eq\(requestsTable\.status, GUEST_BROWSE_STATUS\)/);
+  assert.match(listRoute, /eq\(requestsTable\.isPaused, false\)/);
+  assert.match(listRoute, /rows\.map\(presentGuestRequest\)/);
 });
 
 test("available helper visibility is independent of notification preferences and keeps customer ownership", async () => {
@@ -197,7 +243,7 @@ test("account deletion removes only the user and never mutates request rows", as
   assert.match(deleteSource, /userType === "admin"/);
   assert.match(adminSource, /code === "23503"/);
   assert.match(deleteSource, /postgresForeignKeyViolation/);
-  assert.match(deleteSource, /لا يمكن حذف هذا الحساب لوجود سجلات تواصل أو تقييمات مرتبطة به/);
+  assert.match(deleteSource, /ÙØ§ ÙÙÙÙ Ø­Ø°Ù ÙØ°Ø§ Ø§ÙØ­Ø³Ø§Ø¨ ÙÙØ¬ÙØ¯ Ø³Ø¬ÙØ§Øª ØªÙØ§ØµÙ Ø£Ù ØªÙÙÙÙØ§Øª ÙØ±ØªØ¨Ø·Ø© Ø¨Ù/);
 });
 
 test("audit metadata strips authentication secrets and OTPs", () => {

@@ -12,7 +12,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { CATEGORIES } from "@/constants/categories";
 import { OMAN_LOCATION_CATALOG } from "../../../../lib/api-zod/location-catalog";
 import GuestWall from "@/components/GuestWall";
-import { getRequestLocationLines } from "@/lib/request-locations";
+import { getRequestLocationLines, requestMatchesArea } from "@/lib/request-locations";
 
 const BASE = process.env.EXPO_PUBLIC_DOMAIN ? `https://${process.env.EXPO_PUBLIC_DOMAIN}` : "";
 
@@ -68,13 +68,16 @@ export default function GuestBrowseScreen() {
 
   const { data: allData, isLoading, refetch, isRefetching } = useQuery({
     queryKey: ["guest-available-requests"],
-    // Live requests are intentionally private; browsing begins after sign-in.
-    queryFn: async () => [] as HelpRequest[],
+    queryFn: async () => {
+      const response = await fetch(`${BASE}/api/requests`);
+      if (!response.ok) throw new Error("تعذر تحميل الطلبات");
+      return response.json() as Promise<HelpRequest[]>;
+    },
   });
 
   const data = (allData ?? []).filter(item => {
     const catMatch = catFilter === "all" || item.category === catFilter;
-    const areaMatch = areaFilter === "all" || item.area === areaFilter;
+    const areaMatch = areaFilter === "all" || requestMatchesArea(item, areaFilter);
     return catMatch && areaMatch;
   });
 
@@ -147,7 +150,7 @@ export default function GuestBrowseScreen() {
       {/* Locked contact action */}
       <TouchableOpacity
         style={s.lockedBtn}
-        onPress={() => showWall("سجّل الدخول للتواصل مع صاحب الطلب وقبوله")}
+        onPress={() => showWall("سجّل الدخول أو أنشئ حساباً للتواصل مع صاحب الطلب")}
         activeOpacity={0.85}
       >
         <Ionicons name="lock-closed-outline" size={16} color={colors.mutedForeground} />

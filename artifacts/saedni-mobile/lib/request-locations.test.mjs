@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { readFile } from "node:fs/promises";
 import { getRequestLocationLines, requestMatchesArea } from "./request-locations.ts";
 
 test("legacy route requests show one saved location and no invented destination", () => {
@@ -47,4 +48,11 @@ test("location filters match either route endpoint and preserve legacy area fall
   assert.equal(requestMatchesArea({ area: "بوشر", fromArea: null, toArea: null }, "بوشر"), true);
   assert.equal(requestMatchesArea({ area: "بوشر", fromArea: "الخوض", toArea: "السيب" }, "بوشر"), true);
   assert.equal(requestMatchesArea({ area: "بوشر", fromArea: "الخوض", toArea: "السيب" }, "نزوى"), false);
+});
+
+test("guest request API errors show a retry state instead of the empty list", async () => {
+  const source = await readFile(new URL("../app/(guest)/index.tsx", import.meta.url), "utf8");
+  assert.match(source, /isLoading, isError, refetch/);
+  assert.match(source, /تعذر تحميل الطلبات/);
+  assert.match(source, /إعادة المحاولة/);
 });

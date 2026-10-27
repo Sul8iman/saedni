@@ -64,7 +64,7 @@ export default function GuestBrowseScreen() {
   const [wallVisible, setWallVisible] = useState(false);
   const [wallMessage, setWallMessage] = useState<string | undefined>();
 
-  const { data: allData, isLoading, refetch, isRefetching } = useListRequests(undefined, {
+  const { data: allData, isLoading, isError, refetch, isRefetching } = useListRequests(undefined, {
     query: { queryKey: ["guest-available-requests"] },
   });
 
@@ -159,7 +159,7 @@ export default function GuestBrowseScreen() {
         <View style={s.headerInner}>
           <View style={s.headerRight}>
             <Text style={s.headerTitle}>تصفح الطلبات</Text>
-            {!isLoading && (
+            {!isLoading && !isError && (
               <View style={s.countBadge}>
                 <Text style={s.countTxt}>{data.length}</Text>
               </View>
@@ -251,6 +251,19 @@ export default function GuestBrowseScreen() {
       {isLoading ? (
         <View style={s.centered}>
           <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      ) : isError ? (
+        <View style={[s.empty, s.errorState]}>
+          <Ionicons name="cloud-offline-outline" size={48} color={colors.mutedForeground} />
+          <Text style={s.emptyTitle}>تعذر تحميل الطلبات</Text>
+          <Text style={s.emptyHint}>تحقق من اتصال الإنترنت وحاول مرة أخرى</Text>
+          <TouchableOpacity
+            style={s.retryBtn}
+            onPress={() => { void refetch(); }}
+            activeOpacity={0.85}
+          >
+            <Text style={s.retryTxt}>إعادة المحاولة</Text>
+          </TouchableOpacity>
         </View>
       ) : (
         <FlatList
@@ -388,8 +401,11 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
     lockedBtnTxt: { fontSize: 13, color: c.mutedForeground, fontWeight: "600" },
 
     empty: { alignItems: "center", justifyContent: "center", paddingTop: 80, gap: 10 },
+    errorState: { flex: 1, paddingHorizontal: 24, paddingTop: 0 },
     emptyTitle: { fontSize: 18, fontWeight: "700", color: c.foreground },
     emptyHint: { fontSize: 14, color: c.mutedForeground, textAlign: "center", lineHeight: 22 },
+    retryBtn: { marginTop: 8, backgroundColor: c.primary, borderRadius: 10, paddingHorizontal: 18, paddingVertical: 10 },
+    retryTxt: { color: c.primaryForeground, fontSize: 14, fontWeight: "700" },
 
     footerCta: {
       backgroundColor: c.primary, borderRadius: 14, marginHorizontal: 4, marginTop: 8,

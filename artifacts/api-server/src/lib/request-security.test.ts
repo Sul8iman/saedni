@@ -34,7 +34,7 @@ test("anonymous callers cannot archive a request", () => {
   assert.deepEqual(result, {
     allowed: false,
     status: 401,
-    error: "ÙÙØ²Ù ØªØ³Ø¬ÙÙ Ø§ÙØ¯Ø®ÙÙ ÙØ¥Ø¬Ø±Ø§Ø¡ ÙØ°Ù Ø§ÙØ¹ÙÙÙØ©",
+    error: "يلزم تسجيل الدخول لإجراء هذه العملية",
   });
 });
 

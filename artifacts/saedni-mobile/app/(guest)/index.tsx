@@ -5,16 +5,14 @@ import {
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
+import { useListRequests } from "@workspace/api-client-react";
 import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/contexts/AuthContext";
 import { CATEGORIES } from "@/constants/categories";
 import { OMAN_LOCATION_CATALOG } from "../../../../lib/api-zod/location-catalog";
 import GuestWall from "@/components/GuestWall";
 import { getRequestLocationLines, requestMatchesArea } from "@/lib/request-locations";
-
-const BASE = process.env.EXPO_PUBLIC_DOMAIN ? `https://${process.env.EXPO_PUBLIC_DOMAIN}` : "";
 
 interface HelpRequest {
   id: number;
@@ -66,13 +64,8 @@ export default function GuestBrowseScreen() {
   const [wallVisible, setWallVisible] = useState(false);
   const [wallMessage, setWallMessage] = useState<string | undefined>();
 
-  const { data: allData, isLoading, refetch, isRefetching } = useQuery({
-    queryKey: ["guest-available-requests"],
-    queryFn: async () => {
-      const response = await fetch(`${BASE}/api/requests`);
-      if (!response.ok) throw new Error("تعذر تحميل الطلبات");
-      return response.json() as Promise<HelpRequest[]>;
-    },
+  const { data: allData, isLoading, refetch, isRefetching } = useListRequests(undefined, {
+    query: { queryKey: ["guest-available-requests"] },
   });
 
   const data = (allData ?? []).filter(item => {

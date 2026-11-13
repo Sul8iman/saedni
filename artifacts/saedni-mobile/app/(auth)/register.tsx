@@ -4,13 +4,14 @@ import {
   ActivityIndicator, Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
 import { useColors } from "@/hooks/useColors";
 import { useAuth, type AuthUser } from "@/contexts/AuthContext";
 import { OMAN_LOCATION_CATALOG } from "../../../../lib/api-zod/location-catalog";
+import { getPostAuthDestination, normalizeGuestIntent } from "@/lib/guest-home-intent";
 
 type Step = "form" | "otp";
 type UserType = "customer" | "helper";
@@ -23,12 +24,14 @@ const BASE = `https://${DOMAIN}`;
 export default function RegisterScreen() {
   const colors = useColors();
   const router = useRouter();
-  const { setSession } = useAuth();
+  const { intent: rawIntent } = useLocalSearchParams<{ intent?: string }>();
+  const intent = normalizeGuestIntent(rawIntent);
+  const { setSession, setActiveRole } = useAuth();
 
   const [step, setStep] = useState<Step>("form");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
-  const [userType, setUserType] = useState<UserType>("customer");
+  const [userType, setUserType] = useState<UserType>(intent ?? "customer");
   const [customerArea, setCustomerArea] = useState("");
   const [helperAreas, setHelperAreas] = useState<string[]>([]);
   const [expandedGovernorate, setExpandedGovernorate] = useState<string | null>(null);
@@ -102,8 +105,11 @@ export default function RegisterScreen() {
         return;
       }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      await setSession(data.user as AuthUser, data.token as string);
-      router.replace("/");
+      const user = data.user as AuthUser;
+      await setSession(user, data.token as string);
+      const destination = getPostAuthDestination(intent, user.roles ?? [user.userType]);
+      if (destination.role) await setActiveRole(destination.role);
+      router.replace(destination.path);
     } catch (err: unknown) {
       const isTimeout = err instanceof Error && err.name === "AbortError";
       Alert.alert("خطأ في الاتصال", isTimeout ? "انتهت مهلة الاتصال، يرجى المحاولة مجدداً" : "تعذر الاتصال بالخادم، يرجى التحقق من اتصالك بالإنترنت");

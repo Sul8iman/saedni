@@ -19,8 +19,7 @@ export default function Index() {
     );
   }
 
-  if (isGuest) return <Redirect href="/(guest)" />;
-  if (!user) return <Redirect href="/(auth)/welcome" />;
+  if (isGuest || !user) return <Redirect href="/(guest)" />;
   if (user.userType === "admin") return <Redirect href="/(admin)" />;
 
   const roles = user.roles ?? [user.userType];

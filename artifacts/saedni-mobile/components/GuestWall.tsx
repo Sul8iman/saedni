@@ -11,9 +11,10 @@ interface Props {
   visible: boolean;
   onClose: () => void;
   message?: string;
+  intent?: "customer" | "helper" | null;
 }
 
-export default function GuestWall({ visible, onClose, message }: Props) {
+export default function GuestWall({ visible, onClose, message, intent = null }: Props) {
   const colors = useColors();
   const router = useRouter();
   const { exitGuestMode } = useAuth();
@@ -22,13 +23,13 @@ export default function GuestWall({ visible, onClose, message }: Props) {
   function goLogin() {
     onClose();
     exitGuestMode();
-    router.replace("/(auth)/login");
+    router.replace({ pathname: "/(auth)/login", params: intent ? { intent } : {} });
   }
 
   function goRegister() {
     onClose();
     exitGuestMode();
-    router.replace("/(auth)/register");
+    router.replace({ pathname: "/(auth)/register", params: intent ? { intent } : {} });
   }
 
   return (

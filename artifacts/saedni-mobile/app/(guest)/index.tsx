@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
-  ActivityIndicator, RefreshControl, ScrollView,
+  ActivityIndicator, RefreshControl, ScrollView, Modal, TouchableWithoutFeedback,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -55,7 +55,7 @@ export default function GuestBrowseScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { exitGuestMode } = useAuth();
+  const { user, exitGuestMode, setActiveRole } = useAuth();
   const s = makeStyles(colors, insets.bottom);
 
   const [catFilter, setCatFilter] = useState("all");
@@ -63,22 +63,38 @@ export default function GuestBrowseScreen() {
   const [areaGovernorate, setAreaGovernorate] = useState<string | null>(null);
   const [wallVisible, setWallVisible] = useState(false);
   const [wallMessage, setWallMessage] = useState<string | undefined>();
+  const [wallIntent, setWallIntent] = useState<"customer" | "helper" | null>(null);
+  const [selectedRequest, setSelectedRequest] = useState<HelpRequest | null>(null);
 
   const { data: allData, isLoading, isError, refetch, isRefetching } = useListRequests(undefined, {
     query: { queryKey: ["guest-available-requests"] },
   });
 
-  const data = (allData ?? []).filter(item => {
+  const data = (allData ?? [])
+    .filter(item => item.status === "available")
+    .filter(item => {
     const catMatch = catFilter === "all" || item.category === catFilter;
     const areaMatch = areaFilter === "all" || requestMatchesArea(item, areaFilter);
     return catMatch && areaMatch;
-  });
+    })
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   const catLabel = (v: string) => CATEGORIES.find(c => c.value === v)?.label ?? v;
 
-  function showWall(msg?: string) {
+  function showWall(msg?: string, intent: "customer" | "helper" | null = null) {
     setWallMessage(msg);
+    setWallIntent(intent);
     setWallVisible(true);
+  }
+
+  function handleIntent(intent: "customer" | "helper") {
+    if (user) {
+      void setActiveRole(intent).then(() => {
+        router.replace(intent === "customer" ? "/(customer)" : "/(helper)");
+      });
+      return;
+    }
+    showWall(undefined, intent);
   }
 
   function handleLogin() {
@@ -105,7 +121,16 @@ export default function GuestBrowseScreen() {
       </View>
 
       {/* Details */}
-      <Text style={s.details} numberOfLines={3}>{item.details}</Text>
+      <Text style={s.details}>{item.details}</Text>
+      <TouchableOpacity
+        accessibilityRole="button"
+        onPress={() => setSelectedRequest(item)}
+        style={s.detailsLink}
+        activeOpacity={0.75}
+      >
+        <Text style={s.detailsLinkText}>عرض التفاصيل</Text>
+        <Ionicons name="chevron-back" size={15} color={colors.primary} />
+      </TouchableOpacity>
 
       {/* Meta chips */}
       <View style={s.metaRow}>
@@ -138,6 +163,10 @@ export default function GuestBrowseScreen() {
           {"تاريخ نشر الطلب: "}
           <Text style={s.publishVal}>{fmtCreatedAt(item.createdAt)}</Text>
         </Text>
+      </View>
+      <View style={s.statusBadge}>
+        <View style={s.statusDot} />
+        <Text style={s.statusText}>متاح</Text>
       </View>
 
       {/* Locked contact action */}
@@ -249,8 +278,14 @@ export default function GuestBrowseScreen() {
 
       {/* List */}
       {isLoading ? (
-        <View style={s.centered}>
-          <ActivityIndicator size="large" color={colors.primary} />
+        <View style={s.skeletonList} accessibilityLabel="جاري تحميل الطلبات">
+          {[0, 1, 2].map(index => (
+            <View key={index} style={s.skeletonCard}>
+              <View style={s.skeletonLineWide} />
+              <View style={s.skeletonLine} />
+              <View style={s.skeletonLineShort} />
+            </View>
+          ))}
         </View>
       ) : isError ? (
         <View style={[s.empty, s.errorState]}>
@@ -290,22 +325,81 @@ export default function GuestBrowseScreen() {
               </Text>
             </View>
           }
-          ListFooterComponent={
-            data.length > 0 ? (
-              <TouchableOpacity style={s.footerCta} onPress={() => showWall()} activeOpacity={0.85}>
-                <Ionicons name="person-add-outline" size={18} color={colors.primaryForeground} />
-                <Text style={s.footerCtaTxt}>سجّل الدخول لقبول الطلبات والكسب منها</Text>
-              </TouchableOpacity>
-            ) : null
-          }
         />
       )}
+
+      <View style={[s.mainActions, { paddingBottom: Math.max(insets.bottom, 12) }]} accessibilityLabel="إجراءات ساعدني">
+        <TouchableOpacity
+          testID="guest-request-help"
+          style={s.mainPrimary}
+          onPress={() => handleIntent("customer")}
+          activeOpacity={0.85}
+        >
+          <Text style={s.mainPrimaryText}>اطلب مساعدة</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          testID="guest-help-others"
+          style={s.mainSecondary}
+          onPress={() => handleIntent("helper")}
+          activeOpacity={0.85}
+        >
+          <Text style={s.mainSecondaryText}>ساعد الآخرين</Text>
+        </TouchableOpacity>
+      </View>
 
       <GuestWall
         visible={wallVisible}
         onClose={() => setWallVisible(false)}
         message={wallMessage}
+        intent={wallIntent}
       />
+      <Modal
+        visible={!!selectedRequest}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setSelectedRequest(null)}
+      >
+        <TouchableWithoutFeedback onPress={() => setSelectedRequest(null)}>
+          <View style={s.detailOverlay}>
+            <TouchableWithoutFeedback>
+              <View style={s.detailSheet}>
+                <View style={s.detailHandle} />
+                <Text style={s.detailTitle}>
+                  {selectedRequest ? catLabel(selectedRequest.category) : ""}
+                </Text>
+                <Text style={s.detailDescription}>{selectedRequest?.details}</Text>
+                {selectedRequest && getRequestLocationLines(selectedRequest).map(location => (
+                  <Text key={location.label} style={s.detailMeta}>{location.label}: {location.value}</Text>
+                ))}
+                <Text style={s.detailMeta}>
+                  {selectedRequest?.timeType === "now"
+                    ? "الوقت: الآن"
+                    : `الوقت: ${selectedRequest?.scheduledDateTime ? fmtScheduled(selectedRequest.scheduledDateTime) : "لاحقاً"}`}
+                </Text>
+                <Text style={s.detailMeta}>المبلغ المقترح: {selectedRequest?.offeredAmount} ر.ع.</Text>
+                <Text style={s.detailMeta}>
+                  تاريخ النشر: {selectedRequest ? fmtCreatedAt(selectedRequest.createdAt) : ""}
+                </Text>
+                <Text style={s.detailMeta}>الحالة: متاح</Text>
+                <TouchableOpacity
+                  style={s.lockedBtn}
+                  onPress={() => {
+                    setSelectedRequest(null);
+                    showWall("سجّل الدخول أو أنشئ حساباً للتواصل مع صاحب الطلب");
+                  }}
+                  activeOpacity={0.85}
+                >
+                  <Ionicons name="lock-closed-outline" size={16} color={colors.mutedForeground} />
+                  <Text style={s.lockedBtnTxt}>سجّل الدخول للتواصل مع صاحب الطلب</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => setSelectedRequest(null)} style={s.detailClose}>
+                  <Text style={s.detailCloseText}>إغلاق</Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
     </View>
   );
 }
@@ -360,7 +454,15 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
     chipTxtActive: { color: c.primaryForeground, fontWeight: "700" },
 
     centered: { flex: 1, alignItems: "center", justifyContent: "center" },
-    listContent: { padding: 16, paddingBottom: bottomInset + 32 },
+    skeletonList: { flex: 1, padding: 16, gap: 12 },
+    skeletonCard: { padding: 18, gap: 14, backgroundColor: c.card, borderColor: c.border, borderWidth: 1, borderRadius: 16 },
+    skeletonLineWide: { height: 18, width: "68%", alignSelf: "flex-end", borderRadius: 8, backgroundColor: c.muted },
+    skeletonLine: { height: 14, width: "92%", alignSelf: "flex-end", borderRadius: 7, backgroundColor: c.muted },
+    skeletonLineShort: { height: 14, width: "48%", alignSelf: "flex-end", borderRadius: 7, backgroundColor: c.muted },
+    listContent: { padding: 16, paddingBottom: 24 },
+    statusBadge: { flexDirection: "row-reverse", alignItems: "center", gap: 6, alignSelf: "flex-start", marginBottom: 12, backgroundColor: c.secondary, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 5 },
+    statusDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: c.primary },
+    statusText: { fontSize: 12, color: c.primary, fontWeight: "700" },
 
     card: {
       backgroundColor: c.card, borderRadius: 16, borderWidth: 1, borderColor: c.border,
@@ -407,10 +509,19 @@ const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
     retryBtn: { marginTop: 8, backgroundColor: c.primary, borderRadius: 10, paddingHorizontal: 18, paddingVertical: 10 },
     retryTxt: { color: c.primaryForeground, fontSize: 14, fontWeight: "700" },
 
-    footerCta: {
-      backgroundColor: c.primary, borderRadius: 14, marginHorizontal: 4, marginTop: 8,
-      paddingVertical: 16, flexDirection: "row-reverse", alignItems: "center",
-      justifyContent: "center", gap: 10,
-    },
-    footerCtaTxt: { color: c.primaryForeground, fontSize: 15, fontWeight: "700" },
+    mainActions: { paddingHorizontal: 16, paddingTop: 10, gap: 8, backgroundColor: c.background, borderTopWidth: 1, borderTopColor: c.border },
+    mainPrimary: { minHeight: 48, borderRadius: 13, backgroundColor: c.primary, justifyContent: "center", alignItems: "center" },
+    mainPrimaryText: { color: c.primaryForeground, fontSize: 15, fontWeight: "800" },
+    mainSecondary: { minHeight: 46, borderRadius: 13, borderWidth: 1.5, borderColor: c.primary, justifyContent: "center", alignItems: "center", backgroundColor: c.card },
+    mainSecondaryText: { color: c.primary, fontSize: 15, fontWeight: "700" },
+    detailsLink: { flexDirection: "row-reverse", alignItems: "center", gap: 4, alignSelf: "flex-start", marginBottom: 10 },
+    detailsLinkText: { color: c.primary, fontSize: 13, fontWeight: "700" },
+    detailOverlay: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.4)" },
+    detailSheet: { backgroundColor: c.background, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 22, paddingBottom: 32, gap: 12 },
+    detailHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: c.border, alignSelf: "center", marginBottom: 6 },
+    detailTitle: { fontSize: 20, color: c.foreground, fontWeight: "800", textAlign: "right" },
+    detailDescription: { fontSize: 15, color: c.foreground, lineHeight: 24, textAlign: "right" },
+    detailMeta: { fontSize: 14, color: c.mutedForeground, textAlign: "right" },
+    detailClose: { alignItems: "center", paddingVertical: 10 },
+    detailCloseText: { color: c.mutedForeground, fontSize: 14, fontWeight: "700" },
   });

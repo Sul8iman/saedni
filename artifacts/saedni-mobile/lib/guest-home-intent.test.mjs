@@ -35,8 +35,7 @@ test("signed-out launch opens public requests and actions preserve their intent"
   assert.match(guest, /testID="guest-request-help"/);
   assert.match(guest, /testID="guest-help-others"/);
   assert.match(guest, /intent=\{wallIntent\}/);
-  assert.match(guest, /item\.status === "available"/);
-  assert.match(guest, /new Date\(b\.createdAt\)\.getTime\(\) - new Date\(a\.createdAt\)\.getTime\(\)/);
+  assert.match(guest, /filterGuestRequests\(\(allData \?\? \[\]\) as HelpRequest\[\], catFilter, areaFilter\)/);
   assert.match(guest, /تعذر تحميل الطلبات/);
   assert.match(guest, /إعادة المحاولة/);
 });

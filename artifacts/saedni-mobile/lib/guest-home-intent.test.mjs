@@ -39,3 +39,29 @@ test("signed-out launch opens public requests and actions preserve their intent"
   assert.match(guest, /تعذر تحميل الطلبات/);
   assert.match(guest, /إعادة المحاولة/);
 });
+
+test("guest authentication can be dismissed without replacing public browsing", async () => {
+  const [guest, wall, login, register, authLayout, backButton] = await Promise.all([
+    readFile(new URL("../app/(guest)/index.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../components/GuestWall.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/(auth)/login.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/(auth)/register.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/(auth)/_layout.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../components/GuestBrowseBackButton.tsx", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(guest, /router\.push\("\/\(auth\)\/login"\)/);
+  assert.match(guest, /router\.push\("\/\(auth\)\/register"\)/);
+  assert.doesNotMatch(guest, /exitGuestMode/);
+  assert.match(guest, /setWallIntent\(null\)/);
+  assert.match(wall, /router\.push\(\{ pathname: "\/\(auth\)\/login"/);
+  assert.match(wall, /router\.push\(\{ pathname: "\/\(auth\)\/register"/);
+  assert.doesNotMatch(wall, /exitGuestMode|router\.replace/);
+  assert.match(login, /<GuestBrowseBackButton \/>/);
+  assert.match(register, /<GuestBrowseBackButton \/>/);
+  assert.match(register, /pathname: "\/\(auth\)\/login", params: intent/);
+  assert.match(login, /exitGuestMode\(\)/);
+  assert.match(register, /exitGuestMode\(\)/);
+  assert.match(authLayout, /gestureEnabled: true/);
+  assert.match(backButton, /router\.dismissTo\("\/\(guest\)"\)/);
+});

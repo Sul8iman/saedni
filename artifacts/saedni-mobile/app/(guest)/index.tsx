@@ -13,7 +13,7 @@ import { CATEGORIES } from "@/constants/categories";
 import { OMAN_LOCATION_CATALOG } from "../../../../lib/api-zod/location-catalog";
 import GuestWall from "@/components/GuestWall";
 import { getRequestLocationLines } from "@/lib/request-locations";
-import { filterGuestRequests, formatRelativePublicationTime } from "@/lib/guest-request-presentation";
+import { filterGuestRequests } from "@/lib/guest-request-presentation";
 
 interface HelpRequest {
   id: number;
@@ -57,7 +57,7 @@ export default function GuestBrowseScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { user, exitGuestMode, setActiveRole } = useAuth();
+  const { user, setActiveRole } = useAuth();
   const s = makeStyles(colors);
 
   const [catFilter, setCatFilter] = useState("all");
@@ -68,6 +68,12 @@ export default function GuestBrowseScreen() {
   const [wallIntent, setWallIntent] = useState<"customer" | "helper" | null>(null);
   const [selectedRequest, setSelectedRequest] = useState<HelpRequest | null>(null);
   const [filterSheet, setFilterSheet] = useState<"service" | "location" | null>(null);
+
+  function closeWall() {
+    setWallVisible(false);
+    setWallMessage(undefined);
+    setWallIntent(null);
+  }
 
   const { data: allData, isLoading, isError, refetch, isRefetching } = useListRequests(undefined, {
     query: { queryKey: ["guest-available-requests"] },
@@ -97,13 +103,11 @@ export default function GuestBrowseScreen() {
   }
 
   function handleLogin() {
-    exitGuestMode();
-    router.replace("/(auth)/login");
+    router.push("/(auth)/login");
   }
 
   function handleRegister() {
-    exitGuestMode();
-    router.replace("/(auth)/register");
+    router.push("/(auth)/register");
   }
 
   const renderItem = ({ item }: { item: HelpRequest }) => {
@@ -149,7 +153,6 @@ export default function GuestBrowseScreen() {
         </View>
 
         <View style={s.cardBottom}>
-          <Text style={s.publishTxt}>{formatRelativePublicationTime(item.createdAt)}</Text>
           <View style={s.detailsLink}>
             <Text style={s.detailsLinkText}>عرض التفاصيل</Text>
             <Ionicons name="chevron-back" size={15} color={colors.primary} />
@@ -283,7 +286,7 @@ export default function GuestBrowseScreen() {
 
       <GuestWall
         visible={wallVisible}
-        onClose={() => setWallVisible(false)}
+        onClose={closeWall}
         message={wallMessage}
         intent={wallIntent}
       />
@@ -531,10 +534,9 @@ const makeStyles = (c: ReturnType<typeof useColors>) =>
     metaTxt: { fontSize: 14, color: c.mutedForeground, fontWeight: "500", textAlign: "right" },
     metaLabel: { color: c.foreground, fontWeight: "700" },
     cardBottom: {
-      flexDirection: "row-reverse", alignItems: "center", justifyContent: "space-between",
-      flexWrap: "wrap", gap: 4, paddingTop: 2,
+      flexDirection: "row-reverse", alignItems: "center", justifyContent: "flex-start",
+      paddingTop: 2,
     },
-    publishTxt: { fontSize: 13, color: c.mutedForeground, fontWeight: "600", textAlign: "right" },
     detailsLink: { flexDirection: "row-reverse", alignItems: "center", gap: 3 },
     detailsLinkText: { color: c.primary, fontSize: 14, fontWeight: "700" },
 

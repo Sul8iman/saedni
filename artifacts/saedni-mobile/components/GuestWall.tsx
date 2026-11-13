@@ -4,7 +4,6 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { useAuth } from "@/contexts/AuthContext";
 import { useColors } from "@/hooks/useColors";
 
 interface Props {
@@ -17,19 +16,16 @@ interface Props {
 export default function GuestWall({ visible, onClose, message, intent = null }: Props) {
   const colors = useColors();
   const router = useRouter();
-  const { exitGuestMode } = useAuth();
   const s = makeStyles(colors);
 
   function goLogin() {
     onClose();
-    exitGuestMode();
-    router.replace({ pathname: "/(auth)/login", params: intent ? { intent } : {} });
+    router.push({ pathname: "/(auth)/login", params: intent ? { intent } : {} });
   }
 
   function goRegister() {
     onClose();
-    exitGuestMode();
-    router.replace({ pathname: "/(auth)/register", params: intent ? { intent } : {} });
+    router.push({ pathname: "/(auth)/register", params: intent ? { intent } : {} });
   }
 
   return (

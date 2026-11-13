@@ -43,6 +43,14 @@
       "android": {
         "buildType": "app-bundle"
       }
+    },
+    "internal-testing": {
+      "extends": "production",
+      "distribution": "internal",
+      "corepack": true,
+      "android": {
+        "buildType": "apk"
+      }
     }
   },
   "submit": {

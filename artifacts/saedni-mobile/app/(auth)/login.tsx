@@ -4,13 +4,14 @@ import {
   ActivityIndicator, Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
 import { useColors } from "@/hooks/useColors";
 import { useAuth, type AuthUser } from "@/contexts/AuthContext";
 import ArabicText from "@/components/ArabicText";
+import { getPostAuthDestination, normalizeGuestIntent } from "@/lib/guest-home-intent";
 
 type Step = "phone" | "otp" | "pin";
 
@@ -53,7 +54,15 @@ async function safeApiFetch(url: string, init: RequestInit): Promise<ApiResult> 
 export default function LoginScreen() {
   const colors = useColors();
   const router = useRouter();
-  const { setSession } = useAuth();
+  const { intent: rawIntent } = useLocalSearchParams<{ intent?: string }>();
+  const intent = normalizeGuestIntent(rawIntent);
+  const { setSession, setActiveRole } = useAuth();
+
+  async function routeAfterAuth(user: AuthUser) {
+    const destination = getPostAuthDestination(intent, user.roles ?? [user.userType]);
+    if (destination.role) await setActiveRole(destination.role);
+    router.replace(destination.path);
+  }
 
   const [step, setStep] = useState<Step>("phone");
   const [phone, setPhone] = useState("");
@@ -126,7 +135,7 @@ export default function LoginScreen() {
     }
     const saveResult = await setSession(user, token);
     if (!saveResult) return;
-    router.replace("/");
+    await routeAfterAuth(user);
   }
 
   async function handlePinSubmit() {
@@ -215,7 +224,10 @@ export default function LoginScreen() {
                   ? <ActivityIndicator color={colors.primaryForeground} />
                   : <Text style={s.primaryBtnTxt}>التالي</Text>}
               </TouchableOpacity>
-              <TouchableOpacity onPress={() => router.push("/(auth)/register")} style={s.ghostBtn}>
+              <TouchableOpacity
+                onPress={() => router.push({ pathname: "/(auth)/register", params: intent ? { intent } : {} })}
+                style={s.ghostBtn}
+              >
                 <Text style={s.ghostTxt}>
                   ليس لديك حساب؟{" "}
                   <Text style={s.ghostLink}>سجّل الآن</Text>

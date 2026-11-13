@@ -3,7 +3,6 @@ import { useRouter } from "expo-router";
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
-import { useAuth } from "@/contexts/AuthContext";
 
 const EXAMPLES = [
   { emoji: "🚚", text: "أحتاج بيكب لنقل أغراض من بوشر إلى الخوير", amount: "15" },
@@ -14,13 +13,7 @@ const EXAMPLES = [
 export default function WelcomeScreen() {
   const colors = useColors();
   const router = useRouter();
-  const { enterGuestMode } = useAuth();
   const s = makeStyles(colors);
-
-  function handleGuestMode() {
-    enterGuestMode();
-    router.replace("/");
-  }
 
   return (
     <SafeAreaView style={s.safe} edges={["top", "bottom"]}>
@@ -76,14 +69,6 @@ export default function WelcomeScreen() {
             <Text style={s.secondaryBtnTxt}>إنشاء حساب جديد</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={s.guestBtn}
-            onPress={handleGuestMode}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="eye-outline" size={16} color={colors.mutedForeground} />
-            <Text style={s.guestBtnTxt}>تصفح كضيف</Text>
-          </TouchableOpacity>
         </View>
       </ScrollView>
     </SafeAreaView>

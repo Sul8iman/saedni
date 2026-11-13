@@ -10,6 +10,7 @@ import * as Haptics from "expo-haptics";
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
 import { useColors } from "@/hooks/useColors";
 import { useAuth, type AuthUser } from "@/contexts/AuthContext";
+import GuestBrowseBackButton from "@/components/GuestBrowseBackButton";
 import { OMAN_LOCATION_CATALOG } from "../../../../lib/api-zod/location-catalog";
 import { getPostAuthDestination, normalizeGuestIntent } from "@/lib/guest-home-intent";
 
@@ -26,7 +27,7 @@ export default function RegisterScreen() {
   const router = useRouter();
   const { intent: rawIntent } = useLocalSearchParams<{ intent?: string }>();
   const intent = normalizeGuestIntent(rawIntent);
-  const { setSession, setActiveRole } = useAuth();
+  const { setSession, setActiveRole, exitGuestMode } = useAuth();
 
   const [step, setStep] = useState<Step>("form");
   const [name, setName] = useState("");
@@ -106,7 +107,9 @@ export default function RegisterScreen() {
       }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       const user = data.user as AuthUser;
-      await setSession(user, data.token as string);
+      const saveResult = await setSession(user, data.token as string);
+      if (!saveResult) return;
+      exitGuestMode();
       const destination = getPostAuthDestination(intent, user.roles ?? [user.userType]);
       if (destination.role) await setActiveRole(destination.role);
       router.replace(destination.path);
@@ -125,6 +128,7 @@ export default function RegisterScreen() {
 
   return (
     <SafeAreaView style={s.safe} edges={["top", "bottom"]}>
+      <GuestBrowseBackButton />
       <KeyboardAwareScrollViewCompat
         style={s.scroll}
         contentContainerStyle={s.content}
@@ -276,7 +280,10 @@ export default function RegisterScreen() {
                   : <Text style={s.primaryBtnTxt}>إنشاء الحساب</Text>}
               </TouchableOpacity>
 
-              <TouchableOpacity onPress={() => router.back()} style={s.ghostBtn}>
+              <TouchableOpacity
+                onPress={() => router.dismissTo({ pathname: "/(auth)/login", params: intent ? { intent } : {} })}
+                style={s.ghostBtn}
+              >
                 <Text style={s.ghostTxt}>
                   لديك حساب؟ <Text style={s.ghostLink}>سجّل دخولك</Text>
                 </Text>

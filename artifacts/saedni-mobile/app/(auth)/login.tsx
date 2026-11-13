@@ -11,6 +11,7 @@ import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollV
 import { useColors } from "@/hooks/useColors";
 import { useAuth, type AuthUser } from "@/contexts/AuthContext";
 import ArabicText from "@/components/ArabicText";
+import GuestBrowseBackButton from "@/components/GuestBrowseBackButton";
 import { getPostAuthDestination, normalizeGuestIntent } from "@/lib/guest-home-intent";
 
 type Step = "phone" | "otp" | "pin";
@@ -56,11 +57,12 @@ export default function LoginScreen() {
   const router = useRouter();
   const { intent: rawIntent } = useLocalSearchParams<{ intent?: string }>();
   const intent = normalizeGuestIntent(rawIntent);
-  const { setSession, setActiveRole } = useAuth();
+  const { setSession, setActiveRole, exitGuestMode } = useAuth();
 
   async function routeAfterAuth(user: AuthUser) {
     const destination = getPostAuthDestination(intent, user.roles ?? [user.userType]);
     if (destination.role) await setActiveRole(destination.role);
+    exitGuestMode();
     router.replace(destination.path);
   }
 
@@ -170,6 +172,7 @@ export default function LoginScreen() {
     }
     const saveResult = await setSession(user, token);
     if (!saveResult) return;
+    exitGuestMode();
     router.replace("/");
   }
 
@@ -177,6 +180,7 @@ export default function LoginScreen() {
 
   return (
     <SafeAreaView style={s.safe} edges={["top", "bottom"]}>
+      <GuestBrowseBackButton />
       <KeyboardAwareScrollViewCompat
         style={s.scroll}
         contentContainerStyle={s.content}

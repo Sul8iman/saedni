@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import {
-  View, Text, FlatList, TouchableOpacity, StyleSheet,
-  ActivityIndicator, RefreshControl, ScrollView, Modal, TouchableWithoutFeedback,
+  View, Text, FlatList, TouchableOpacity, Pressable, StyleSheet,
+  RefreshControl, ScrollView, Modal,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -12,7 +12,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { CATEGORIES } from "@/constants/categories";
 import { OMAN_LOCATION_CATALOG } from "../../../../lib/api-zod/location-catalog";
 import GuestWall from "@/components/GuestWall";
-import { getRequestLocationLines, requestMatchesArea } from "@/lib/request-locations";
+import { getRequestLocationLines } from "@/lib/request-locations";
+import { filterGuestRequests } from "@/lib/guest-request-presentation";
 
 interface HelpRequest {
   id: number;
@@ -25,6 +26,7 @@ interface HelpRequest {
   scheduledDateTime?: string | null;
   offeredAmount: number;
   status: string;
+  isPaused?: boolean | null;
   createdAt: string;
 }
 
@@ -55,8 +57,8 @@ export default function GuestBrowseScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { user, exitGuestMode, setActiveRole } = useAuth();
-  const s = makeStyles(colors, insets.bottom);
+  const { user, setActiveRole } = useAuth();
+  const s = makeStyles(colors);
 
   const [catFilter, setCatFilter] = useState("all");
   const [areaFilter, setAreaFilter] = useState("all");
@@ -65,21 +67,24 @@ export default function GuestBrowseScreen() {
   const [wallMessage, setWallMessage] = useState<string | undefined>();
   const [wallIntent, setWallIntent] = useState<"customer" | "helper" | null>(null);
   const [selectedRequest, setSelectedRequest] = useState<HelpRequest | null>(null);
+  const [filterSheet, setFilterSheet] = useState<"service" | "location" | null>(null);
+
+  function closeWall() {
+    setWallVisible(false);
+    setWallMessage(undefined);
+    setWallIntent(null);
+  }
 
   const { data: allData, isLoading, isError, refetch, isRefetching } = useListRequests(undefined, {
     query: { queryKey: ["guest-available-requests"] },
   });
 
-  const data = (allData ?? [])
-    .filter(item => item.status === "available")
-    .filter(item => {
-    const catMatch = catFilter === "all" || item.category === catFilter;
-    const areaMatch = areaFilter === "all" || requestMatchesArea(item, areaFilter);
-    return catMatch && areaMatch;
-    })
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  // The public endpoint returns the complete active list; FlatList virtualizes
+  // its rendering without paging the data, so this is the full filtered count.
+  const requests = filterGuestRequests((allData ?? []) as HelpRequest[], catFilter, areaFilter);
 
-  const catLabel = (v: string) => CATEGORIES.find(c => c.value === v)?.label ?? v;
+  const catLabel = (v: string) => v === "all" ? "الكل" : CATEGORIES.find(c => c.value === v)?.label ?? v;
+  const areaLabel = areaFilter === "all" ? "كل عُمان" : areaFilter;
 
   function showWall(msg?: string, intent: "customer" | "helper" | null = null) {
     setWallMessage(msg);
@@ -98,88 +103,64 @@ export default function GuestBrowseScreen() {
   }
 
   function handleLogin() {
-    exitGuestMode();
-    router.replace("/(auth)/login");
+    router.push("/(auth)/login");
   }
 
   function handleRegister() {
-    exitGuestMode();
-    router.replace("/(auth)/register");
+    router.push("/(auth)/register");
   }
 
-  const renderItem = ({ item }: { item: HelpRequest }) => (
-    <View style={s.card}>
-      {/* Top: category + amount */}
-      <View style={s.cardTop}>
-        <Text style={s.amount}>
-          {item.offeredAmount}{" "}
-          <Text style={s.amountCur}>ر.ع.</Text>
-        </Text>
-        <View style={s.catBadge}>
-          <Text style={s.catTxt}>{catLabel(item.category)}</Text>
-        </View>
-      </View>
-
-      {/* Details */}
-      <Text style={s.details}>{item.details}</Text>
+  const renderItem = ({ item }: { item: HelpRequest }) => {
+    const locations = getRequestLocationLines(item);
+    const executionTime = item.timeType === "now"
+      ? "الآن"
+      : item.scheduledDateTime
+        ? fmtScheduled(item.scheduledDateTime)
+        : "لاحقاً";
+    return (
       <TouchableOpacity
         accessibilityRole="button"
+        accessibilityLabel={`عرض تفاصيل طلب ${catLabel(item.category)}`}
         onPress={() => setSelectedRequest(item)}
-        style={s.detailsLink}
-        activeOpacity={0.75}
+        activeOpacity={0.88}
+        style={s.card}
       >
-        <Text style={s.detailsLinkText}>عرض التفاصيل</Text>
-        <Ionicons name="chevron-back" size={15} color={colors.primary} />
-      </TouchableOpacity>
-
-      {/* Meta chips */}
-      <View style={s.metaRow}>
-        {getRequestLocationLines(item).map((location) => (
-          <View style={s.metaChip} key={location.label}>
-            <Ionicons name="location-outline" size={13} color={colors.mutedForeground} />
-            <Text style={s.metaTxt}>{location.label}: {location.value}</Text>
+        <View style={s.cardTop}>
+          <View style={s.catBadge}>
+            <Text style={s.catTxt}>{catLabel(item.category)}</Text>
           </View>
-        ))}
-        <View style={s.metaChip}>
-          <Ionicons
-            name={item.timeType === "now" ? "flash" : "calendar-outline"}
-            size={13}
-            color={colors.mutedForeground}
-          />
-          <Text style={s.metaTxt}>
-            {item.timeType === "now"
-              ? "الآن"
-              : item.scheduledDateTime
-                ? fmtScheduled(item.scheduledDateTime)
-                : "لاحقاً"}
+          <Text style={s.amount}>
+            {item.offeredAmount} <Text style={s.amountCur}>ر.ع.</Text>
           </Text>
         </View>
-      </View>
 
-      {/* Publish date */}
-      <View style={s.publishRow}>
-        <Ionicons name="time-outline" size={13} color={colors.mutedForeground} />
-        <Text style={s.publishTxt}>
-          {"تاريخ نشر الطلب: "}
-          <Text style={s.publishVal}>{fmtCreatedAt(item.createdAt)}</Text>
-        </Text>
-      </View>
-      <View style={s.statusBadge}>
-        <View style={s.statusDot} />
-        <Text style={s.statusText}>متاح</Text>
-      </View>
+        <Text style={s.details} numberOfLines={2} ellipsizeMode="tail">{item.details}</Text>
 
-      {/* Locked contact action */}
-      <TouchableOpacity
-        style={s.lockedBtn}
-        onPress={() => showWall("سجّل الدخول أو أنشئ حساباً للتواصل مع صاحب الطلب")}
-        activeOpacity={0.85}
-      >
-        <Ionicons name="lock-closed-outline" size={16} color={colors.mutedForeground} />
-        <Text style={s.lockedBtnTxt}>سجّل الدخول للتواصل مع صاحب الطلب</Text>
+        <View style={s.routeRow}>
+          {locations.map((location) => (
+            <View style={s.routeItem} key={location.label}>
+              <Text style={s.routeLabel}>{location.label}</Text>
+              <Text style={s.routeValue}>{location.value}</Text>
+            </View>
+          ))}
+        </View>
+
+        <View style={s.timeRow}>
+          <Ionicons name={item.timeType === "now" ? "flash-outline" : "calendar-outline"} size={14} color={colors.mutedForeground} />
+          <Text style={s.metaTxt}>
+            <Text style={s.metaLabel}>موعد التنفيذ: </Text>{executionTime}
+          </Text>
+        </View>
+
+        <View style={s.cardBottom}>
+          <View style={s.detailsLink}>
+            <Text style={s.detailsLinkText}>عرض التفاصيل</Text>
+            <Ionicons name="chevron-back" size={15} color={colors.primary} />
+          </View>
+        </View>
       </TouchableOpacity>
-    </View>
-  );
+    );
+  };
 
   return (
     <View style={s.container}>
@@ -187,10 +168,10 @@ export default function GuestBrowseScreen() {
       <SafeAreaView edges={["top"]} style={s.headerSafe}>
         <View style={s.headerInner}>
           <View style={s.headerRight}>
-            <Text style={s.headerTitle}>تصفح الطلبات</Text>
+            <Text style={s.headerTitle}>الطلبات المتاحة</Text>
             {!isLoading && !isError && (
               <View style={s.countBadge}>
-                <Text style={s.countTxt}>{data.length}</Text>
+                <Text style={s.countTxt}>{requests.length}</Text>
               </View>
             )}
           </View>
@@ -201,79 +182,35 @@ export default function GuestBrowseScreen() {
           </View>
         </View>
 
-        {/* Guest banner */}
-        <TouchableOpacity style={s.guestBanner} onPress={() => showWall()} activeOpacity={0.85}>
-          <Ionicons name="information-circle-outline" size={16} color={colors.primary} />
-          <Text style={s.guestBannerTxt}>
-            أنت تتصفح كضيف — سجّل الدخول للتواصل مع أصحاب الطلبات
-          </Text>
-          <Ionicons name="chevron-back" size={14} color={colors.primary} />
-        </TouchableOpacity>
       </SafeAreaView>
 
-      {/* Filter: نوع المهمة */}
-      <View style={s.filterSection}>
-        <Text style={s.filterLabel}>نوع المهمة</Text>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={s.chipsRow}
+      <View style={s.filterRow}>
+        <TouchableOpacity
+          accessibilityRole="button"
+          accessibilityLabel={`الخدمة: ${catLabel(catFilter)}`}
+          onPress={() => setFilterSheet("service")}
+          activeOpacity={0.8}
+          style={s.filterControl}
         >
-          {CAT_FILTERS.map(f => (
-            <TouchableOpacity
-              key={f.value}
-              style={[s.chip, catFilter === f.value && s.chipActive]}
-              onPress={() => setCatFilter(f.value)}
-              activeOpacity={0.8}
-            >
-              <Text style={[s.chipTxt, catFilter === f.value && s.chipTxtActive]}>
-                {f.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </View>
-
-      {/* Filter: الموقع */}
-      <View style={[s.filterSection, s.filterSectionBorder]}>
-        <Text style={s.filterLabel}>الموقع</Text>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={s.chipsRow}
+          <Text style={s.filterLabel}>الخدمة</Text>
+          <View style={s.filterValueRow}>
+            <Ionicons name="chevron-down" size={15} color={colors.primary} />
+            <Text style={s.filterValue}>{catLabel(catFilter)}</Text>
+          </View>
+        </TouchableOpacity>
+        <TouchableOpacity
+          accessibilityRole="button"
+          accessibilityLabel={`الموقع: ${areaLabel}`}
+          onPress={() => setFilterSheet("location")}
+          activeOpacity={0.8}
+          style={s.filterControl}
         >
-          <TouchableOpacity
-            style={[s.chip, areaFilter === "all" && s.chipActive]}
-            onPress={() => { setAreaFilter("all"); setAreaGovernorate(null); }}
-            activeOpacity={0.8}
-          >
-            <Text style={[s.chipTxt, areaFilter === "all" && s.chipTxtActive]}>كل عُمان</Text>
-          </TouchableOpacity>
-          {OMAN_LOCATION_CATALOG.map(({ governorate }) => (
-            <TouchableOpacity
-              key={governorate}
-              style={[s.chip, areaGovernorate === governorate && s.chipActive]}
-              onPress={() => setAreaGovernorate(governorate)}
-              activeOpacity={0.8}
-            >
-              <Text style={[s.chipTxt, areaGovernorate === governorate && s.chipTxtActive]}>{governorate}</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-        {areaGovernorate && (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.chipsRow}>
-            {OMAN_LOCATION_CATALOG.find(({ governorate }) => governorate === areaGovernorate)?.locations.map((area) => (
-              <TouchableOpacity
-                key={area}
-                style={[s.chip, areaFilter === area && s.chipActive]}
-                onPress={() => setAreaFilter(areaFilter === area ? "all" : area)}
-                activeOpacity={0.8}
-              >
-                <Text style={[s.chipTxt, areaFilter === area && s.chipTxtActive]}>{area}</Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        )}
+          <Text style={s.filterLabel}>الموقع</Text>
+          <View style={s.filterValueRow}>
+            <Ionicons name="chevron-down" size={15} color={colors.primary} />
+            <Text style={s.filterValue}>{areaLabel}</Text>
+          </View>
+        </TouchableOpacity>
       </View>
 
       {/* List */}
@@ -302,7 +239,7 @@ export default function GuestBrowseScreen() {
         </View>
       ) : (
         <FlatList
-          data={data}
+          data={requests}
           keyExtractor={i => String(i.id)}
           renderItem={renderItem}
           contentContainerStyle={s.listContent}
@@ -328,7 +265,7 @@ export default function GuestBrowseScreen() {
         />
       )}
 
-      <View style={[s.mainActions, { paddingBottom: Math.max(insets.bottom, 12) }]} accessibilityLabel="إجراءات ساعدني">
+      <View style={[s.mainActions, { paddingBottom: Math.max(insets.bottom, 8) }]} accessibilityLabel="إجراءات ساعدني">
         <TouchableOpacity
           testID="guest-request-help"
           style={s.mainPrimary}
@@ -349,179 +286,318 @@ export default function GuestBrowseScreen() {
 
       <GuestWall
         visible={wallVisible}
-        onClose={() => setWallVisible(false)}
+        onClose={closeWall}
         message={wallMessage}
         intent={wallIntent}
       />
+      <Modal
+        visible={filterSheet !== null}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setFilterSheet(null)}
+      >
+        <View style={s.sheetOverlay}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="إغلاق الفلاتر"
+            onPress={() => setFilterSheet(null)}
+            style={StyleSheet.absoluteFill}
+          />
+          <View style={[s.filterSheet, { paddingBottom: Math.max(insets.bottom, 16) }]}>
+            <View style={s.detailHandle} />
+            <View style={s.sheetHeader}>
+              <Text style={s.sheetTitle}>
+                {filterSheet === "service" ? "اختر الخدمة" : "اختر الموقع"}
+              </Text>
+              <TouchableOpacity
+                accessibilityRole="button"
+                accessibilityLabel="إغلاق"
+                onPress={() => setFilterSheet(null)}
+                hitSlop={8}
+                style={s.closeIcon}
+              >
+                <Ionicons name="close" size={22} color={colors.mutedForeground} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView
+              style={s.sheetScroll}
+              contentContainerStyle={s.sheetOptions}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            >
+              {filterSheet === "service" ? CAT_FILTERS.map((filter) => (
+                <TouchableOpacity
+                  key={filter.value}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected: catFilter === filter.value }}
+                  onPress={() => {
+                    setCatFilter(filter.value);
+                    setFilterSheet(null);
+                  }}
+                  style={s.sheetOption}
+                >
+                  <Ionicons
+                    name={catFilter === filter.value ? "checkmark-circle" : "ellipse-outline"}
+                    size={20}
+                    color={catFilter === filter.value ? colors.primary : colors.mutedForeground}
+                  />
+                  <Text style={s.sheetOptionText}>{filter.label}</Text>
+                </TouchableOpacity>
+              )) : (
+                <>
+                  <TouchableOpacity
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected: areaFilter === "all" }}
+                    onPress={() => {
+                      setAreaFilter("all");
+                      setAreaGovernorate(null);
+                      setFilterSheet(null);
+                    }}
+                    style={s.sheetOption}
+                  >
+                    <Ionicons
+                      name={areaFilter === "all" ? "checkmark-circle" : "ellipse-outline"}
+                      size={20}
+                      color={areaFilter === "all" ? colors.primary : colors.mutedForeground}
+                    />
+                    <Text style={s.sheetOptionText}>كل عُمان</Text>
+                  </TouchableOpacity>
+                  {OMAN_LOCATION_CATALOG.map(({ governorate, locations }) => {
+                    const expanded = areaGovernorate === governorate;
+                    return (
+                      <View key={governorate}>
+                        <TouchableOpacity
+                          accessibilityRole="button"
+                          accessibilityState={{ expanded }}
+                          onPress={() => setAreaGovernorate(expanded ? null : governorate)}
+                          style={s.governorateOption}
+                        >
+                          <Ionicons
+                            name={expanded ? "chevron-up" : "chevron-down"}
+                            size={17}
+                            color={colors.mutedForeground}
+                          />
+                          <Text style={s.governorateText}>{governorate}</Text>
+                        </TouchableOpacity>
+                        {expanded && locations.map((area) => (
+                          <TouchableOpacity
+                            key={area}
+                            accessibilityRole="radio"
+                            accessibilityState={{ selected: areaFilter === area }}
+                            onPress={() => {
+                              setAreaFilter(areaFilter === area ? "all" : area);
+                              setFilterSheet(null);
+                            }}
+                            style={s.areaOption}
+                          >
+                            <Ionicons
+                              name={areaFilter === area ? "checkmark-circle" : "ellipse-outline"}
+                              size={19}
+                              color={areaFilter === area ? colors.primary : colors.mutedForeground}
+                            />
+                            <Text style={s.sheetOptionText}>{area}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    );
+                  })}
+                </>
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
       <Modal
         visible={!!selectedRequest}
         transparent
         animationType="slide"
         onRequestClose={() => setSelectedRequest(null)}
       >
-        <TouchableWithoutFeedback onPress={() => setSelectedRequest(null)}>
-          <View style={s.detailOverlay}>
-            <TouchableWithoutFeedback>
-              <View style={s.detailSheet}>
-                <View style={s.detailHandle} />
-                <Text style={s.detailTitle}>
-                  {selectedRequest ? catLabel(selectedRequest.category) : ""}
-                </Text>
-                <Text style={s.detailDescription}>{selectedRequest?.details}</Text>
-                {selectedRequest && getRequestLocationLines(selectedRequest).map(location => (
-                  <Text key={location.label} style={s.detailMeta}>{location.label}: {location.value}</Text>
-                ))}
-                <Text style={s.detailMeta}>
-                  {selectedRequest?.timeType === "now"
-                    ? "الوقت: الآن"
-                    : `الوقت: ${selectedRequest?.scheduledDateTime ? fmtScheduled(selectedRequest.scheduledDateTime) : "لاحقاً"}`}
-                </Text>
-                <Text style={s.detailMeta}>المبلغ المقترح: {selectedRequest?.offeredAmount} ر.ع.</Text>
-                <Text style={s.detailMeta}>
-                  تاريخ النشر: {selectedRequest ? fmtCreatedAt(selectedRequest.createdAt) : ""}
-                </Text>
-                <Text style={s.detailMeta}>الحالة: متاح</Text>
-                <TouchableOpacity
-                  style={s.lockedBtn}
-                  onPress={() => {
-                    setSelectedRequest(null);
-                    showWall("سجّل الدخول أو أنشئ حساباً للتواصل مع صاحب الطلب");
-                  }}
-                  activeOpacity={0.85}
-                >
-                  <Ionicons name="lock-closed-outline" size={16} color={colors.mutedForeground} />
-                  <Text style={s.lockedBtnTxt}>سجّل الدخول للتواصل مع صاحب الطلب</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => setSelectedRequest(null)} style={s.detailClose}>
-                  <Text style={s.detailCloseText}>إغلاق</Text>
-                </TouchableOpacity>
-              </View>
-            </TouchableWithoutFeedback>
+        <View style={s.detailOverlay}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="إغلاق تفاصيل الطلب"
+            onPress={() => setSelectedRequest(null)}
+            style={StyleSheet.absoluteFill}
+          />
+          <View style={[s.detailSheet, { paddingBottom: Math.max(insets.bottom, 16) }]}>
+            <View style={s.detailHandle} />
+            <ScrollView
+              style={s.detailScroll}
+              contentContainerStyle={s.detailContent}
+              showsVerticalScrollIndicator={false}
+            >
+              <Text style={s.detailTitle}>
+                {selectedRequest ? catLabel(selectedRequest.category) : ""}
+              </Text>
+              <Text style={s.detailDescription}>{selectedRequest?.details}</Text>
+              {selectedRequest && getRequestLocationLines(selectedRequest).map(location => (
+                <Text key={location.label} style={s.detailMeta}>{location.label}: {location.value}</Text>
+              ))}
+              <Text style={s.detailMeta}>
+                موعد التنفيذ: {selectedRequest?.timeType === "now"
+                  ? "الآن"
+                  : selectedRequest?.scheduledDateTime
+                    ? fmtScheduled(selectedRequest.scheduledDateTime)
+                    : "لاحقاً"}
+              </Text>
+              <Text style={s.detailMeta}>المبلغ المقترح: {selectedRequest?.offeredAmount} ر.ع.</Text>
+              <Text style={s.detailMeta}>
+                تاريخ ووقت النشر: {selectedRequest ? fmtCreatedAt(selectedRequest.createdAt) : ""}
+              </Text>
+            </ScrollView>
+            <TouchableOpacity
+              style={s.lockedBtn}
+              onPress={() => {
+                setSelectedRequest(null);
+                showWall("سجّل الدخول أو أنشئ حساباً للتواصل مع صاحب الطلب", "helper");
+              }}
+              activeOpacity={0.85}
+            >
+              <Ionicons name="lock-closed-outline" size={16} color={colors.mutedForeground} />
+              <Text style={s.lockedBtnTxt}>تسجيل الدخول للتواصل</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => setSelectedRequest(null)} style={s.detailClose}>
+              <Text style={s.detailCloseText}>إغلاق</Text>
+            </TouchableOpacity>
           </View>
-        </TouchableWithoutFeedback>
+        </View>
       </Modal>
     </View>
   );
 }
 
-const makeStyles = (c: ReturnType<typeof useColors>, bottomInset: number) =>
+const makeStyles = (c: ReturnType<typeof useColors>) =>
   StyleSheet.create({
     container: { flex: 1, backgroundColor: c.background },
-
     headerSafe: { backgroundColor: c.card, borderBottomWidth: 1, borderBottomColor: c.border },
     headerInner: {
-      paddingHorizontal: 16, paddingVertical: 12,
-      flexDirection: "row-reverse", alignItems: "center", justifyContent: "space-between",
+      minHeight: 52, paddingHorizontal: 14, paddingVertical: 6,
+      flexDirection: "row-reverse", alignItems: "center", justifyContent: "space-between", gap: 8,
     },
-    headerRight: { flexDirection: "row-reverse", alignItems: "center", gap: 8 },
-    headerTitle: { fontSize: 20, fontWeight: "800", color: c.foreground },
-    countBadge: {
-      backgroundColor: c.secondary, borderRadius: 10,
-      paddingHorizontal: 8, paddingVertical: 2,
-    },
-    countTxt: { fontSize: 12, fontWeight: "700", color: c.primary },
-    headerActions: { flexDirection: "row-reverse", gap: 8 },
+    headerRight: { flex: 1, flexDirection: "row-reverse", alignItems: "center", gap: 8 },
+    headerTitle: { flexShrink: 1, fontSize: 19, fontWeight: "800", color: c.foreground },
+    countBadge: { backgroundColor: c.secondary, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3 },
+    countTxt: { fontSize: 13, fontWeight: "700", color: c.primary },
+    headerActions: { flexDirection: "row-reverse" },
     loginBtn: {
-      backgroundColor: c.primary, borderRadius: 10,
-      paddingHorizontal: 14, paddingVertical: 8,
+      minHeight: 44, justifyContent: "center", backgroundColor: c.primary,
+      borderRadius: 10, paddingHorizontal: 12, paddingVertical: 7,
     },
     loginBtnTxt: { color: c.primaryForeground, fontSize: 13, fontWeight: "700" },
 
-    guestBanner: {
-      flexDirection: "row-reverse", alignItems: "center", gap: 8,
-      backgroundColor: c.secondary,
-      paddingHorizontal: 16, paddingVertical: 10,
-      borderTopWidth: 1, borderTopColor: c.border,
+    filterRow: {
+      flexDirection: "row-reverse", gap: 8, paddingHorizontal: 12, paddingVertical: 8,
+      backgroundColor: c.card, borderBottomWidth: 1, borderBottomColor: c.border,
     },
-    guestBannerTxt: {
-      flex: 1, fontSize: 12, color: c.primary,
-      fontWeight: "600", textAlign: "right",
+    filterControl: {
+      flex: 1, minWidth: 0, minHeight: 52, justifyContent: "center", alignItems: "flex-end",
+      borderRadius: 11, borderWidth: 1, borderColor: c.border, backgroundColor: c.background,
+      paddingHorizontal: 10, paddingVertical: 6,
     },
+    filterLabel: { fontSize: 12, color: c.mutedForeground, fontWeight: "600", textAlign: "right" },
+    filterValueRow: { flexDirection: "row-reverse", alignItems: "center", gap: 4 },
+    filterValue: { flexShrink: 1, fontSize: 14, color: c.foreground, fontWeight: "700", textAlign: "right" },
 
-    filterSection: { backgroundColor: c.card, paddingTop: 10, paddingBottom: 10 },
-    filterSectionBorder: { borderBottomWidth: 1, borderBottomColor: c.border },
-    filterLabel: {
-      fontSize: 12, fontWeight: "700", color: c.mutedForeground,
-      textAlign: "right", paddingHorizontal: 16, marginBottom: 6,
-    },
-    chipsRow: { paddingHorizontal: 16, flexDirection: "row-reverse", gap: 8 },
-    chip: {
-      borderRadius: 20, paddingHorizontal: 14, paddingVertical: 7,
-      borderWidth: 1.5, borderColor: c.border, backgroundColor: c.background,
-    },
-    chipActive: { backgroundColor: c.primary, borderColor: c.primary },
-    chipTxt: { fontSize: 13, color: c.mutedForeground, fontWeight: "600" },
-    chipTxtActive: { color: c.primaryForeground, fontWeight: "700" },
-
-    centered: { flex: 1, alignItems: "center", justifyContent: "center" },
-    skeletonList: { flex: 1, padding: 16, gap: 12 },
-    skeletonCard: { padding: 18, gap: 14, backgroundColor: c.card, borderColor: c.border, borderWidth: 1, borderRadius: 16 },
+    skeletonList: { flex: 1, padding: 12, gap: 8 },
+    skeletonCard: { padding: 14, gap: 12, backgroundColor: c.card, borderColor: c.border, borderWidth: 1, borderRadius: 14 },
     skeletonLineWide: { height: 18, width: "68%", alignSelf: "flex-end", borderRadius: 8, backgroundColor: c.muted },
     skeletonLine: { height: 14, width: "92%", alignSelf: "flex-end", borderRadius: 7, backgroundColor: c.muted },
     skeletonLineShort: { height: 14, width: "48%", alignSelf: "flex-end", borderRadius: 7, backgroundColor: c.muted },
-    listContent: { padding: 16, paddingBottom: 24 },
-    statusBadge: { flexDirection: "row-reverse", alignItems: "center", gap: 6, alignSelf: "flex-start", marginBottom: 12, backgroundColor: c.secondary, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 5 },
-    statusDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: c.primary },
-    statusText: { fontSize: 12, color: c.primary, fontWeight: "700" },
-
+    listContent: { paddingHorizontal: 12, paddingTop: 8, paddingBottom: 8, flexGrow: 1 },
     card: {
-      backgroundColor: c.card, borderRadius: 16, borderWidth: 1, borderColor: c.border,
-      padding: 16, marginBottom: 12,
+      backgroundColor: c.card, borderRadius: 14, borderWidth: 1, borderColor: c.border,
+      padding: 12, marginBottom: 8, gap: 6,
       shadowColor: "#000", shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.05, shadowRadius: 4, elevation: 2,
+      shadowOpacity: 0.04, shadowRadius: 3, elevation: 1,
     },
     cardTop: {
-      flexDirection: "row-reverse", alignItems: "flex-start",
-      justifyContent: "space-between", marginBottom: 10,
+      flexDirection: "row-reverse", alignItems: "center",
+      justifyContent: "space-between", gap: 8,
     },
     catBadge: {
-      backgroundColor: c.secondary, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4,
-      flexShrink: 1, maxWidth: "60%",
+      backgroundColor: c.secondary, borderRadius: 8, paddingHorizontal: 9, paddingVertical: 4,
+      flexShrink: 1, maxWidth: "70%",
     },
-    catTxt: { fontSize: 13, fontWeight: "700", color: c.primary, textAlign: "right" },
-    amount: { fontSize: 22, fontWeight: "800", color: c.primary },
-    amountCur: { fontSize: 14, fontWeight: "600" },
+    catTxt: { fontSize: 14, fontWeight: "700", color: c.primary, textAlign: "right" },
+    amount: { fontSize: 19, fontWeight: "800", color: c.primary },
+    amountCur: { fontSize: 13, fontWeight: "600" },
     details: {
-      fontSize: 14, color: c.mutedForeground, textAlign: "right",
-      lineHeight: 21, marginBottom: 12,
+      fontSize: 15, color: c.foreground, textAlign: "right",
+      lineHeight: 21, marginBottom: 1,
     },
-    publishRow: { flexDirection: "row-reverse", alignItems: "center", gap: 5, marginBottom: 12 },
-    publishTxt: { fontSize: 11, color: c.mutedForeground, textAlign: "right" },
-    publishVal: { fontSize: 11, color: c.foreground, fontWeight: "600" },
-    metaRow: { flexDirection: "row-reverse", gap: 8, marginBottom: 12, flexWrap: "wrap" },
-    metaChip: {
-      flexDirection: "row-reverse", alignItems: "center", gap: 4,
-      backgroundColor: c.muted, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5,
+    routeRow: { flexDirection: "row-reverse", flexWrap: "wrap", gap: 6 },
+    routeItem: { flexDirection: "row-reverse", alignItems: "center", gap: 4, flexShrink: 1 },
+    routeLabel: { fontSize: 13, color: c.mutedForeground, fontWeight: "700" },
+    routeValue: { flexShrink: 1, fontSize: 14, color: c.foreground, fontWeight: "600" },
+    timeRow: { flexDirection: "row-reverse", alignItems: "center", gap: 5, flexWrap: "wrap" },
+    metaTxt: { fontSize: 14, color: c.mutedForeground, fontWeight: "500", textAlign: "right" },
+    metaLabel: { color: c.foreground, fontWeight: "700" },
+    cardBottom: {
+      flexDirection: "row-reverse", alignItems: "center", justifyContent: "flex-start",
+      paddingTop: 2,
     },
-    metaTxt: { fontSize: 12, color: c.mutedForeground, fontWeight: "500" },
+    detailsLink: { flexDirection: "row-reverse", alignItems: "center", gap: 3 },
+    detailsLinkText: { color: c.primary, fontSize: 14, fontWeight: "700" },
 
-    lockedBtn: {
-      flexDirection: "row-reverse", alignItems: "center", justifyContent: "center", gap: 8,
-      backgroundColor: c.muted, borderRadius: 10, paddingVertical: 11,
-      borderWidth: 1, borderColor: c.border,
-    },
-    lockedBtnTxt: { fontSize: 13, color: c.mutedForeground, fontWeight: "600" },
-
-    empty: { alignItems: "center", justifyContent: "center", paddingTop: 80, gap: 10 },
+    empty: { alignItems: "center", justifyContent: "center", paddingTop: 56, paddingHorizontal: 16, gap: 10 },
     errorState: { flex: 1, paddingHorizontal: 24, paddingTop: 0 },
-    emptyTitle: { fontSize: 18, fontWeight: "700", color: c.foreground },
+    emptyTitle: { fontSize: 18, fontWeight: "700", color: c.foreground, textAlign: "center" },
     emptyHint: { fontSize: 14, color: c.mutedForeground, textAlign: "center", lineHeight: 22 },
-    retryBtn: { marginTop: 8, backgroundColor: c.primary, borderRadius: 10, paddingHorizontal: 18, paddingVertical: 10 },
+    retryBtn: { minHeight: 44, justifyContent: "center", marginTop: 8, backgroundColor: c.primary, borderRadius: 10, paddingHorizontal: 18, paddingVertical: 10 },
     retryTxt: { color: c.primaryForeground, fontSize: 14, fontWeight: "700" },
 
-    mainActions: { paddingHorizontal: 16, paddingTop: 10, gap: 8, backgroundColor: c.background, borderTopWidth: 1, borderTopColor: c.border },
-    mainPrimary: { minHeight: 48, borderRadius: 13, backgroundColor: c.primary, justifyContent: "center", alignItems: "center" },
-    mainPrimaryText: { color: c.primaryForeground, fontSize: 15, fontWeight: "800" },
-    mainSecondary: { minHeight: 46, borderRadius: 13, borderWidth: 1.5, borderColor: c.primary, justifyContent: "center", alignItems: "center", backgroundColor: c.card },
-    mainSecondaryText: { color: c.primary, fontSize: 15, fontWeight: "700" },
-    detailsLink: { flexDirection: "row-reverse", alignItems: "center", gap: 4, alignSelf: "flex-start", marginBottom: 10 },
-    detailsLinkText: { color: c.primary, fontSize: 13, fontWeight: "700" },
+    mainActions: {
+      flexDirection: "row-reverse", paddingHorizontal: 12, paddingTop: 8, gap: 8,
+      backgroundColor: c.background, borderTopWidth: 1, borderTopColor: c.border,
+    },
+    mainPrimary: { flex: 1, minHeight: 50, borderRadius: 13, backgroundColor: c.primary, justifyContent: "center", alignItems: "center", paddingHorizontal: 8 },
+    mainPrimaryText: { color: c.primaryForeground, fontSize: 15, fontWeight: "800", textAlign: "center" },
+    mainSecondary: { flex: 1, minHeight: 50, borderRadius: 13, borderWidth: 1.5, borderColor: c.primary, justifyContent: "center", alignItems: "center", backgroundColor: c.card, paddingHorizontal: 8 },
+    mainSecondaryText: { color: c.primary, fontSize: 15, fontWeight: "700", textAlign: "center" },
+
+    sheetOverlay: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.4)" },
+    filterSheet: {
+      maxHeight: "82%", backgroundColor: c.background, borderTopLeftRadius: 22,
+      borderTopRightRadius: 22, paddingHorizontal: 18, paddingTop: 12,
+    },
+    sheetHeader: { flexDirection: "row-reverse", alignItems: "center", justifyContent: "space-between", minHeight: 48 },
+    sheetTitle: { fontSize: 19, color: c.foreground, fontWeight: "800", textAlign: "right" },
+    closeIcon: { minWidth: 44, minHeight: 44, alignItems: "center", justifyContent: "center" },
+    sheetScroll: { flexShrink: 1 },
+    sheetOptions: { paddingBottom: 8 },
+    sheetOption: {
+      minHeight: 48, flexDirection: "row-reverse", alignItems: "center", gap: 12,
+      borderBottomWidth: 1, borderBottomColor: c.border, paddingVertical: 10,
+    },
+    sheetOptionText: { flex: 1, fontSize: 16, color: c.foreground, textAlign: "right" },
+    governorateOption: {
+      minHeight: 48, flexDirection: "row-reverse", alignItems: "center", gap: 8,
+      backgroundColor: c.muted, borderRadius: 10, marginTop: 8, paddingHorizontal: 10, paddingVertical: 8,
+    },
+    governorateText: { flex: 1, fontSize: 15, color: c.foreground, fontWeight: "700", textAlign: "right" },
+    areaOption: {
+      minHeight: 46, flexDirection: "row-reverse", alignItems: "center", gap: 10,
+      paddingHorizontal: 14, paddingVertical: 8,
+    },
+
     detailOverlay: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.4)" },
-    detailSheet: { backgroundColor: c.background, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 22, paddingBottom: 32, gap: 12 },
-    detailHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: c.border, alignSelf: "center", marginBottom: 6 },
-    detailTitle: { fontSize: 20, color: c.foreground, fontWeight: "800", textAlign: "right" },
-    detailDescription: { fontSize: 15, color: c.foreground, lineHeight: 24, textAlign: "right" },
-    detailMeta: { fontSize: 14, color: c.mutedForeground, textAlign: "right" },
-    detailClose: { alignItems: "center", paddingVertical: 10 },
-    detailCloseText: { color: c.mutedForeground, fontSize: 14, fontWeight: "700" },
+    detailSheet: {
+      maxHeight: "88%", backgroundColor: c.background, borderTopLeftRadius: 24,
+      borderTopRightRadius: 24, paddingHorizontal: 18, paddingTop: 14, gap: 8,
+    },
+    detailHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: c.border, alignSelf: "center", marginBottom: 4 },
+    detailScroll: { flexShrink: 1 },
+    detailContent: { gap: 12, paddingBottom: 8 },
+    detailTitle: { fontSize: 21, color: c.foreground, fontWeight: "800", textAlign: "right" },
+    detailDescription: { fontSize: 16, color: c.foreground, lineHeight: 25, textAlign: "right" },
+    detailMeta: { fontSize: 15, color: c.mutedForeground, textAlign: "right", lineHeight: 22 },
+    lockedBtn: {
+      minHeight: 48, flexDirection: "row-reverse", alignItems: "center", justifyContent: "center", gap: 8,
+      backgroundColor: c.muted, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 10,
+      borderWidth: 1, borderColor: c.border,
+    },
+    lockedBtnTxt: { fontSize: 14, color: c.mutedForeground, fontWeight: "600", textAlign: "center" },
+    detailClose: { minHeight: 44, alignItems: "center", justifyContent: "center", paddingVertical: 8 },
+    detailCloseText: { color: c.mutedForeground, fontSize: 15, fontWeight: "700" },
   });
